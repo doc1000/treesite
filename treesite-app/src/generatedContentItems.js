@@ -4,7 +4,7 @@ export const generatedContentItems = [
     "name": "URL capture and visual organization",
     "section": "Case Studies",
     "type": "website",
-    "description": "A Chrome extension and local AI system to build your personal research vault. Save URLs, text, and notes as you browse. VaultBubble automatically organizes everything into topics and visualizes your knowledge in an interactive bubble chart. Ask questions about your captured documents using natural language search.",
+    "description": "",
     "source": "https://www.vaultbubbles.com/",
     "url": "https://www.vaultbubbles.com/",
     "previewImage": "/assets/previews/url-capture-and-visual-organization.png",

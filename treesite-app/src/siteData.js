@@ -178,14 +178,7 @@ const baseSiteData = {
                   href: divariancePdf
                 }
               ]
-            }
-          ]
-        },
-        {
-          name: "Systems & Tooling",
-          value: 16,
-          description: "Practical build notes, teardown posts, and toolkits.",
-          children: [
+            },
             {
               name: "Volatility Mitigation Toolkit",
               title: "Volatility Mitigation Toolkit",
@@ -203,12 +196,20 @@ const baseSiteData = {
                   href: volatilityToolkitPdf
                 }
               ]
-            },
-            {
+            }
+          ]
+        },
+        {
+          name: "Systems & Tooling",
+          value: 16,
+          description: "Practical build notes, teardown posts, and toolkits.",
+          children: [
+            
+            /* ,{
               name: "Automation Notes",
               value: 6,
               description: "Practical build notes, teardown posts, and tools."
-            }
+             }*/
           ]
         },
         {
@@ -234,11 +235,11 @@ const baseSiteData = {
                 }
               ]
             },
-            {
+            /* {
               name: "AI Strategy",
               value: 3,
               description: "Articles about business strategy and implementation."
-            },
+            }, */
             {
               name: "Orthogonal Wonder Substack",
               value: 3,
@@ -257,7 +258,7 @@ const baseSiteData = {
             }
           ]
         },
-        {
+        /* {
           name: "Article Ideas",
           value: 8,
           description: "Future article categories and reusable resource ideas.",
@@ -283,38 +284,23 @@ const baseSiteData = {
                   description: "Charts, diagrams, article art."
                 }
               ]
-            }
+            } 
           ]
-        }
+        }*/
       ]
     },
     {
       name: "Contact Me",
-      value: 22,
+      value: 30,
       color: "#c7ad72",
-      template: "contact",
-      description: "Need AI knowledge tools now? Reach out through email, GitHub, or LinkedIn.",
-      links: [
-        {
-          label: "info@knowledgealgorithms.com",
-          href: "mailto:info@knowledgealgorithms.com"
-        },
-        {
-          label: "github.com/doc1000",
-          href: "https://github.com/doc1000"
-        },
-        {
-          label: "linkedin.com/in/dosteresh",
-          href: "https://www.linkedin.com/in/dosteresh/"
-        }
-      ],
+      description: "Need AI knowledge tools now? Reach out or schedule a call.",
       children: [
         {
           name: "Email",
           value: 8,
-          kicker: "Primary channel",
           template: "contact",
-          description: "Need AI knowledge tools now? Reach out directly by email.",
+          kicker: "Primary channel",
+          description: "Reach out directly by email.",
           links: [
             {
               label: "info@knowledgealgorithms.com",
@@ -332,8 +318,8 @@ const baseSiteData = {
         {
           name: "GitHub",
           value: 7,
-          kicker: "Code / prototypes",
           template: "contact",
+          kicker: "Code / prototypes",
           description: "Explore public work, experiments, and technical artifacts.",
           links: [
             {
@@ -345,8 +331,8 @@ const baseSiteData = {
         {
           name: "LinkedIn",
           value: 7,
-          kicker: "Professional profile",
           template: "contact",
+          kicker: "Professional profile",
           description: "Connect professionally and see current background, work, and updates.",
           links: [
             {

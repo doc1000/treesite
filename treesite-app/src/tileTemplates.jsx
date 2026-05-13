@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 export function TileTemplate({ node, box }) {
   const small = box.w < 170 || box.h < 110;
-  const links = node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
+  const hasChildren = Boolean(node.children?.length);
+  const links = hasChildren ? [] : node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
   const kicker = node.kicker || node.source || node.publication || "Section";
   const title = node.title || node.name;
   const description = node.abstract || node.description;
@@ -343,6 +344,8 @@ ${needs}`
 }
 
 function ContactTile({ node, small }) {
+  const links = node.children?.length ? [] : node.links || [];
+
   return (
     <div className={`tile-html contact-tile ${small ? "tile-small" : ""}`}>
       <div className="tile-card">
@@ -354,13 +357,15 @@ function ContactTile({ node, small }) {
           </p>
         </div>
 
-        <div className="tile-links">
-          {(node.links || []).map(link => (
-            <TileLink key={link.href} link={link}>
-              {link.label}
-            </TileLink>
-          ))}
-        </div>
+        {links.length > 0 && (
+          <div className="tile-links">
+            {links.map(link => (
+              <TileLink key={link.href} link={link}>
+                {link.label}
+              </TileLink>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
