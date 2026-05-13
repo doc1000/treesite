@@ -13,6 +13,7 @@ export default function TreeSite({ siteData, rootOrder }) {
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
   const [recentTrail, setRecentTrail] = useState([]);
+  const [showImmediateChildren, setShowImmediateChildren] = useState(false);
 
   useEffect(() => {
     const el = chartRef.current;
@@ -87,7 +88,16 @@ export default function TreeSite({ siteData, rootOrder }) {
     return r;
   }, [focus, rootOrder, dims]);
 
-  const visibleNodes = displayRoot.children || [displayRoot];
+  const visibleNodes = useMemo(() => {
+    if (!showImmediateChildren) return displayRoot.children || [displayRoot];
+
+    const nodes = displayRoot.descendants().filter(d => {
+      return d.depth === 1 || d.depth === 2;
+    });
+
+    return nodes.length > 0 ? nodes : [displayRoot];
+  }, [displayRoot, showImmediateChildren]);
+
 
   function sectionColor(d) {
     const original = root.descendants().find(x => x.fullName === d.fullName) || d;
@@ -130,6 +140,11 @@ export default function TreeSite({ siteData, rootOrder }) {
           onSelect={goTo}
           sectionColor={sectionColor}
         />
+
+        <SettingsPanel
+          showImmediateChildren={showImmediateChildren}
+          onShowImmediateChildrenChange={setShowImmediateChildren}
+        />
       </aside>
 
       <main className="treesite-stage" ref={chartRef}>
@@ -146,6 +161,7 @@ export default function TreeSite({ siteData, rootOrder }) {
               w: d.x1 - d.x0,
               h: d.y1 - d.y0
             };
+            const isChildPreview = showImmediateChildren && d.depth > 1;
             const isMatch =
               query && d.fullName.toLowerCase().includes(query.toLowerCase());
 
@@ -157,7 +173,7 @@ export default function TreeSite({ siteData, rootOrder }) {
                   e.stopPropagation();
                   goTo(d);
                 }}
-                className="tree-node"
+                className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}`}
               >
                 <rect
                   width={Math.max(0, b.w)}
@@ -165,7 +181,7 @@ export default function TreeSite({ siteData, rootOrder }) {
                   rx="16"
                   ry="16"
                   fill={sectionColor(d)}
-                  opacity={d.children ? 0.78 : 0.52}
+                  opacity={isChildPreview ? 0.28 : d.children ? 0.78 : 0.52}
                   stroke={isMatch ? "#fff" : "rgba(255,255,255,.18)"}
                   strokeWidth={isMatch ? 3 : 1}
                 />
@@ -179,6 +195,25 @@ export default function TreeSite({ siteData, rootOrder }) {
         </svg>
       </main>
     </div>
+  );
+}
+
+function SettingsPanel({ showImmediateChildren, onShowImmediateChildrenChange }) {
+  return (
+    <section className="treesite-settings" aria-label="Display settings">
+      <div className="settings-heading">Settings</div>
+      <label className="settings-toggle">
+        <span>
+          <strong>Show child cards</strong>
+          <small>Reveal one nested level on the main map.</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={showImmediateChildren}
+          onChange={e => onShowImmediateChildrenChange(e.target.checked)}
+        />
+      </label>
+    </section>
   );
 }
 
