@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Sitemap Treemap</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root {
+      --bg: #07090f;
+      --panel: #0d111c;
+      --panel-2: #121827;
+      --text: #f3f6ff;
+      --muted: #9aa8c7;
+      --line: rgba(255,255,255,.11);
+      --accent: #9ddcff;
+      --shadow: 0 24px 70px rgba(0,0,0,.45);
+      --radius: 20px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(62, 158, 255, .16), transparent 30%),
+        radial-gradient(circle at 80% 10%, rgba(167, 78, 255, .14), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .shell {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+      gap: 12px;
+      padding: 18px;
+    }
+
+    .sidebar, .stage {
+      background: linear-gradient(180deg, rgba(18,24,39,.94), rgba(10,14,24,.94));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: .95;
+      letter-spacing: -0.06em;
+    }
+
+    .lede {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+      margin: 10px 0 0;
+    }
+
+    .sidebar-tools { display: grid; gap: 14px; }
+
+    .search {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(7,9,15,.72);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 999px;
+      outline: none;
+      backdrop-filter: blur(12px);
+    }
+
+    .search::placeholder { color: rgba(243,246,255,.48); }
+
+    .mini-wrap {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #07090f;
+      border-radius: 18px;
+      background: #07090f;
+      transition: border-color .18s ease, background .18s ease;
+    }
+
+    .mini-wrap:hover {
+      border-color: rgba(255,255,255,.12);
+      background: #07090f;
+    }
+
+    .mini-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .mini-hint {
+      letter-spacing: 0;
+      text-transform: none;
+      color: rgba(243,246,255,.48);
+    }
+
+    #mini {
+      width: 100%;
+      height: 130px;
+      display: block;
+      overflow: visible;
+      cursor: crosshair;
+    }
+
+    .mini-node {
+      stroke: transparent;
+      stroke-width: .55;
+      rx: 4;
+      ry: 4;
+      cursor: pointer;
+      transition: opacity .18s ease;
+    }
+
+    .mini-node:hover {
+      opacity: 1 !important;
+      stroke: rgba(255,255,255,.9);
+      stroke-width: 1.6;
+    }
+    .mini-visited {
+      fill: none;
+      stroke: rgba(255, 209, 102, .85);
+      stroke-width: 1.4;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+
+    .mini-trace {
+      fill: none;
+      stroke: rgba(255, 209, 102, .95);
+      stroke-width: 2.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 6px rgba(255, 209, 102, .75));
+      pointer-events: none;
+    }
+
+    .mini-trace-dot {
+      fill: #ffd166;
+      stroke: #0b0f19;
+      stroke-width: 1.4;
+      filter: drop-shadow(0 0 5px rgba(255, 209, 102, .8));
+      pointer-events: none;
+    }
+
+    .mini-home {
+      fill: #fff1a8;
+      stroke: #0b0f19;
+      stroke-width: 1.5;
+      cursor: pointer;
+      filter: drop-shadow(0 0 6px rgba(255, 209, 102, .9));
+    }
+
+    .mini-home:hover { fill: #ffffff; }
+    .mini-focus { fill: none; stroke: #fff; stroke-width: 2.4; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+    .tile-fo { pointer-events: none; }
+    .tile-html {
+      height: 100%;
+      width: 100%;
+      padding: 16px;
+      color: white;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .tile-card { height: 100%; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; }
+    .tile-kicker { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tile-title { margin: 0; font-size: clamp(15px, 1.45vw, 24px); line-height: 1; letter-spacing: -.045em; }
+    .tile-desc { margin: 6px 0 0; color: rgba(255,255,255,.78); font-size: clamp(11px, .95vw, 14px); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .tile-links { display: grid; gap: 5px; font-size: 11px; color: rgba(255,255,255,.9); }
+    .tile-link { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 5px 7px; border-radius: 999px; background: rgba(7,9,15,.28); border: 1px solid rgba(255,255,255,.12); }
+    .tile-visual { min-height: 34px; border-radius: 14px; background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.34), transparent 28%), linear-gradient(135deg, rgba(255,255,255,.16), rgba(7,9,15,.18)); border: 1px solid rgba(255,255,255,.13); }
+    .tile-small .tile-desc, .tile-small .tile-links, .tile-small .tile-visual, .tile-small .tile-kicker { display: none; }
+    .tile-small.tile-html { padding: 10px; }
+    .tile-small .tile-title { font-size: 13px; }
+
+    .stage { position: relative; }
+    #chart { width: 100%; height: 100%; display: block; }
+
+    .node rect {
+      stroke: rgba(255,255,255,.18);
+      stroke-width: 1;
+      rx: 16;
+      ry: 16;
+      cursor: pointer;
+      filter: drop-shadow(0 12px 22px rgba(0,0,0,.25));
+    }
+
+    .node text {
+      pointer-events: none;
+      fill: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+    }
+
+    .node .title {
+      font-weight: 700;
+      letter-spacing: -.03em;
+      dominant-baseline: hanging;
+    }
+
+    .node .meta {
+      fill: rgba(255,255,255,.72);
+      font-size: 12px;
+      dominant-baseline: hanging;
+    }
+
+    .floating-nav {
+      position: absolute;
+      top: 26px;
+      left: 44%;
+      right: 18px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    .floating-nav > * { pointer-events: auto; }
+
+    .crumbs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(7,9,15,.18);
+      backdrop-filter: blur(10px);
+      border-radius: 999px;
+      max-width: 100%;
+      opacity: .72;
+      transition: opacity .18s ease, background .18s ease;
+    }
+
+    .crumbs:hover { opacity: 1; background: rgba(7,9,15,.42); }
+
+    .crumbs button, .back {
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--text);
+      background: rgba(255,255,255,.045);
+      border-radius: 999px;
+      padding: 8px 11px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      transition: transform .18s ease, background .18s ease;
+    }
+
+    .back {
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .crumbs button:hover, .back:hover { transform: translateY(-1px); background: rgba(255,255,255,.13); }
+
+    .doc-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(157,220,255,.12);
+      color: #dff4ff;
+      font-size: 12px;
+      border: 1px solid rgba(157,220,255,.25);
+    }
+
+    @media (max-width: 880px) {
+      body { overflow: auto; }
+      .shell { height: auto; min-height: 100vh; grid-template-columns: 1fr; }
+      .stage { height: 70vh; }
+      .floating-nav { top: 12px; left: 12px; right: 12px; }
+      .crumbs { max-width: 100%; border-radius: 18px; }
+      #mini { height: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar">
+      <div>
+        <h1>Living Sitemap</h1>
+        <p class="lede">A conceptual website where every section, subsection, page, document, and image becomes physical territory. Click any tile to enter it. Click breadcrumbs to jump back.</p>
+      </div>
+
+      <div class="sidebar-tools">
+        <input class="search" id="search" placeholder="Search the sitemap…" />
+        <div class="mini-wrap">
+          <div class="mini-label">
+            <span>Mini Map</span>
+            <span class="mini-hint">click to jump</span>
+          </div>
+          <svg id="mini"></svg>
+        </div>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="floating-nav">
+        <div class="crumbs" id="crumbs"></div>
+      </div>
+      <svg id="chart"></svg>
+    </section>
+  </main>
+
+  <script>
+    const rootOrder = [
+      "Home / Who I Am",
+      "Services",
+      "Case Studies",
+      "Articles",
+      "Contact Me"
+    ];
+
+    const siteData = {
+      name: "Website",
+      description: "Full sitemap view.",
+      children: [
+        {
+          name: "Home / Who I Am",
+          value: 40,
+          description: "The front door: positioning, story, credibility, and next action.",
+          children: [
+            { name: "Hero Statement", value: 12, description: "Core promise, simple intro, primary CTA." },
+            { name: "Origin Story", value: 10, description: "A short founder story that makes the work feel human." },
+            { name: "Proof / Trust", value: 8, description: "Logos, testimonials, credentials, awards, or outcomes." },
+            { name: "Media", value: 10, description: "Portraits, short intro video, downloadable bio.", children: [
+              { name: "Portrait.jpg", value: 4, description: "Personal brand image asset." },
+              { name: "Intro Video", value: 4, description: "Embedded video or reel." },
+              { name: "Bio PDF", value: 2, description: "Downloadable one-sheet." }
+            ]}
+          ]
+        },
+        {
+          name: "Services",
+          value: 52,
+          description: "Primary offers and paths for prospective clients.",
+          children: [
+            { name: "Strategy Sessions", value: 14, description: "Advisory offer with scheduling CTA." },
+            { name: "AI Implementation", value: 16, description: "Build workflows, agents, automations, or prototypes." },
+            { name: "Workshops", value: 12, description: "Team training and executive education." },
+            { name: "Service Assets", value: 10, description: "Sales decks, scope examples, screenshots.", children: [
+              { name: "Workshop Deck", value: 4, description: "Embedded presentation." },
+              { name: "Process Diagram", value: 3, description: "Image or SVG explaining your method." },
+              { name: "Sample SOW", value: 3, description: "Downloadable document." }
+            ]}
+          ]
+        },
+        {
+          name: "Case Studies",
+          value: 42,
+          description: "Outcome-driven stories showing transformation.",
+          children: [
+            { name: "Client A", value: 14, description: "Problem, approach, result, evidence.", children: [
+              { name: "Before / After", value: 5, description: "Visual comparison asset." },
+              { name: "Metrics", value: 5, description: "Revenue, time saved, quality, cost, speed." },
+              { name: "Testimonial", value: 4, description: "Quote, video, or screenshot." }
+            ]},
+            { name: "Client B", value: 12, description: "Second outcome story." },
+            { name: "Client C", value: 10, description: "A third story organized as a page." },
+            { name: "Evidence Library", value: 6, description: "Screenshots, charts, PDFs, anonymized outputs." }
+          ]
+        },
+        {
+          name: "Articles",
+          value: 46,
+          description: "Thought leadership, essays, tutorials, and evergreen resources.",
+          children: [
+            { name: "AI Strategy", value: 13, description: "Articles about business strategy and implementation." },
+            { name: "Automation Notes", value: 11, description: "Practical build notes, teardown posts, and tools." },
+            { name: "Personal Essays", value: 9, description: "Point-of-view writing and founder perspective." },
+            { name: "Resource Library", value: 13, description: "Downloads and visuals.", children: [
+              { name: "Playbook PDF", value: 5, description: "Downloadable guide." },
+              { name: "Prompt Pack", value: 4, description: "Reusable prompt library." },
+              { name: "Images", value: 4, description: "Charts, diagrams, article art." }
+            ]}
+          ]
+        },
+        {
+          name: "Contact Me",
+          value: 22,
+          kicker: "Contact",
+          description: "Need AI knowledge tools now? Reach out through email, GitHub, or LinkedIn.",
+          links: [
+            { label: "info@knowledgealgorithms.com", href: "mailto:info@knowledgealgorithms.com" },
+            { label: "github.com/doc1000", href: "https://github.com/doc1000" },
+            { label: "linkedin.com/in/dosteresh", href: "https://www.linkedin.com/in/dosteresh/" }
+          ],
+          children: [
+            { name: "Email", value: 8, kicker: "Primary channel", description: "Need AI knowledge tools now? Reach out directly by email.", links: [{ label: "info@knowledgealgorithms.com", href: "mailto:info@knowledgealgorithms.com" }] },
+            { name: "GitHub", value: 7, kicker: "Code / prototypes", description: "Explore public work, experiments, and technical artifacts.", links: [{ label: "github.com/doc1000", href: "https://github.com/doc1000" }] },
+            { name: "LinkedIn", value: 7, kicker: "Professional profile", description: "Connect professionally and see current background, work, and updates.", links: [{ label: "linkedin.com/in/dosteresh", href: "https://www.linkedin.com/in/dosteresh/" }] }
+          ]
+        }
+      ]
+    };
+
+    const svg = d3.select("#chart");
+    const mini = d3.select("#mini");
+    const crumbs = d3.select("#crumbs");
+    const search = d3.select("#search");
+
+    const color = d3.scaleOrdinal()
+      .domain(["Home / Who I Am", "Services", "Case Studies", "Articles", "Contact Me"])
+      .range([
+        "#5d8fb3",  // muted blue
+        "#8b79b8",  // softened violet
+        "#c58b78",  // dusty coral
+        "#6fa892",  // muted sage
+        "#c7ad72"   // soft gold
+      ]);
+
+    let width, height, root, focus;
+    const visited = new Set();
+    const recentTrail = [];
+
+    function size() {
+      const box = svg.node().getBoundingClientRect();
+      width = box.width;
+      height = box.height;
+      svg.attr("viewBox", [0, 0, width, height]);
+    }
+
+    function displayWeight(d) {
+      // Normalize values so cards remain relatively similar in size.
+      // Keeps some hierarchy without letting large sections dominate.
+      const raw = Math.max(1, d.value || 1);
+      return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
+    }
+
+    function buildHierarchy() {
+      root = d3.hierarchy(siteData)
+        .sum(displayWeight)
+        .sort((a, b) => {
+          if (a.depth === 1 && b.depth === 1) {
+            return rootOrder.indexOf(a.data.name) - rootOrder.indexOf(b.data.name);
+          }
+          return b.value - a.value;
+        });
+
+      d3.treemap()
+        .tile(d3.treemapSquarify.ratio(1.2))
+        .size([width, height])
+        .paddingTop(d => d.depth === 0 ? 0 : 18)
+        .paddingInner(2)
+        .paddingOuter(2)
+        .round(true)(root);
+
+      root.each(d => d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / "));
+      focus = focus ? root.descendants().find(d => d.fullName === focus.fullName) || root : root;
+      visited.add(focus.fullName);
+      if (!recentTrail.length) recentTrail.push(focus.fullName);
+    }
+
+    function sectionColor(d) {
+      const top = d.depth === 1 ? d : d.ancestors().find(a => a.depth === 1);
+      return color(top?.data.name || d.data.name);
+    }
+
+    function visibleNodes() {
+      return focus.children ? focus.children : [focus];
+    }
+
+    function localBox(d) {
+      const fx0 = focus.x0, fy0 = focus.y0, fx1 = focus.x1, fy1 = focus.y1;
+      const scaleX = width / (fx1 - fx0);
+      const scaleY = height / (fy1 - fy0);
+      return {
+        x: (d.x0 - fx0) * scaleX,
+        y: (d.y0 - fy0) * scaleY,
+        w: (d.x1 - d.x0) * scaleX,
+        h: (d.y1 - d.y0) * scaleY
+      };
+    }
+
+    function goTo(d) {
+      if (!d || d === focus) return;
+      focus = d;
+      visited.add(d.fullName);
+      recentTrail.push(d.fullName);
+      while (recentTrail.length > 4) recentTrail.shift();
+      updateCrumbs();
+      render();
+      renderMini();
+    }
+
+    function render() {
+      const query = search.property("value").trim().toLowerCase();
+      const nodes = visibleNodes();
+
+      const g = svg.selectAll("g.node")
+        .data(nodes, d => d.fullName);
+
+      const enter = g.enter().append("g").attr("class", "node").style("opacity", 0);
+      enter.append("rect");
+      enter.append("foreignObject").attr("class", "tile-fo");
+
+      const merged = enter.merge(g);
+
+      merged.transition().duration(650).style("opacity", 1)
+        .attr("transform", d => {
+          const b = localBox(d);
+          return `translate(${b.x},${b.y})`;
+        });
+
+      merged.select("rect")
+        .transition().duration(650)
+        .attr("width", d => Math.max(0, localBox(d).w))
+        .attr("height", d => Math.max(0, localBox(d).h))
+        .attr("fill", d => {
+          const c = d3.color(sectionColor(d));
+          c.opacity = d.children ? .78 : .52;
+          return c.formatRgb();
+        })
+        .attr("stroke", d => query && d.fullName.toLowerCase().includes(query) ? "#fff" : "rgba(255,255,255,.18)")
+        .attr("stroke-width", d => query && d.fullName.toLowerCase().includes(query) ? 3 : 1);
+
+      merged.select(".tile-fo")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", d => Math.max(0, localBox(d).w))
+        .attr("height", d => Math.max(0, localBox(d).h))
+        .html(d => {
+          const b = localBox(d);
+          const small = b.w < 170 || b.h < 110;
+          const links = d.data.links || [];
+          return `
+            <div xmlns="http://www.w3.org/1999/xhtml" class="tile-html ${small ? "tile-small" : ""}">
+              <div class="tile-card">
+                <div>
+                  <div class="tile-kicker">${d.data.kicker || (d.children ? "Section" : "Page")}</div>
+                  <h3 class="tile-title">${d.data.name}</h3>
+                  <p class="tile-desc">${d.data.description || ""}</p>
+                </div>
+                <div class="tile-visual"></div>
+                <div class="tile-links">
+                  ${links.slice(0, 3).map(link => `<span class="tile-link">${link.label}</span>`).join("")}
+                </div>
+              </div>
+            </div>`;
+        });
+
+      merged.on("click", (event, d) => {
+        event.stopPropagation();
+        goTo(d);
+      });
+
+      g.exit().transition().duration(250).style("opacity", 0).remove();
+
+      updateCrumbs();
+      renderMini();
+    }
+
+    function updateCrumbs() {
+      const trail = focus.ancestors().reverse();
+      const items = focus.parent ? [{ data: { name: "←" }, fullName: "__back", back: true }, ...trail] : trail;
+      const buttons = crumbs.selectAll("button.crumb").data(items, d => d.fullName);
+      buttons.enter().append("button").attr("class", "crumb").merge(buttons)
+        .text(d => d.back ? d.data.name : (d.depth === 0 ? "Home" : d.data.name))
+        .attr("title", d => d.back ? "Back one layer" : d.fullName)
+        .classed("back", d => !!d.back)
+        .on("click", (event, d) => {
+          event.stopPropagation();
+          if (d.back && focus.parent) goTo(focus.parent);
+          else if (!d.back) goTo(d);
+        });
+      buttons.exit().remove();
+    }
+
+    function renderMini() {
+      const mw = mini.node().clientWidth || 320;
+      const mh = mini.node().clientHeight || 170;
+
+      // Create breathing room around the minimap so users can click
+      // empty space to return to the root level.
+      const inset = 16;
+
+      mini.attr("viewBox", [0, 0, mw, mh]);
+
+      const sx = (mw - inset * 2) / width;
+      const sy = (mh - inset * 2) / height;
+      const nodeByName = new Map(root.descendants().map(d => [d.fullName, d]));
+      const center = d => ({
+        x: inset + ((d.x0 + d.x1) / 2) * sx,
+        y: inset + ((d.y0 + d.y1) / 2) * sy
+      });
+
+      const all = root.descendants().filter(d => d.depth > 0);
+
+      // Extra clickable parent region for top-level sections.
+      const topLevelPad = 10;
+      const rects = mini.selectAll("rect.mini-node").data(all, d => d.fullName);
+      rects.enter().append("rect").attr("class", "mini-node").merge(rects)
+        .attr("x", d => inset + d.x0 * sx + (d.depth === 1 ? -topLevelPad : 0))
+        .attr("y", d => inset + d.y0 * sy + (d.depth === 1 ? -topLevelPad : 0))
+        .attr("width", d => Math.max(1, (d.x1 - d.x0) * sx + (d.depth === 1 ? topLevelPad * 2 : 0)))
+        .attr("height", d => Math.max(1, (d.y1 - d.y0) * sy + (d.depth === 1 ? topLevelPad * 2 : 0)))
+        .attr("fill", d => d.depth === 1 ? "rgba(0,0,0,0)" : sectionColor(d))
+        .style("pointer-events", d => d.depth === 1 ? "all" : "auto")
+        .attr("opacity", d => {
+          const related = focus.ancestors().includes(d) || d.ancestors().includes(focus) || d === focus;
+          const hasVisited = visited.has(d.fullName);
+          if (d.depth === 1) return 1;
+          if (related) return .95;
+          if (hasVisited) return .58;
+          return .26;
+        })
+        .on("click", (event, d) => {
+          event.stopPropagation();
+          goTo(d);
+        });
+      rects.exit().remove();
+
+      const visitedNodes = all.filter(d => visited.has(d.fullName) && d !== focus);
+      const visitedMarks = mini.selectAll("rect.mini-visited").data(visitedNodes, d => d.fullName);
+      visitedMarks.enter().append("rect").attr("class", "mini-visited").merge(visitedMarks)
+        .attr("x", d => inset + d.x0 * sx + 2)
+        .attr("y", d => inset + d.y0 * sy + 2)
+        .attr("width", d => Math.max(1, (d.x1 - d.x0) * sx - 4))
+        .attr("height", d => Math.max(1, (d.y1 - d.y0) * sy - 4));
+      visitedMarks.exit().remove();
+
+      const trailNodes = recentTrail.map(name => nodeByName.get(name)).filter(Boolean);
+      const traceLine = d3.line()
+        .x(d => center(d).x)
+        .y(d => center(d).y)
+        .curve(d3.curveCatmullRom.alpha(.65));
+
+      const trace = mini.selectAll("path.mini-trace").data(trailNodes.length > 1 ? [trailNodes] : []);
+      trace.enter().append("path").attr("class", "mini-trace").merge(trace)
+        .attr("d", traceLine);
+      trace.exit().remove();
+
+      const dots = mini.selectAll("circle.mini-trace-dot").data(trailNodes, d => d.fullName);
+      dots.enter().append("circle").attr("class", "mini-trace-dot").merge(dots)
+        .attr("cx", d => center(d).x)
+        .attr("cy", d => center(d).y)
+        .attr("r", (d, i) => i === trailNodes.length - 1 ? 4.2 : 2.8)
+        .attr("opacity", (d, i) => .35 + ((i + 1) / trailNodes.length) * .65);
+      dots.exit().remove();
+
+      const home = mini.selectAll("path.mini-home").data([root]);
+      home.enter().append("path").attr("class", "mini-home").merge(home)
+        .attr("d", d3.symbol().type(d3.symbolStar).size(92))
+        .attr("transform", `translate(${inset - 2},${inset - 2})`)
+        .on("click", (event) => {
+          event.stopPropagation();
+          goTo(root);
+        });
+
+      mini.on("click", (event) => {
+        if (event.target === mini.node()) goTo(root);
+      });
+
+      const frame = mini.selectAll("rect.mini-focus").data([focus]);
+      frame.enter().append("rect").attr("class", "mini-focus").merge(frame)
+        .attr("x", d => inset + d.x0 * sx)
+        .attr("y", d => inset + d.y0 * sy)
+        .attr("width", d => Math.max(2, (d.x1 - d.x0) * sx))
+        .attr("height", d => Math.max(2, (d.y1 - d.y0) * sy));
+    }
+
+    svg.on("click", () => {
+      if (focus.parent) goTo(focus.parent);
+    });
+
+    search.on("input", render);
+
+    function init() {
+      size();
+      buildHierarchy();
+      render();
+    }
+
+    window.addEventListener("resize", () => {
+      size();
+      buildHierarchy();
+      render();
+    });
+
+    init();
+  </script>
+</body>
+</html>
