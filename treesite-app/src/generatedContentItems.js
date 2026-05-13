@@ -107,17 +107,15 @@ export const generatedContentItems = [
     "template": "contact"
   },
   {
-    "name": "GitHub",
+    "name": "Github",
     "slug": "github",
     "section": "Contact Me",
-    "type": "contact",
-    "description": "Explore public work, experiments, and technical artifacts.",
-    "value": 7,
-    "kicker": "Code / prototypes",
-    "linkLabel": "github.com/doc1000",
+    "type": "website",
+    "description": "Explore public work, experiments and technical artifacts",
     "source": "https://github.com/doc1000",
-    "href": "https://github.com/doc1000",
-    "template": "contact"
+    "url": "https://github.com/doc1000",
+    "previewImage": "/assets/previews/github.png",
+    "value": 8
   },
   {
     "name": "LinkedIn",
@@ -130,7 +128,8 @@ export const generatedContentItems = [
     "linkLabel": "linkedin.com/in/dosteresh",
     "source": "https://www.linkedin.com/in/dosteresh/",
     "href": "https://www.linkedin.com/in/dosteresh/",
-    "template": "contact"
+    "template": "contact",
+    "hidden": true
   },
   {
     "name": "MyLinkedIn",

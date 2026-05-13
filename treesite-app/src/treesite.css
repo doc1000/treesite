@@ -507,20 +507,21 @@ body {
 
 .treesite-crumbs {
   position: absolute;
-  top: 26px;
-  right: 18px;
+  top: 50%;
+  right: 0;
   z-index: 3;
-  max-width: min(56vw, 760px);
+  max-width: 190px;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
+  border-radius: 18px 0 0 18px;
   background: rgba(7, 9, 15, 0.18);
   opacity: 0.72;
   backdrop-filter: blur(10px);
+  transform: translateY(-50%);
   transition: opacity 0.18s ease, background 0.18s ease;
 }
 
@@ -538,6 +539,10 @@ body {
   font: inherit;
   font-size: 12px;
   padding: 8px 11px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
@@ -568,11 +573,11 @@ body {
   }
 
   .treesite-crumbs {
-    top: 12px;
-    right: 12px;
-    left: 12px;
-    max-width: none;
-    border-radius: 18px;
+    top: 50%;
+    right: 0;
+    left: auto;
+    max-width: min(190px, 46vw);
+    border-radius: 18px 0 0 18px;
   }
 
   .mini-map {

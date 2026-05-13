@@ -9,5 +9,6 @@
   "linkLabel": "linkedin.com/in/dosteresh",
   "source": "https://www.linkedin.com/in/dosteresh/",
   "href": "https://www.linkedin.com/in/dosteresh/",
-  "template": "contact"
+  "template": "contact",
+  "hidden": true
 }
