@@ -1,5 +1,7 @@
 import divariancePdf from "./assets/Divariance_ Connecting Frechet and KL Divergence-1.pdf";
 import volatilityToolkitPdf from "./assets/Volatility-Mitigation-Toolkit.pdf";
+import { applyContentItems } from "./contentItems";
+import { generatedContentItems } from "./generatedContentItems";
 
 export const rootOrder = [
   "Home / Who I Am",
@@ -9,7 +11,7 @@ export const rootOrder = [
   "Contact Me"
 ];
 
-export const siteData = {
+const baseSiteData = {
   name: "Website",
   description: "Full sitemap view.",
   children: [
@@ -131,7 +133,7 @@ export const siteData = {
             }
           ]
         },
-        {
+/*         {
           name: "Client B",
           value: 12,
           description: "Second outcome story."
@@ -141,7 +143,7 @@ export const siteData = {
           value: 10,
           description: "A third story organized as a page."
         },
-        {
+ */        {
           name: "Evidence Library",
           value: 6,
           description: "Screenshots, charts, PDFs, anonymized outputs."
@@ -357,3 +359,5 @@ export const siteData = {
     }
   ]
 };
+
+export const siteData = applyContentItems(baseSiteData, generatedContentItems);

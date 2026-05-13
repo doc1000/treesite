@@ -8,6 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "add:pdf": "node scripts/add-pdf.js",
+    "add:website": "node scripts/add-website.js",
+    "rebuild:site-data": "node scripts/rebuild-site-data.js",
     "snapshot:websites": "node scripts/snapshot-websites.js"
   },
   "dependencies": {

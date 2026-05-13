@@ -3,6 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import vm from "node:vm";
 import { chromium } from "playwright";
+import { applyContentItems } from "../src/contentItems.js";
+import { readContentItems } from "./content-utils.js";
 
 const appRoot = process.cwd();
 const siteDataPath = path.join(appRoot, "src", "siteData.js");
@@ -26,12 +28,15 @@ async function loadSiteData() {
     (_, name) => {
       return `const ${name} = "";`;
     }
-  );
+  ).replace(/^import\s+.*;\s*$/gm, "");
   const evaluable = withoutImports
     .replace(/export\s+const\s+rootOrder\s*=/, "const rootOrder =")
     .replace(/export\s+const\s+siteData\s*=/, "const siteData =");
 
-  const context = {};
+  const context = {
+    applyContentItems,
+    generatedContentItems: await readContentItems()
+  };
   vm.createContext(context);
   return vm.runInContext(`${evaluable}\nsiteData;`, context, {
     filename: siteDataPath
