@@ -186,7 +186,11 @@ export default function TreeSite({ siteData, rootOrder }) {
         />
       </aside>
 
-      <main className="treesite-stage" ref={chartRef}>
+      <main
+        className="treesite-stage"
+        ref={chartRef}
+        style={{ "--focus-header-ratio": FOCUS_HEADER_RATIO }}
+      >
         <Breadcrumbs focus={focus} onSelect={goTo} />
 
         <svg

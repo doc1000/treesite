@@ -238,6 +238,7 @@ body {
 .treesite-stage {
   position: relative;
   min-height: 0;
+  --focus-header-ratio: 0.1;
 }
 
 .treesite-stage::before {
@@ -764,27 +765,35 @@ body {
 
 .treesite-crumbs {
   position: absolute;
-  top: 50%;
+  top: 0;
   right: 0;
+  left: auto;
   z-index: 3;
-  max-width: 190px;
+  box-sizing: border-box;
+  height: calc(100% * var(--focus-header-ratio, 0.1));
+  max-width: min(52%, 28rem);
+  min-height: 2.25rem;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px 0 0 18px;
-  background: rgba(7, 9, 15, 0.18);
-  opacity: 0.72;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 4px 10px 4px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-right: none;
+  border-radius: 0 0 0 16px;
+  background: rgba(7, 9, 15, 0.45);
+  opacity: 0.92;
   backdrop-filter: blur(10px);
-  transform: translateY(-50%);
   transition: opacity 0.18s ease, background 0.18s ease;
 }
 
 .treesite-crumbs:hover {
   opacity: 1;
-  background: rgba(7, 9, 15, 0.42);
+  background: rgba(7, 9, 15, 0.62);
 }
 
 .treesite-crumbs button {
@@ -794,12 +803,13 @@ body {
   color: var(--treesite-text);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
-  padding: 8px 11px;
+  font-size: 11px;
+  padding: 6px 10px;
   overflow: hidden;
-  text-align: right;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 9.5rem;
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
@@ -830,11 +840,12 @@ body {
   }
 
   .treesite-crumbs {
-    top: 50%;
+    top: 0;
     right: 0;
     left: auto;
-    max-width: min(190px, 46vw);
-    border-radius: 18px 0 0 18px;
+    max-width: min(52%, 92vw);
+    height: calc(100% * var(--focus-header-ratio, 0.1));
+    border-radius: 0 0 0 16px;
   }
 
   .mini-map {
