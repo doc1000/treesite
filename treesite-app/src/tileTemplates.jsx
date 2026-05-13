@@ -7,8 +7,9 @@ export function TileTemplate({ node, box }) {
   const title = node.title || node.name;
   const description = node.abstract || node.description;
   const hasPdf = node.type === "pdf" || Boolean(node.pdf);
+  const hasWebsite = node.type === "website";
   const hasRichContent = Boolean(
-    hasPdf || node.template || node.image || links.length || node.embed || node.html
+    hasPdf || hasWebsite || node.template || node.image || links.length || node.embed || node.html
   );
 
   if (node.template === "schedule") {
@@ -22,6 +23,17 @@ export function TileTemplate({ node, box }) {
   if (hasPdf) {
     return (
       <PdfTile
+        node={node}
+        title={title}
+        description={description}
+        small={small}
+      />
+    );
+  }
+
+  if (hasWebsite) {
+    return (
+      <WebsiteTile
         node={node}
         title={title}
         description={description}
@@ -196,6 +208,50 @@ function PdfTile({ node, title, description, small }) {
 
       {links.length > 0 && (
         <div className="pdf-actions">
+          {links.slice(0, 2).map(link => (
+            <TileLink key={link.href || link.label} link={link}>
+              {link.label}
+            </TileLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WebsiteTile({ node, title, description, small }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const links = node.links || (node.url ? [{ label: "Open site", href: node.url }] : []);
+  const hasLocalPreview = node.previewImage?.startsWith("/");
+
+  if (!hasLocalPreview || imageFailed) {
+    return (
+      <MinimalTile
+        title={title}
+        description={description}
+        small={small}
+      />
+    );
+  }
+
+  return (
+    <div className={`tile-html preview-tile website-tile ${small ? "tile-small" : ""}`}>
+      <img
+        className="site-preview"
+        src={node.previewImage}
+        alt=""
+        loading="lazy"
+        onError={() => setImageFailed(true)}
+      />
+
+      <div className="preview-overlay">
+        <div className="tile-kicker">{node.kicker || node.source || "Website"}</div>
+        <h3 className="tile-title">{title}</h3>
+        {description && <p className="tile-desc">{description}</p>}
+      </div>
+
+      {links.length > 0 && (
+        <div className="preview-actions">
           {links.slice(0, 2).map(link => (
             <TileLink key={link.href || link.label} link={link}>
               {link.label}

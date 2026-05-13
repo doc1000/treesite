@@ -370,7 +370,8 @@ body {
   line-height: 1.35;
 }
 
-.pdf-tile {
+.pdf-tile,
+.preview-tile {
   position: relative;
   padding: 0;
   border-radius: 16px;
@@ -381,7 +382,8 @@ body {
     0 18px 42px rgba(0, 0, 0, 0.28);
 }
 
-.pdf-preview {
+.pdf-preview,
+.site-preview {
   width: 100%;
   height: 100%;
   display: block;
@@ -395,7 +397,12 @@ body {
   filter: saturate(0.76) contrast(0.94) brightness(0.72);
 }
 
-.pdf-overlay {
+.site-preview {
+  object-position: top center;
+}
+
+.pdf-overlay,
+.preview-overlay {
   position: absolute;
   inset: auto 0 0;
   padding: 44px 14px 13px;
@@ -405,16 +412,19 @@ body {
 }
 
 .pdf-overlay .tile-title,
+.preview-overlay .tile-title,
 .pdf-fallback-body .tile-title {
   font-size: clamp(14px, 1.18vw, 20px);
 }
 
 .pdf-overlay .tile-desc,
+.preview-overlay .tile-desc,
 .pdf-fallback-body .tile-desc {
   -webkit-line-clamp: 2;
 }
 
-.pdf-actions {
+.pdf-actions,
+.preview-actions {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -427,12 +437,15 @@ body {
 }
 
 .pdf-tile:hover .pdf-actions,
-.pdf-actions:focus-within {
+.preview-tile:hover .preview-actions,
+.pdf-actions:focus-within,
+.preview-actions:focus-within {
   opacity: 1;
   transform: translateY(0);
 }
 
-.pdf-actions .tile-link {
+.pdf-actions .tile-link,
+.preview-actions .tile-link {
   background: rgba(5, 7, 12, 0.7);
   backdrop-filter: blur(10px);
 }
@@ -464,7 +477,8 @@ body {
   padding: 10px;
 }
 
-.tile-small.pdf-tile {
+.tile-small.pdf-tile,
+.tile-small.preview-tile {
   padding: 0;
 }
 
@@ -478,11 +492,16 @@ body {
 .tile-small .tile-embed,
 .tile-small .tile-html-content,
 .tile-small .tile-kicker,
-.tile-small .pdf-actions {
+.tile-small .pdf-actions,
+.tile-small .preview-actions {
   display: none;
 }
 
 .tile-small .pdf-overlay {
+  padding: 28px 10px 10px;
+}
+
+.tile-small .preview-overlay {
   padding: 28px 10px 10px;
 }
 

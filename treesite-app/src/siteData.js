@@ -218,11 +218,13 @@ export const siteData = {
               name: "Pairwise Cross-Variance Classification",
               title: "Pairwise Cross-Variance Classification",
               value: 10,
+              type: "website",
               kicker: "Towards Data Science",
               source: "Towards Data Science",
               description: "Multi-class zero-shot embedding classification using a novel dimensionality reduction technique. Improved text/image agreement from 61% to 89%.",
               abstract: "Multi-class zero-shot embedding classification using a novel dimensionality reduction technique. Improved text/image agreement from 61% to 89%.",
               url: "https://towardsdatascience.com/pairwise-cross-variance-classification/",
+              previewImage: "/assets/site-previews/pairwise-cross-variance-classification.png",
               links: [
                 {
                   label: "Read article",
