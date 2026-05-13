@@ -1,0 +1,14 @@
+---
+description: TreeSite tile rendering conventions
+globs: treesite-app/src/{siteData.js,tileTemplates.jsx,treesite.css}
+alwaysApply: false
+---
+
+# TreeSite Tile Rendering
+
+- Keep standard sitemap nodes visually minimal: render a title and optional short description only.
+- Do not add placeholder visuals, empty metadata areas, or dashboard-style card chrome to plain nodes.
+- Rich tiles must opt in through explicit fields such as `template`, `image`, `links`, `url`, `embed`, `html`, or PDF document fields.
+- PDF/document nodes should use `type: "pdf"` and `pdf: "/path/to/file.pdf"` or an imported asset URL.
+- PDF tiles should render a visual first-page preview by default, use `previewImage` when provided, and fall back to a quiet PDF icon plus title if preview generation fails.
+- Preserve the cinematic artifact style for document previews: edge-to-edge preview, soft rounded corners, subtle shadow, and title overlay gradient.

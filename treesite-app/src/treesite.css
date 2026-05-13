@@ -370,8 +370,102 @@ body {
   line-height: 1.35;
 }
 
+.pdf-tile {
+  position: relative;
+  padding: 0;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(14, 20, 32, 0.94), rgba(7, 9, 15, 0.78));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.11),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.pdf-preview {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(25, 31, 45, 0.9), rgba(6, 8, 13, 0.92));
+  object-fit: cover;
+  opacity: 0.78;
+  filter: saturate(0.76) contrast(0.94) brightness(0.72);
+}
+
+.pdf-overlay {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 44px 14px 13px;
+  border-radius: 0 0 16px 16px;
+  background:
+    linear-gradient(180deg, transparent, rgba(5, 7, 12, 0.92) 58%, rgba(5, 7, 12, 0.98));
+}
+
+.pdf-overlay .tile-title,
+.pdf-fallback-body .tile-title {
+  font-size: clamp(14px, 1.18vw, 20px);
+}
+
+.pdf-overlay .tile-desc,
+.pdf-fallback-body .tile-desc {
+  -webkit-line-clamp: 2;
+}
+
+.pdf-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: min(60%, 160px);
+  display: grid;
+  gap: 5px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.pdf-tile:hover .pdf-actions,
+.pdf-actions:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pdf-actions .tile-link {
+  background: rgba(5, 7, 12, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.pdf-fallback {
+  padding: 14px;
+}
+
+.pdf-fallback-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pdf-icon {
+  align-self: flex-start;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
 .tile-small {
   padding: 10px;
+}
+
+.tile-small.pdf-tile {
+  padding: 0;
 }
 
 .tile-small .tile-title {
@@ -383,8 +477,13 @@ body {
 .tile-small .tile-image,
 .tile-small .tile-embed,
 .tile-small .tile-html-content,
-.tile-small .tile-kicker {
+.tile-small .tile-kicker,
+.tile-small .pdf-actions {
   display: none;
+}
+
+.tile-small .pdf-overlay {
+  padding: 28px 10px 10px;
 }
 
 .treesite-crumbs {

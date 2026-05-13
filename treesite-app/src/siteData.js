@@ -1,3 +1,6 @@
+import divariancePdf from "./assets/Divariance_ Connecting Frechet and KL Divergence-1.pdf";
+import volatilityToolkitPdf from "./assets/Volatility-Mitigation-Toolkit.pdf";
+
 export const rootOrder = [
   "Home / Who I Am",
   "Services",
@@ -160,15 +163,17 @@ export const siteData = {
               name: "Divariance: Connecting Fréchet and KL Divergence",
               title: "Divariance: Connecting Fréchet and KL Divergence",
               value: 10,
+              type: "pdf",
+              pdf: divariancePdf,
               kicker: "Research Paper",
               source: "Research Paper",
               description: "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
               abstract: "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
-              url: "/divariance-paper.pdf",
+              url: divariancePdf,
               links: [
                 {
                   label: "Open PDF",
-                  href: "/divariance-paper.pdf"
+                  href: divariancePdf
                 }
               ]
             }
@@ -183,15 +188,17 @@ export const siteData = {
               name: "Volatility Mitigation Toolkit",
               title: "Volatility Mitigation Toolkit",
               value: 10,
+              type: "pdf",
+              pdf: volatilityToolkitPdf,
               kicker: "Toolkit",
               source: "Toolkit",
               description: "Strategies and tools for managing and mitigating volatility in data-driven systems.",
               abstract: "Strategies and tools for managing and mitigating volatility in data-driven systems.",
-              url: "/Volatility-Mitigation-Toolkit.pdf",
+              url: volatilityToolkitPdf,
               links: [
                 {
                   label: "Open PDF",
-                  href: "/Volatility-Mitigation-Toolkit.pdf"
+                  href: volatilityToolkitPdf
                 }
               ]
             },

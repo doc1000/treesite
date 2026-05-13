@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function TileTemplate({ node, box }) {
   const small = box.w < 170 || box.h < 110;
@@ -6,8 +6,9 @@ export function TileTemplate({ node, box }) {
   const kicker = node.kicker || node.source || node.publication || "Section";
   const title = node.title || node.name;
   const description = node.abstract || node.description;
+  const hasPdf = node.type === "pdf" || Boolean(node.pdf);
   const hasRichContent = Boolean(
-    node.template || node.image || links.length || node.embed || node.html
+    hasPdf || node.template || node.image || links.length || node.embed || node.html
   );
 
   if (node.template === "schedule") {
@@ -16,6 +17,17 @@ export function TileTemplate({ node, box }) {
 
   if (node.template === "contact") {
     return <ContactTile node={node} small={small} />;
+  }
+
+  if (hasPdf) {
+    return (
+      <PdfTile
+        node={node}
+        title={title}
+        description={description}
+        small={small}
+      />
+    );
   }
 
   if (!hasRichContent) {
@@ -76,6 +88,121 @@ function MinimalTile({ title, description, small }) {
     <div className={`tile-html tile-minimal ${small ? "tile-small" : ""}`}>
       <h3 className="tile-title">{title}</h3>
       {description && <p className="tile-desc">{description}</p>}
+    </div>
+  );
+}
+
+function PdfTile({ node, title, description, small }) {
+  const canvasRef = useRef(null);
+  const tileRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [renderFailed, setRenderFailed] = useState(false);
+  const pdfUrl = node.pdf || node.url;
+  const links = node.links || (pdfUrl ? [{ label: "Open PDF", href: pdfUrl }] : []);
+
+  useEffect(() => {
+    const tile = tileRef.current;
+    if (!tile || node.previewImage) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "160px" }
+    );
+
+    observer.observe(tile);
+    return () => observer.disconnect();
+  }, [node.previewImage]);
+
+  useEffect(() => {
+    if (!isVisible || node.previewImage || !pdfUrl || !canvasRef.current) return;
+
+    let cancelled = false;
+    let renderTask;
+    const canvas = canvasRef.current;
+
+    async function renderPreview() {
+      try {
+        const [{ getDocument, GlobalWorkerOptions }, { default: pdfWorkerUrl }] =
+          await Promise.all([
+            import("pdfjs-dist"),
+            import("pdfjs-dist/build/pdf.worker.mjs?url")
+          ]);
+
+        GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+        const pdf = await getDocument(pdfUrl).promise;
+        if (cancelled) return;
+
+        const page = await pdf.getPage(1);
+        if (cancelled) return;
+
+        const baseViewport = page.getViewport({ scale: 1 });
+        const targetWidth = Math.max(220, Math.min(560, canvas.clientWidth || 360));
+        const scale = targetWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const context = canvas.getContext("2d");
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+
+        renderTask = page.render({ canvasContext: context, viewport });
+        await renderTask.promise;
+      } catch {
+        if (!cancelled) setRenderFailed(true);
+      }
+    }
+
+    renderPreview();
+
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+    };
+  }, [isVisible, node.previewImage, pdfUrl]);
+
+  return (
+    <div
+      ref={tileRef}
+      className={`tile-html pdf-tile ${small ? "tile-small" : ""} ${
+        renderFailed ? "pdf-fallback" : ""
+      }`}
+    >
+      {renderFailed ? (
+        <div className="pdf-fallback-body">
+          <div className="pdf-icon" aria-hidden="true">PDF</div>
+          <h3 className="tile-title">{title}</h3>
+          {description && <p className="tile-desc">{description}</p>}
+        </div>
+      ) : (
+        <>
+          {node.previewImage ? (
+            <img className="pdf-preview" src={node.previewImage} alt="" loading="lazy" />
+          ) : (
+            <canvas ref={canvasRef} className="pdf-preview" aria-hidden="true" />
+          )}
+
+          <div className="pdf-overlay">
+            <div className="tile-kicker">{node.kicker || node.source || "PDF"}</div>
+            <h3 className="tile-title">{title}</h3>
+            {description && <p className="tile-desc">{description}</p>}
+          </div>
+        </>
+      )}
+
+      {links.length > 0 && (
+        <div className="pdf-actions">
+          {links.slice(0, 2).map(link => (
+            <TileLink key={link.href || link.label} link={link}>
+              {link.label}
+            </TileLink>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
