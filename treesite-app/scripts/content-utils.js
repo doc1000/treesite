@@ -5,6 +5,7 @@ import process from "node:process";
 export const appRoot = process.cwd();
 export const contentItemsDir = path.join(appRoot, "content", "items");
 export const generatedContentPath = path.join(appRoot, "src", "generatedContentItems.js");
+export const supportedContentTypes = ["text", "link", "href", "contact", "pdf", "website"];
 
 export function parseArgs(argv = process.argv.slice(2)) {
   const args = {};
@@ -73,13 +74,26 @@ export function publicPath(...parts) {
   return `/${["assets", ...parts].join("/")}`;
 }
 
+export function contentItemPath(slug) {
+  return path.join(contentItemsDir, `${slug}.json`);
+}
+
 export async function writeContentItem(slug, item) {
   await fs.mkdir(contentItemsDir, { recursive: true });
 
-  const itemPath = path.join(contentItemsDir, `${slug}.json`);
+  const itemPath = contentItemPath(slug);
   await fs.writeFile(itemPath, `${JSON.stringify(item, null, 2)}\n`);
 
   return itemPath;
+}
+
+export async function readContentItem(slug) {
+  const itemPath = contentItemPath(slug);
+  const source = await fs.readFile(itemPath, "utf8");
+  const item = JSON.parse(source);
+  item.slug ||= slug;
+  validateContentItem(item, `${slug}.json`);
+  return item;
 }
 
 export async function readContentItems() {
@@ -113,7 +127,7 @@ export function validateContentItem(item, filename = "item") {
     }
   }
 
-  if (!["pdf", "website"].includes(item.type)) {
+  if (!supportedContentTypes.includes(item.type)) {
     throw new Error(`${filename} has unsupported type "${item.type}".`);
   }
 
@@ -123,6 +137,14 @@ export function validateContentItem(item, filename = "item") {
 
   if (item.type === "website" && typeof (item.url || item.source) !== "string") {
     throw new Error(`${filename} website items must include "url" or "source".`);
+  }
+
+  if (["link", "href"].includes(item.type) && typeof (item.href || item.url || item.source) !== "string") {
+    throw new Error(`${filename} ${item.type} items must include "href", "url", or "source".`);
+  }
+
+  if (item.hidden !== undefined && typeof item.hidden !== "boolean") {
+    throw new Error(`${filename} hidden must be a boolean when provided.`);
   }
 }
 

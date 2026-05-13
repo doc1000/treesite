@@ -153,6 +153,9 @@ treesite-app/src/generatedContentItems.js     // generated from item JSON
 treesite-app/content/items/*.json             // one file per added item
 treesite-app/scripts/add-pdf.js
 treesite-app/scripts/add-website.js
+treesite-app/scripts/add-card.js
+treesite-app/scripts/edit-card.js
+treesite-app/scripts/move-card.js
 ```
 
 Agents should help design and maintain the intake pathway, but the day-to-day process should be triggered by supplying the right inputs to scripts. This keeps adding PDFs and websites predictable, repeatable, and easy to turn into a future admin tool.
@@ -161,6 +164,60 @@ Run intake commands from the app directory:
 
 ```powershell
 cd treesite-app
+```
+
+Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
+
+Add a Basic Card
+
+Use this pathway for text cards, link cards, contact cards, or simple generated entries that do not need a PDF copy or website screenshot.
+
+```powershell
+npm run add:card -- --title "Office Hours" --section "Contact Me" --type "text" --description "A short note about availability."
+```
+
+Common card types:
+
+- `text`: title and description only
+- `link`: title, description, and a clickable URL
+- `href`: title, description, and a clickable href
+- `contact`: contact-style tile with one or more action links
+- `pdf`: existing PDF-style card when the PDF URL/path is already known
+- `website`: existing website-style card when a preview image already exists
+
+Examples:
+
+```powershell
+npm run add:card -- --title "GitHub" --section "Contact Me" --type "link" --href "https://github.com/doc1000" --linkLabel "github.com/doc1000" --description "Explore public work."
+```
+
+```powershell
+npm run add:card -- --title "Email" --section "Contact Me" --type "contact" --href "mailto:info@knowledgealgorithms.com" --linkLabel "info@knowledgealgorithms.com" --description "Reach out directly by email."
+```
+
+Edit a Card
+
+Use `edit:card` to change fields on an existing generated card by slug.
+
+```powershell
+npm run edit:card -- --slug "office-hours" --description "Book time for AI workflow questions." --value 6
+```
+
+Move a Card
+
+Use `move:card` to place a generated card under a different section.
+
+```powershell
+npm run move:card -- --slug "office-hours" --section "Services"
+```
+
+Hide or Unhide a Card
+
+Hidden cards stay in `content/items/` but are skipped when `siteData` is assembled.
+
+```powershell
+npm run hide:card -- --slug "office-hours"
+npm run unhide:card -- --slug "office-hours"
 ```
 
 Add a PDF
@@ -183,6 +240,7 @@ Example generated item:
 ```json
 {
   "name": "Divariance",
+  "slug": "divariance",
   "section": "Articles/Research",
   "type": "pdf",
   "description": "A research paper connecting Frechet and KL divergence.",
@@ -213,6 +271,7 @@ Example generated item:
 ```json
 {
   "name": "Pairwise Cross-Variance Classification",
+  "slug": "pairwise-cross-variance-classification",
   "section": "Articles/Research",
   "type": "website",
   "description": "Zero-shot embedding classification article.",

@@ -37,9 +37,16 @@ function findOrCreateSection(root, section) {
 function normalizeItem(item) {
   const title = item.title || item.name;
   const isPdf = item.type === "pdf";
-  const url = isPdf ? item.pdf || item.source : item.url || item.source;
+  const isLink = ["link", "href", "contact"].includes(item.type);
+  const url = isPdf ? item.pdf || item.source : item.href || item.url || item.source;
   const label = isPdf ? "Open PDF" : "Open site";
   const slug = item.slug;
+  const links = item.links || (url ? [
+    {
+      label: item.linkLabel || label,
+      href: url
+    }
+  ] : undefined);
 
   return {
     ...item,
@@ -49,14 +56,10 @@ function normalizeItem(item) {
     title,
     value: item.value || 8,
     pdf: isPdf ? url : item.pdf,
-    url,
-    kicker: item.kicker || (isPdf ? "PDF" : "Website"),
-    links: item.links || [
-      {
-        label,
-        href: url
-      }
-    ]
+    template: item.template || (item.type === "contact" ? "contact" : undefined),
+    url: isLink ? undefined : url,
+    kicker: item.kicker || (isPdf ? "PDF" : item.type === "website" ? "Website" : undefined),
+    links
   };
 }
 
@@ -64,6 +67,8 @@ export function applyContentItems(siteData, items) {
   const next = cloneNode(siteData);
 
   for (const item of items) {
+    if (item.hidden) continue;
+
     const parent = findOrCreateSection(next, item.section);
     const node = normalizeItem(item);
     const existingIndex = parent.children.findIndex(child => {
