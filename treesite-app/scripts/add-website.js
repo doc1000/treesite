@@ -56,6 +56,7 @@ async function main() {
 
   const item = {
     name: title,
+    slug,
     section,
     type: "website",
     description: args.description || "",

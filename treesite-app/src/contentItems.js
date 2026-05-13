@@ -39,10 +39,13 @@ function normalizeItem(item) {
   const isPdf = item.type === "pdf";
   const url = isPdf ? item.pdf || item.source : item.url || item.source;
   const label = isPdf ? "Open PDF" : "Open site";
+  const slug = item.slug;
 
   return {
     ...item,
+    generated: true,
     name: item.name,
+    slug,
     title,
     value: item.value || 8,
     pdf: isPdf ? url : item.pdf,
@@ -64,7 +67,7 @@ export function applyContentItems(siteData, items) {
     const parent = findOrCreateSection(next, item.section);
     const node = normalizeItem(item);
     const existingIndex = parent.children.findIndex(child => {
-      return child.name === node.name || child.slug === node.slug;
+      return Boolean(child.generated && child.slug && node.slug && child.slug === node.slug);
     });
 
     if (existingIndex >= 0) {

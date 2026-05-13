@@ -2,12 +2,24 @@
 export const generatedContentItems = [
   {
     "name": "URL capture and visual organization",
+    "slug": "url-capture-and-visual-organization",
     "section": "Case Studies",
     "type": "website",
     "description": "",
     "source": "https://www.vaultbubbles.com/",
     "url": "https://www.vaultbubbles.com/",
     "previewImage": "/assets/previews/url-capture-and-visual-organization.png",
+    "value": 8
+  },
+  {
+    "name": "MyLinkedIn",
+    "slug": "mylinkedin",
+    "section": "Contact Me",
+    "type": "website",
+    "description": "Connect professionally and see current background, work, and updates.",
+    "source": "https://www.linkedin.com/in/dosteresh/",
+    "url": "https://www.linkedin.com/in/dosteresh/",
+    "previewImage": "/assets/previews/mylinkedin.png",
     "value": 8
   }
 ];

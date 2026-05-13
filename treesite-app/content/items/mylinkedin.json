@@ -1,0 +1,11 @@
+{
+  "name": "MyLinkedIn",
+  "slug": "mylinkedin",
+  "section": "Contact Me",
+  "type": "website",
+  "description": "Connect professionally and see current background, work, and updates.",
+  "source": "https://www.linkedin.com/in/dosteresh/",
+  "url": "https://www.linkedin.com/in/dosteresh/",
+  "previewImage": "/assets/previews/mylinkedin.png",
+  "value": 8
+}

@@ -94,6 +94,7 @@ export async function readContentItems() {
     const itemPath = path.join(contentItemsDir, entry.name);
     const source = await fs.readFile(itemPath, "utf8");
     const item = JSON.parse(source);
+    item.slug ||= path.basename(entry.name, ".json");
     validateContentItem(item, entry.name);
     items.push(item);
   }
@@ -106,7 +107,7 @@ export async function readContentItems() {
 }
 
 export function validateContentItem(item, filename = "item") {
-  for (const field of ["name", "section", "type"]) {
+  for (const field of ["name", "section", "type", "slug"]) {
     if (typeof item[field] !== "string" || item[field].trim() === "") {
       throw new Error(`${filename} must include a non-empty "${field}" field.`);
     }
