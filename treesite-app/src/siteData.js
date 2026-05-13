@@ -147,44 +147,120 @@ export const siteData = {
     },
     {
       name: "Articles",
-      value: 46,
+      value: 58,
       color: "#6fa892",
-      description: "Thought leadership, essays, tutorials, and evergreen resources.",
+      description: "Published research, toolkits, articles, and future writing ideas.",
       children: [
         {
-          name: "AI Strategy",
-          value: 13,
-          description: "Articles about business strategy and implementation."
-        },
-        {
-          name: "Automation Notes",
-          value: 11,
-          description: "Practical build notes, teardown posts, and tools."
-        },
-        {
-          name: "Personal Essays",
-          value: 9,
-          description: "Point-of-view writing and founder perspective."
-        },
-        {
-          name: "Resource Library",
-          value: 13,
-          description: "Downloads and visuals.",
+          name: "Research",
+          value: 18,
+          description: "Technical research notes and papers.",
           children: [
             {
-              name: "Playbook PDF",
-              value: 5,
-              description: "Downloadable guide."
+              name: "Divariance: Connecting Fréchet and KL Divergence",
+              title: "Divariance: Connecting Fréchet and KL Divergence",
+              value: 10,
+              kicker: "Research Paper",
+              source: "Research Paper",
+              description: "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
+              abstract: "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
+              url: "/divariance-paper.pdf",
+              links: [
+                {
+                  label: "Open PDF",
+                  href: "/divariance-paper.pdf"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          name: "Systems & Tooling",
+          value: 16,
+          description: "Practical build notes, teardown posts, and toolkits.",
+          children: [
+            {
+              name: "Volatility Mitigation Toolkit",
+              title: "Volatility Mitigation Toolkit",
+              value: 10,
+              kicker: "Toolkit",
+              source: "Toolkit",
+              description: "Strategies and tools for managing and mitigating volatility in data-driven systems.",
+              abstract: "Strategies and tools for managing and mitigating volatility in data-driven systems.",
+              url: "/Volatility-Mitigation-Toolkit.pdf",
+              links: [
+                {
+                  label: "Open PDF",
+                  href: "/Volatility-Mitigation-Toolkit.pdf"
+                }
+              ]
             },
             {
-              name: "Prompt Pack",
-              value: 4,
-              description: "Reusable prompt library."
+              name: "Automation Notes",
+              value: 6,
+              description: "Practical build notes, teardown posts, and tools."
+            }
+          ]
+        },
+        {
+          name: "Publications",
+          value: 16,
+          description: "External articles, essays, and publication-ready writing.",
+          children: [
+            {
+              name: "Pairwise Cross-Variance Classification",
+              title: "Pairwise Cross-Variance Classification",
+              value: 10,
+              kicker: "Towards Data Science",
+              source: "Towards Data Science",
+              description: "Multi-class zero-shot embedding classification using a novel dimensionality reduction technique. Improved text/image agreement from 61% to 89%.",
+              abstract: "Multi-class zero-shot embedding classification using a novel dimensionality reduction technique. Improved text/image agreement from 61% to 89%.",
+              url: "https://towardsdatascience.com/pairwise-cross-variance-classification/",
+              links: [
+                {
+                  label: "Read article",
+                  href: "https://towardsdatascience.com/pairwise-cross-variance-classification/"
+                }
+              ]
             },
             {
-              name: "Images",
-              value: 4,
-              description: "Charts, diagrams, article art."
+              name: "AI Strategy",
+              value: 3,
+              description: "Articles about business strategy and implementation."
+            },
+            {
+              name: "Personal Essays",
+              value: 3,
+              description: "Point-of-view writing and founder perspective."
+            }
+          ]
+        },
+        {
+          name: "Article Ideas",
+          value: 8,
+          description: "Future article categories and reusable resource ideas.",
+          children: [
+            {
+              name: "Resource Library",
+              value: 8,
+              description: "Downloads and visuals.",
+              children: [
+                {
+                  name: "Playbook PDF",
+                  value: 5,
+                  description: "Downloadable guide."
+                },
+                {
+                  name: "Prompt Pack",
+                  value: 4,
+                  description: "Reusable prompt library."
+                },
+                {
+                  name: "Images",
+                  value: 4,
+                  description: "Charts, diagrams, article art."
+                }
+              ]
             }
           ]
         }

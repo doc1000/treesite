@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 export function TileTemplate({ node, box }) {
   const small = box.w < 170 || box.h < 110;
-  const links = node.links || [];
+  const links = node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
+  const kicker = node.kicker || node.source || node.publication || "Section";
+  const title = node.title || node.name;
+  const description = node.abstract || node.description;
 
   if (node.template === "schedule") {
     return <ScheduleTile node={node} box={box} small={small} />;
@@ -16,9 +19,9 @@ export function TileTemplate({ node, box }) {
     <div className={`tile-html ${small ? "tile-small" : ""}`}>
       <div className="tile-card">
         <div>
-          <div className="tile-kicker">{node.kicker || "Section"}</div>
-          <h3 className="tile-title">{node.name}</h3>
-          <p className="tile-desc">{node.description}</p>
+          <div className="tile-kicker">{kicker}</div>
+          <h3 className="tile-title">{title}</h3>
+          <p className="tile-desc">{description}</p>
         </div>
 
         {node.image ? (
