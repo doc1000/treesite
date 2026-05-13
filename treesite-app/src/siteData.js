@@ -238,9 +238,20 @@ export const siteData = {
               description: "Articles about business strategy and implementation."
             },
             {
-              name: "Personal Essays",
+              name: "Orthogonal Wonder Substack",
               value: 3,
-              description: "Point-of-view writing and founder perspective."
+              description: "Point-of-view writing and founder perspective.",
+              type: "website",
+              kicker: "Substack",
+              source: "Substack",
+              url: "https://orthogonalwonder.substack.com/",
+              previewImage: "/assets/site-previews/orthogonal-wonder-substack.png",
+              links: [
+                {
+                  label: "Read articles",
+                  href: "https://orthogonalwonder.substack.com/"
+                }
+              ]
             }
           ]
         },
