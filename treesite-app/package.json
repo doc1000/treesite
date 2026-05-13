@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "add:card": "node scripts/add-card.js",
     "edit:card": "node scripts/edit-card.js",
+    "rename:card": "node scripts/rename-card.js",
     "move:card": "node scripts/move-card.js",
     "hide:card": "node scripts/set-card-visibility.js --hidden true",
     "unhide:card": "node scripts/set-card-visibility.js --hidden false",

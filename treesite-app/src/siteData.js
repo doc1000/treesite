@@ -2,7 +2,7 @@ import { applyContentItems } from "./contentItems";
 import { generatedContentItems } from "./generatedContentItems";
 
 export const rootOrder = [
-  "Home / Who I Am",
+  "Who I am",
   "Services",
   "Case Studies",
   "Articles",
@@ -14,7 +14,7 @@ const baseSiteData = {
   description: "Full sitemap view.",
   children: [
     {
-      name: "Home / Who I Am",
+      name: "Who I am",
       value: 40,
       color: "#5d8fb3",
       description: "The front door: positioning, story, credibility, and next action.",

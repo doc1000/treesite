@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-export function TileTemplate({ node, box }) {
+export function TileTemplate({
+  node,
+  box,
+  labelPlacement = "top",
+  suppressTileLabels = false,
+  /** Title/kicker/description drawn in TreeSite on top of child previews */
+  headerInMapOverlay = false
+}) {
+  const labelsAtBottom = labelPlacement === "bottom";
   const small = box.w < 170 || box.h < 110;
   const hasChildren = Boolean(node.children?.length);
   const links = hasChildren ? [] : node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
-  const kicker = node.kicker || node.source || node.publication || "Section";
+  const kicker = node.kicker || node.source || node.publication;
   const title = node.title || node.name;
   const description = node.abstract || node.description;
   const hasPdf = node.type === "pdf" || Boolean(node.pdf);
@@ -14,11 +22,28 @@ export function TileTemplate({ node, box }) {
   );
 
   if (node.template === "schedule") {
-    return <ScheduleTile node={node} box={box} small={small} />;
+    return (
+      <ScheduleTile
+        node={node}
+        box={box}
+        small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
+      />
+    );
   }
 
   if (node.template === "contact") {
-    return <ContactTile node={node} small={small} />;
+    return (
+      <ContactTile
+        node={node}
+        small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
+      />
+    );
   }
 
   if (hasPdf) {
@@ -28,6 +53,9 @@ export function TileTemplate({ node, box }) {
         title={title}
         description={description}
         small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
       />
     );
   }
@@ -39,6 +67,9 @@ export function TileTemplate({ node, box }) {
         title={title}
         description={description}
         small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
       />
     );
   }
@@ -49,63 +80,126 @@ export function TileTemplate({ node, box }) {
         title={title}
         description={description}
         small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
       />
     );
   }
 
-  return (
-    <div className={`tile-html tile-rich ${small ? "tile-small" : ""}`}>
-      <div className="tile-card">
-        <div>
-          <div className="tile-kicker">{kicker}</div>
-          <h3 className="tile-title">{title}</h3>
-          <p className="tile-desc">{description}</p>
+  const headerBlock = (
+    <div>
+      {kicker && <div className="tile-kicker">{kicker}</div>}
+      <h3 className="tile-title">{title}</h3>
+      <p className="tile-desc">{description}</p>
+    </div>
+  );
+
+  const mediaBlocks = (
+    <>
+      {node.image && (
+        <img className="tile-image" src={node.image} alt="" />
+      )}
+
+      {node.embed && (
+        <iframe
+          className="tile-embed"
+          src={node.embed}
+          title={title}
+          loading="lazy"
+        />
+      )}
+
+      {node.html && (
+        <div
+          className="tile-html-content"
+          dangerouslySetInnerHTML={{ __html: node.html }}
+        />
+      )}
+    </>
+  );
+
+  const linksBlock =
+    links.length > 0 ? (
+      <div className="tile-links">
+        {links.slice(0, 3).map(link => (
+          <TileLink key={link.href || link.label} link={link}>
+            {link.label}
+          </TileLink>
+        ))}
+      </div>
+    ) : null;
+
+  if (suppressTileLabels || headerInMapOverlay) {
+    const hasVisualMedia = Boolean(node.image || node.embed || node.html);
+    if (!hasVisualMedia) {
+      return (
+        <div
+          className="tile-html tile-child-preview-hull"
+          aria-hidden="true"
+        />
+      );
+    }
+    return (
+      <div
+        className={`tile-html tile-rich tile-visual-only ${
+          small ? "tile-small" : ""
+        }`}
+      >
+        <div className="tile-card">
+          <div className="tile-rich-media">{mediaBlocks}</div>
         </div>
+      </div>
+    );
+  }
 
-        {node.image && (
-          <img className="tile-image" src={node.image} alt="" />
-        )}
-
-        {node.embed && (
-          <iframe
-            className="tile-embed"
-            src={node.embed}
-            title={title}
-            loading="lazy"
-          />
-        )}
-
-        {node.html && (
-          <div
-            className="tile-html-content"
-            dangerouslySetInnerHTML={{ __html: node.html }}
-          />
-        )}
-
-        {links.length > 0 && (
-          <div className="tile-links">
-            {links.slice(0, 3).map(link => (
-              <TileLink key={link.href || link.label} link={link}>
-                {link.label}
-              </TileLink>
-            ))}
-          </div>
+  return (
+    <div
+      className={`tile-html tile-rich ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "tile-rich--labels-bottom" : ""
+      }`}
+    >
+      <div className="tile-card">
+        {labelsAtBottom ? (
+          <>
+            <div className="tile-rich-media">{mediaBlocks}</div>
+            {headerBlock}
+            {linksBlock}
+          </>
+        ) : (
+          <>
+            {headerBlock}
+            {mediaBlocks}
+            {linksBlock}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function MinimalTile({ title, description, small }) {
+function MinimalTile({ title, description, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
+  if (suppressTileLabels || headerInMapOverlay) {
+    return (
+      <div
+        className="tile-html tile-child-preview-hull"
+        aria-hidden="true"
+      />
+    );
+  }
   return (
-    <div className={`tile-html tile-minimal ${small ? "tile-small" : ""}`}>
+    <div
+      className={`tile-html tile-minimal ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "tile-minimal--labels-bottom" : ""
+      }`}
+    >
       <h3 className="tile-title">{title}</h3>
       {description && <p className="tile-desc">{description}</p>}
     </div>
   );
 }
 
-function PdfTile({ node, title, description, small }) {
+function PdfTile({ node, title, description, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
   const canvasRef = useRef(null);
   const tileRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -178,19 +272,26 @@ function PdfTile({ node, title, description, small }) {
     };
   }, [isVisible, node.previewImage, pdfUrl]);
 
+  const visualOnly = Boolean(suppressTileLabels);
+  const hideTextChrome = visualOnly || headerInMapOverlay;
+
   return (
     <div
       ref={tileRef}
-      className={`tile-html pdf-tile ${small ? "tile-small" : ""} ${
-        renderFailed ? "pdf-fallback" : ""
-      }`}
+      className={`tile-html pdf-tile ${visualOnly ? "tile-visual-only" : ""} ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "pdf-tile--labels-bottom" : ""
+      } ${renderFailed && !hideTextChrome ? "pdf-fallback" : ""}`}
     >
       {renderFailed ? (
-        <div className="pdf-fallback-body">
-          <div className="pdf-icon" aria-hidden="true">PDF</div>
-          <h3 className="tile-title">{title}</h3>
-          {description && <p className="tile-desc">{description}</p>}
-        </div>
+        hideTextChrome ? (
+          <div className="pdf-preview pdf-preview--empty" aria-hidden="true" />
+        ) : (
+          <div className="pdf-fallback-body">
+            <div className="pdf-icon" aria-hidden="true">PDF</div>
+            <h3 className="tile-title">{title}</h3>
+            {description && <p className="tile-desc">{description}</p>}
+          </div>
+        )
       ) : (
         <>
           {node.previewImage ? (
@@ -199,15 +300,17 @@ function PdfTile({ node, title, description, small }) {
             <canvas ref={canvasRef} className="pdf-preview" aria-hidden="true" />
           )}
 
-          <div className="pdf-overlay">
-            <div className="tile-kicker">{node.kicker || node.source || "PDF"}</div>
-            <h3 className="tile-title">{title}</h3>
-            {description && <p className="tile-desc">{description}</p>}
-          </div>
+          {!hideTextChrome && (
+            <div className="pdf-overlay">
+              <div className="tile-kicker">{node.kicker || node.source || "PDF"}</div>
+              <h3 className="tile-title">{title}</h3>
+              {description && <p className="tile-desc">{description}</p>}
+            </div>
+          )}
         </>
       )}
 
-      {links.length > 0 && (
+      {!hideTextChrome && links.length > 0 && (
         <div className="pdf-actions">
           {links.slice(0, 2).map(link => (
             <TileLink key={link.href || link.label} link={link}>
@@ -220,10 +323,12 @@ function PdfTile({ node, title, description, small }) {
   );
 }
 
-function WebsiteTile({ node, title, description, small }) {
+function WebsiteTile({ node, title, description, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
   const [imageFailed, setImageFailed] = useState(false);
   const links = node.links || (node.url ? [{ label: "Open site", href: node.url }] : []);
   const hasLocalPreview = node.previewImage?.startsWith("/");
+  const visualOnly = Boolean(suppressTileLabels);
+  const hideTextChrome = visualOnly || headerInMapOverlay;
 
   if (!hasLocalPreview || imageFailed) {
     return (
@@ -231,12 +336,19 @@ function WebsiteTile({ node, title, description, small }) {
         title={title}
         description={description}
         small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
       />
     );
   }
 
   return (
-    <div className={`tile-html preview-tile website-tile ${small ? "tile-small" : ""}`}>
+    <div
+      className={`tile-html preview-tile website-tile ${visualOnly ? "tile-visual-only" : ""} ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "preview-tile--labels-bottom" : ""
+      }`}
+    >
       <img
         className="site-preview"
         src={node.previewImage}
@@ -245,13 +357,15 @@ function WebsiteTile({ node, title, description, small }) {
         onError={() => setImageFailed(true)}
       />
 
-      <div className="preview-overlay">
-        <div className="tile-kicker">{node.kicker || node.source || "Website"}</div>
-        <h3 className="tile-title">{title}</h3>
-        {description && <p className="tile-desc">{description}</p>}
-      </div>
+      {!hideTextChrome && (
+        <div className="preview-overlay">
+          <div className="tile-kicker">{node.kicker || node.source || "Website"}</div>
+          <h3 className="tile-title">{title}</h3>
+          {description && <p className="tile-desc">{description}</p>}
+        </div>
+      )}
 
-      {links.length > 0 && (
+      {!hideTextChrome && links.length > 0 && (
         <div className="preview-actions">
           {links.slice(0, 2).map(link => (
             <TileLink key={link.href || link.label} link={link}>
@@ -264,11 +378,20 @@ function WebsiteTile({ node, title, description, small }) {
   );
 }
 
-function ScheduleTile({ node, box, small }) {
+function ScheduleTile({ node, box, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
   const [name, setName] = useState("");
   const [needs, setNeeds] = useState("");
   const [times, setTimes] = useState(["", "", ""]);
   const showForm = box.w >= 280 && box.h >= 280;
+
+  if (suppressTileLabels) {
+    return (
+      <div
+        className="tile-html tile-child-preview-hull"
+        aria-hidden="true"
+      />
+    );
+  }
   const body = encodeURIComponent(
     `Name: ${name}
 
@@ -285,27 +408,54 @@ ${needs}`
   )}&body=${body}`;
 
   if (!showForm) {
-    return (
-      <div className={`tile-html schedule-tile ${small ? "tile-small" : ""}`}>
-        <div className="tile-card">
-          <div>
-            <div className="tile-kicker">Contact</div>
-            <h3 className="tile-title">Schedule a Call</h3>
-            <p className="tile-desc">{node.description}</p>
-          </div>
+    const header = (
+      <div>
+        <div className="tile-kicker">Contact</div>
+        <h3 className="tile-title">Schedule a Call</h3>
+        <p className="tile-desc">{node.description}</p>
+      </div>
+    );
+    const previewLinks = (
+      <div className="tile-links">
+        <span className="tile-link tile-link-preview">Open scheduler</span>
+      </div>
+    );
 
-          <div className="tile-links">
-            <span className="tile-link tile-link-preview">Open scheduler</span>
-          </div>
+    return (
+      <div
+        className={`tile-html schedule-tile ${small ? "tile-small" : ""} ${
+          labelsAtBottom ? "schedule-tile--labels-bottom" : ""
+        }`}
+      >
+        <div className="tile-card">
+          {headerInMapOverlay ? (
+            previewLinks
+          ) : labelsAtBottom ? (
+            <>
+              {previewLinks}
+              {header}
+            </>
+          ) : (
+            <>
+              {header}
+              {previewLinks}
+            </>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`tile-html schedule-tile ${small ? "tile-small" : ""}`}>
+    <div
+      className={`tile-html schedule-tile ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "schedule-tile--labels-bottom" : ""
+      }`}
+    >
       <div className="tile-card schedule-card">
-        <h3 className="tile-title">Schedule a Call</h3>
+        {!headerInMapOverlay && (
+          <h3 className="tile-title">Schedule a Call</h3>
+        )}
 
         <input
           placeholder="Your name"
@@ -343,28 +493,73 @@ ${needs}`
   );
 }
 
-function ContactTile({ node, small }) {
+function ContactTile({ node, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
+  if (suppressTileLabels) {
+    return (
+      <div
+        className="tile-html tile-child-preview-hull"
+        aria-hidden="true"
+      />
+    );
+  }
   const links = node.children?.length ? [] : node.links || [];
 
-  return (
-    <div className={`tile-html contact-tile ${small ? "tile-small" : ""}`}>
-      <div className="tile-card">
-        <div>
-          <div className="tile-kicker">Contact</div>
-          <h3 className="tile-title">{node.name}</h3>
-          <p className="tile-desc">
-            {node.description || "Need AI knowledge tools now? Reach out."}
-          </p>
-        </div>
+  const body = (
+    <div>
+      <div className="tile-kicker">Contact</div>
+      <h3 className="tile-title">{node.name}</h3>
+      <p className="tile-desc">
+        {node.description || "Need AI knowledge tools now? Reach out."}
+      </p>
+    </div>
+  );
 
-        {links.length > 0 && (
-          <div className="tile-links">
-            {links.map(link => (
-              <TileLink key={link.href} link={link}>
-                {link.label}
-              </TileLink>
-            ))}
-          </div>
+  const linksBlock =
+    links.length > 0 ? (
+      <div className="tile-links">
+        {links.map(link => (
+          <TileLink key={link.href} link={link}>
+            {link.label}
+          </TileLink>
+        ))}
+      </div>
+    ) : null;
+
+  if (headerInMapOverlay) {
+    return (
+      <div
+        className={`tile-html contact-tile ${small ? "tile-small" : ""} ${
+          labelsAtBottom ? "contact-tile--labels-bottom" : ""
+        }`}
+      >
+        <div className="tile-card">
+          {linksBlock || (
+            <div className="contact-tile-grow" aria-hidden="true" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`tile-html contact-tile ${small ? "tile-small" : ""} ${
+        labelsAtBottom ? "contact-tile--labels-bottom" : ""
+      }`}
+    >
+      <div className="tile-card">
+        {labelsAtBottom ? (
+          <>
+            {linksBlock || (
+              <div className="contact-tile-grow" aria-hidden="true" />
+            )}
+            {body}
+          </>
+        ) : (
+          <>
+            {body}
+            {linksBlock}
+          </>
         )}
       </div>
     </div>

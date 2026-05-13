@@ -166,7 +166,7 @@ Run intake commands from the app directory:
 cd treesite-app
 ```
 
-Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
+Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, rename, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
 
 `siteData.js` should now stay mostly structural: top-level sections, colors, and durable subsection containers. Leaf cards such as services, contact actions, PDFs, websites, and text entries should live in `content/items/*.json` so they can be managed by the intake scripts.
 
@@ -204,6 +204,20 @@ Use `edit:card` to change fields on an existing generated card by slug.
 ```powershell
 npm run edit:card -- --slug "office-hours" --description "Book time for AI workflow questions." --value 6
 ```
+
+Rename a Card (slug, display name, and treemap)
+
+Use `rename:card` to change the **file** `content/items/<slug>.json`, the card’s **`slug`** field (used when merging into the tree), and optionally **`--name`** / **`--title`** or other fields accepted by `edit:card`. The script runs **`rebuild:site-data`** so `src/generatedContentItems.js` and the treemap stay in sync.
+
+```powershell
+npm run rename:card -- --from "hero-statement" --to "hero-tagline" --name "Hero tagline"
+```
+
+- **`--from`** (required): current slug (existing JSON basename without `.json`).
+- **`--to`** or **`--new-slug`**: new slug; passed through `slugify`. Omit to keep the same slug and only update other flags (e.g. `--name`).
+- **`--rewrite-paths`** `false`: skip rewriting `/assets/...` strings that contain the old slug (default rewrites `previewImage`, `pdf`, `image`, `source` under `/assets/`).
+
+Rename any physical files under `public/assets/` if their filenames still use the old slug.
 
 Move a Card
 

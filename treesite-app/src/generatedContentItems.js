@@ -153,54 +153,6 @@ export const generatedContentItems = [
     "template": "schedule"
   },
   {
-    "name": "Hero Statement",
-    "slug": "hero-statement",
-    "section": "Home / Who I Am",
-    "type": "text",
-    "description": "Core promise, simple intro, primary CTA.",
-    "value": 12
-  },
-  {
-    "name": "Origin Story",
-    "slug": "origin-story",
-    "section": "Home / Who I Am",
-    "type": "text",
-    "description": "A short founder story that makes the work feel human.",
-    "value": 10
-  },
-  {
-    "name": "Proof / Trust",
-    "slug": "proof-trust",
-    "section": "Home / Who I Am",
-    "type": "text",
-    "description": "Logos, testimonials, credentials, awards, or outcomes.",
-    "value": 8
-  },
-  {
-    "name": "Bio PDF",
-    "slug": "bio-pdf",
-    "section": "Home / Who I Am/Media",
-    "type": "text",
-    "description": "Downloadable one-sheet.",
-    "value": 2
-  },
-  {
-    "name": "Intro Video",
-    "slug": "intro-video",
-    "section": "Home / Who I Am/Media",
-    "type": "text",
-    "description": "Embedded video or reel.",
-    "value": 4
-  },
-  {
-    "name": "Portrait.jpg",
-    "slug": "portrait-jpg",
-    "section": "Home / Who I Am/Media",
-    "type": "text",
-    "description": "Personal brand image asset.",
-    "value": 4
-  },
-  {
     "name": "AI Implementation",
     "slug": "ai-implementation",
     "section": "Services",
@@ -246,6 +198,54 @@ export const generatedContentItems = [
     "section": "Services/Service Assets",
     "type": "text",
     "description": "Embedded presentation.",
+    "value": 4
+  },
+  {
+    "name": "Hero Statement",
+    "slug": "hero-statement",
+    "section": "Who I am",
+    "type": "text",
+    "description": "Core promise, simple intro, primary CTA.",
+    "value": 12
+  },
+  {
+    "name": "Origin Story",
+    "slug": "origin-story",
+    "section": "Who I am",
+    "type": "text",
+    "description": "A short founder story that makes the work feel human.",
+    "value": 10
+  },
+  {
+    "name": "Proof / Trust",
+    "slug": "proof-trust",
+    "section": "Who I am",
+    "type": "text",
+    "description": "Logos, testimonials, credentials, awards, or outcomes.",
+    "value": 8
+  },
+  {
+    "name": "Bio PDF",
+    "slug": "bio-pdf",
+    "section": "Who I am/Media",
+    "type": "text",
+    "description": "Downloadable one-sheet.",
+    "value": 2
+  },
+  {
+    "name": "Intro Video",
+    "slug": "intro-video",
+    "section": "Who I am/Media",
+    "type": "text",
+    "description": "Embedded video or reel.",
+    "value": 4
+  },
+  {
+    "name": "Portrait.jpg",
+    "slug": "portrait-jpg",
+    "section": "Who I am/Media",
+    "type": "text",
+    "description": "Personal brand image asset.",
     "value": 4
   }
 ];

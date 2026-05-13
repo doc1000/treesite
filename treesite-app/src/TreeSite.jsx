@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { TileTemplate } from "./tileTemplates";
 
+/** Top fraction of the main map reserved for the current focus title (not treemap area). */
+const FOCUS_HEADER_RATIO = 0.1;
+
 function displayWeight(d) {
   const raw = Math.max(1, d.value || 1);
   return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
@@ -60,7 +63,10 @@ export default function TreeSite({ siteData, rootOrder }) {
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
 
+  const focusHeaderHeight = dims.height * FOCUS_HEADER_RATIO;
+
   const displayRoot = useMemo(() => {
+    const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
     const r = d3
       .hierarchy(focus.data)
       .sum(displayWeight)
@@ -74,8 +80,19 @@ export default function TreeSite({ siteData, rootOrder }) {
     d3
       .treemap()
       .tile(d3.treemapSquarify.ratio(1.2))
-      .size([dims.width, dims.height])
-      .paddingTop(d => (d.depth === 0 ? 0 : 18))
+      .size([dims.width, contentHeight])
+      .paddingTop(d => {
+        if (d.depth === 0) return 0;
+        if (
+          showImmediateChildren &&
+          d.depth === 1 &&
+          d.children &&
+          d.children.length > 0
+        ) {
+          return 62;
+        }
+        return 18;
+      })
       .paddingInner(2)
       .paddingOuter(2)
       .round(true)(r);
@@ -86,7 +103,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     });
 
     return r;
-  }, [focus, rootOrder, dims]);
+  }, [focus, rootOrder, dims, showImmediateChildren]);
 
   const visibleNodes = useMemo(() => {
     if (!showImmediateChildren) return displayRoot.children || [displayRoot];
@@ -96,6 +113,16 @@ export default function TreeSite({ siteData, rootOrder }) {
     });
 
     return nodes.length > 0 ? nodes : [displayRoot];
+  }, [displayRoot, showImmediateChildren]);
+
+  const parentHeaderOverlayNodes = useMemo(() => {
+    if (!showImmediateChildren) return [];
+    return displayRoot.descendants().filter(
+      d =>
+        d.depth === 1 &&
+        d.children &&
+        d.children.length > 0
+    );
   }, [displayRoot, showImmediateChildren]);
 
 
@@ -157,11 +184,15 @@ export default function TreeSite({ siteData, rootOrder }) {
           {visibleNodes.map(d => {
             const b = {
               x: d.x0,
-              y: d.y0,
+              y: d.y0 + focusHeaderHeight,
               w: d.x1 - d.x0,
               h: d.y1 - d.y0
             };
             const isChildPreview = showImmediateChildren && d.depth > 1;
+            const headerInMapOverlay =
+              showImmediateChildren &&
+              !isChildPreview &&
+              Boolean(d.children?.length);
             const isMatch =
               query && d.fullName.toLowerCase().includes(query.toLowerCase());
 
@@ -174,6 +205,7 @@ export default function TreeSite({ siteData, rootOrder }) {
                   goTo(d);
                 }}
                 className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}`}
+                aria-label={isChildPreview ? d.data.name : undefined}
               >
                 <rect
                   width={Math.max(0, b.w)}
@@ -186,15 +218,89 @@ export default function TreeSite({ siteData, rootOrder }) {
                   strokeWidth={isMatch ? 3 : 1}
                 />
 
-                <foreignObject width={b.w} height={b.h}>
-                  <TileTemplate node={d.data} box={b} />
+                <foreignObject
+                  width={b.w}
+                  height={b.h}
+                  className={isChildPreview ? "tree-node-child-fo" : undefined}
+                >
+                  <TileTemplate
+                    node={d.data}
+                    box={b}
+                    suppressTileLabels={isChildPreview}
+                    headerInMapOverlay={headerInMapOverlay}
+                  />
                 </foreignObject>
               </g>
             );
           })}
+          {parentHeaderOverlayNodes.map(d => (
+            <ParentMapHeaderOverlay key={`map-hdr-${d.fullName}`} d={d} focusHeaderHeight={focusHeaderHeight} />
+          ))}
+          <FocusLabel
+            focus={focus}
+            headerHeight={focusHeaderHeight}
+          />
         </svg>
       </main>
     </div>
+  );
+}
+
+function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
+  const b = {
+    x: d.x0,
+    y: d.y0 + focusHeaderHeight,
+    w: d.x1 - d.x0,
+    h: d.y1 - d.y0
+  };
+  const node = d.data;
+  const kicker = node.kicker || node.source || node.publication;
+  const title = node.title || node.name;
+  const description = node.abstract || node.description;
+  const hasDesc = Boolean(description);
+  const overlayH = Math.round(
+    Math.min(
+      b.h,
+      Math.max(56, b.h * (hasDesc ? 0.62 : 0.36))
+    )
+  );
+
+  return (
+    <g
+      className="tree-node-parent-header-overlay"
+      transform={`translate(${b.x},${b.y})`}
+      pointerEvents="none"
+    >
+      <foreignObject width={Math.max(0, b.w)} height={overlayH}>
+        <div className="tile-parent-map-overlay" xmlns="http://www.w3.org/1999/xhtml">
+          {kicker && <div className="tile-kicker">{kicker}</div>}
+          <h3 className="tile-title">{title}</h3>
+          {description && (
+            <p className="tile-desc">{description}</p>
+          )}
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
+function FocusLabel({ focus, headerHeight }) {
+  const title = focus.depth === 0 ? "Home" : focus.data.name;
+  const description = focus.data.abstract || focus.data.description;
+  const titleY = Math.max(20, headerHeight * 0.52);
+  const descY = Math.max(32, headerHeight * 0.82);
+
+  return (
+    <g className="focus-label" pointerEvents="none">
+      <text x="16" y={titleY}>
+        {title}
+      </text>
+      {description && headerHeight > 40 && (
+        <text className="focus-label-desc" x="16" y={descY}>
+          {description}
+        </text>
+      )}
+    </g>
   );
 }
 

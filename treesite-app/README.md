@@ -1,3 +1,13 @@
+# treesite-app
+
+Vite + React sitemap UI. Content cards live in `content/items/`; use npm scripts (`add:card`, `edit:card`, **`rename:card`**, `move:card`, `rebuild:site-data`, …) — see the repo root [README](../README.md#rename-a-card-slug-display-name-and-treemap) for **`rename:card`** and other intake docs.
+
+## npm scripts (content)
+
+- **`npm run rename:card -- --from <slug> [--to <new-slug>] [--name ...]`** — renames the JSON file + slug, updates display fields, rewrites `/assets/` paths when the slug changes, runs **`rebuild:site-data`**.
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

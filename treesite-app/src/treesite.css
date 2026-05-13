@@ -270,7 +270,7 @@ body {
   transition: opacity 0.18s ease, filter 0.18s ease, stroke 0.18s ease;
 }
 
-.tree-node:hover rect {
+.tree-node:not(.tree-node-child-preview):hover rect {
   opacity: 0.86;
   stroke: rgba(255, 255, 255, 0.45);
   filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.35));
@@ -280,12 +280,152 @@ body {
   pointer-events: auto;
 }
 
+.tree-node-child-preview {
+  pointer-events: none;
+  cursor: default;
+}
+
 .tree-node-child-preview rect {
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.18));
 }
 
 .tree-node-child-preview foreignObject {
-  opacity: 0.68;
+  opacity: 1;
+  overflow: hidden;
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.tree-node-child-fo {
+  clip-path: inset(0 round 16px);
+}
+
+.tree-node-parent-header-overlay {
+  pointer-events: none;
+}
+
+.tile-parent-map-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px 14px;
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #fff;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 7, 12, 0.97) 0%,
+    rgba(5, 7, 12, 0.72) 45%,
+    rgba(5, 7, 12, 0.2) 100%
+  );
+  border-radius: 16px 16px 10px 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tile-parent-map-overlay .tile-desc {
+  -webkit-line-clamp: 4;
+  margin-bottom: 0;
+}
+
+.tile-parent-map-overlay .tile-title {
+  margin-top: 2px;
+}
+
+.tile-child-preview-hull {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+.tile-html.tile-visual-only {
+  padding: 0;
+}
+
+.pdf-tile.tile-visual-only,
+.preview-tile.tile-visual-only {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.pdf-tile.tile-visual-only .pdf-preview,
+.preview-tile.tile-visual-only .site-preview {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pdf-preview.pdf-preview--empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: inherit;
+}
+
+.tile-rich.tile-visual-only {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tile-rich.tile-visual-only .tile-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+}
+
+.tile-rich.tile-visual-only .tile-rich-media {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tile-rich.tile-visual-only .tile-image {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.tile-rich.tile-visual-only .tile-embed {
+  flex: 1 1 auto;
+  min-height: 120px;
+}
+
+.tile-rich.tile-visual-only .tile-html-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tile-rich.tile-visual-only.tile-small {
+  padding: 0;
+}
+
+.focus-label text {
+  fill: rgba(255, 255, 255, 0.94);
+  font-size: clamp(16px, 2.2vw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  paint-order: stroke;
+  stroke: rgba(5, 7, 12, 0.65);
+  stroke-width: 3px;
+}
+
+.focus-label .focus-label-desc {
+  fill: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  stroke-width: 2px;
 }
 
 .tile-html {
@@ -302,6 +442,31 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+}
+
+.tile-minimal--labels-bottom {
+  justify-content: flex-end;
+}
+
+.tile-rich--labels-bottom .tile-rich-media {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.contact-tile--labels-bottom .tile-card {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.contact-tile-grow {
+  min-height: 0;
+}
+
+.schedule-tile--labels-bottom .tile-card > div:last-of-type {
+  margin-top: auto;
 }
 
 .tile-minimal .tile-desc {
