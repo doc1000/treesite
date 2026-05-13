@@ -225,6 +225,13 @@ export const siteData = {
           ]
         },
         {
+          name: "Schedule a Call",
+          value: 9,
+          template: "schedule",
+          description: "Suggest three times and describe what you need help with.",
+          email: "info@knowledgealgorithms.com"
+        },
+        {
           name: "GitHub",
           value: 7,
           kicker: "Code / prototypes",

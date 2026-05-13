@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { TileTemplate } from "./tileTemplates";
 
+function displayWeight(d) {
+  const raw = Math.max(1, d.value || 1);
+  return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
+}
+
 export default function TreeSite({ siteData, rootOrder }) {
   const chartRef = useRef(null);
   const [dims, setDims] = useState({ width: 1200, height: 800 });
@@ -25,14 +30,9 @@ export default function TreeSite({ siteData, rootOrder }) {
   }, []);
 
   const root = useMemo(() => {
-    const weight = d => {
-      const raw = Math.max(1, d.value || 1);
-      return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
-    };
-
     const r = d3
       .hierarchy(siteData)
-      .sum(weight)
+      .sum(displayWeight)
       .sort((a, b) => {
         if (a.depth === 1 && b.depth === 1 && rootOrder) {
           return rootOrder.indexOf(a.data.name) - rootOrder.indexOf(b.data.name);
@@ -59,22 +59,42 @@ export default function TreeSite({ siteData, rootOrder }) {
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
 
-  const visibleNodes = focus.children || [focus];
+  const displayRoot = useMemo(() => {
+    const r = d3
+      .hierarchy(focus.data)
+      .sum(displayWeight)
+      .sort((a, b) => {
+        if (a.depth === 1 && b.depth === 1 && rootOrder) {
+          return rootOrder.indexOf(a.data.name) - rootOrder.indexOf(b.data.name);
+        }
+        return b.value - a.value;
+      });
 
-  function localBox(d) {
-    const scaleX = dims.width / (focus.x1 - focus.x0);
-    const scaleY = dims.height / (focus.y1 - focus.y0);
+    d3
+      .treemap()
+      .tile(d3.treemapSquarify.ratio(1.2))
+      .size([dims.width, dims.height])
+      .paddingTop(d => (d.depth === 0 ? 0 : 18))
+      .paddingInner(2)
+      .paddingOuter(2)
+      .round(true)(r);
 
-    return {
-      x: (d.x0 - focus.x0) * scaleX,
-      y: (d.y0 - focus.y0) * scaleY,
-      w: (d.x1 - d.x0) * scaleX,
-      h: (d.y1 - d.y0) * scaleY
-    };
-  }
+    r.each(d => {
+      const names = d.ancestors().reverse().slice(1).map(x => x.data.name);
+      d.fullName = [focus.fullName, ...names].join(" / ");
+    });
+
+    return r;
+  }, [focus, rootOrder, dims]);
+
+  const visibleNodes = displayRoot.children || [displayRoot];
 
   function sectionColor(d) {
-    const top = d.depth === 1 ? d : d.ancestors().find(a => a.depth === 1);
+    const original = root.descendants().find(x => x.fullName === d.fullName) || d;
+    const top =
+      original.depth === 1
+        ? original
+        : original.ancestors().find(a => a.depth === 1);
     return top?.data.color || "#8b79b8";
   }
 
@@ -120,7 +140,12 @@ export default function TreeSite({ siteData, rootOrder }) {
           viewBox={`0 0 ${dims.width} ${dims.height}`}
         >
           {visibleNodes.map(d => {
-            const b = localBox(d);
+            const b = {
+              x: d.x0,
+              y: d.y0,
+              w: d.x1 - d.x0,
+              h: d.y1 - d.y0
+            };
             const isMatch =
               query && d.fullName.toLowerCase().includes(query.toLowerCase());
 

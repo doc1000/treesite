@@ -1,0 +1,36 @@
+.contact-tile .tile-card {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.contact-tile .tile-links {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  align-content: stretch;
+  gap: 8px;
+}
+
+.contact-tile .tile-link {
+  min-height: 48px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 12px;
+  padding: 9px 10px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.16), transparent 34%),
+    rgba(7, 9, 15, 0.3);
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.contact-tile.tile-small .tile-card {
+  display: grid;
+}
+
+.contact-tile.tile-small .tile-links {
+  display: grid;
+}
+
+.contact-tile.tile-small .tile-link {
+  min-height: 34px;
+  padding: 7px 8px;
+  font-size: 10px;
+}
