@@ -33,6 +33,8 @@ export default function TreeSite({ siteData, rootOrder }) {
     return () => ro.disconnect();
   }, []);
 
+  const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
+
   const root = useMemo(() => {
     const r = d3
       .hierarchy(siteData)
@@ -47,8 +49,19 @@ export default function TreeSite({ siteData, rootOrder }) {
     d3
       .treemap()
       .tile(d3.treemapSquarify.ratio(1.2))
-      .size([dims.width, dims.height])
-      .paddingTop(d => (d.depth === 0 ? 0 : 18))
+      .size([dims.width, contentHeight])
+      .paddingTop(d => {
+        if (d.depth === 0) return 0;
+        if (
+          showImmediateChildren &&
+          d.depth === 1 &&
+          d.children &&
+          d.children.length > 0
+        ) {
+          return 62;
+        }
+        return 18;
+      })
       .paddingInner(2)
       .paddingOuter(2)
       .round(true)(r);
@@ -58,7 +71,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     });
 
     return r;
-  }, [siteData, rootOrder, dims]);
+  }, [siteData, rootOrder, dims, showImmediateChildren]);
 
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
@@ -66,7 +79,6 @@ export default function TreeSite({ siteData, rootOrder }) {
   const focusHeaderHeight = dims.height * FOCUS_HEADER_RATIO;
 
   const displayRoot = useMemo(() => {
-    const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
     const r = d3
       .hierarchy(focus.data)
       .sum(displayWeight)
@@ -200,10 +212,14 @@ export default function TreeSite({ siteData, rootOrder }) {
               <g
                 key={d.fullName}
                 transform={`translate(${b.x},${b.y})`}
-                onClick={e => {
-                  e.stopPropagation();
-                  goTo(d);
-                }}
+                onClick={
+                  isChildPreview
+                    ? undefined
+                    : e => {
+                        e.stopPropagation();
+                        goTo(d);
+                      }
+                }
                 className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}`}
                 aria-label={isChildPreview ? d.data.name : undefined}
               >
@@ -233,6 +249,25 @@ export default function TreeSite({ siteData, rootOrder }) {
               </g>
             );
           })}
+          {showImmediateChildren &&
+            (displayRoot.children || [])
+              .filter(d => d.children && d.children.length > 0)
+              .map(d => (
+                <rect
+                  key={`parent-hit-${d.fullName}`}
+                  className="tree-node-parent-hit"
+                  x={d.x0}
+                  y={d.y0 + focusHeaderHeight}
+                  width={Math.max(0, d.x1 - d.x0)}
+                  height={Math.max(0, d.y1 - d.y0)}
+                  fill="transparent"
+                  pointerEvents="all"
+                  onClick={e => {
+                    e.stopPropagation();
+                    goTo(d);
+                  }}
+                />
+              ))}
           {parentHeaderOverlayNodes.map(d => (
             <ParentMapHeaderOverlay key={`map-hdr-${d.fullName}`} d={d} focusHeaderHeight={focusHeaderHeight} />
           ))}

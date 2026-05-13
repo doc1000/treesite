@@ -281,8 +281,11 @@ body {
 }
 
 .tree-node-child-preview {
-  pointer-events: none;
   cursor: default;
+}
+
+.tree-node-parent-hit {
+  cursor: pointer;
 }
 
 .tree-node-child-preview rect {
