@@ -1,0 +1,8 @@
+{
+  "name": "Process Diagram",
+  "slug": "process-diagram",
+  "section": "Services/Service Assets",
+  "type": "text",
+  "description": "Image or SVG explaining your method.",
+  "value": 3
+}

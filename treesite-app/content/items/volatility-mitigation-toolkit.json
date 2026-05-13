@@ -1,0 +1,12 @@
+{
+  "name": "Volatility Mitigation Toolkit",
+  "slug": "volatility-mitigation-toolkit",
+  "section": "Articles/Research",
+  "type": "pdf",
+  "description": "Strategies and tools for managing and mitigating volatility in data-driven systems.",
+  "source": "/assets/pdfs/volatility-mitigation-toolkit.pdf",
+  "pdf": "/assets/pdfs/volatility-mitigation-toolkit.pdf",
+  "previewImage": "/assets/previews/volatility-mitigation-toolkit.png",
+  "value": 10,
+  "kicker": "Toolkit"
+}

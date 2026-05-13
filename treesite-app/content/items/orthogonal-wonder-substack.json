@@ -1,0 +1,13 @@
+{
+  "name": "Orthogonal Wonder Substack",
+  "slug": "orthogonal-wonder-substack",
+  "section": "Articles/Publications",
+  "type": "website",
+  "description": "Point-of-view writing and founder perspective.",
+  "value": 3,
+  "kicker": "Substack",
+  "previewImage": "/assets/site-previews/orthogonal-wonder-substack.png",
+  "linkLabel": "Read articles",
+  "source": "https://orthogonalwonder.substack.com/",
+  "url": "https://orthogonalwonder.substack.com/"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Divariance: Connecting Fréchet and KL Divergence",
+  "slug": "divariance-connecting-frechet-and-kl-divergence",
+  "section": "Articles/Research",
+  "type": "pdf",
+  "description": "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
+  "source": "/assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf",
+  "pdf": "/assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf",
+  "previewImage": "/assets/previews/divariance-connecting-frechet-and-kl-divergence.png",
+  "value": 10,
+  "kicker": "Research Paper"
+}

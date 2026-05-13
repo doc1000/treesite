@@ -168,6 +168,8 @@ cd treesite-app
 
 Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
 
+`siteData.js` should now stay mostly structural: top-level sections, colors, and durable subsection containers. Leaf cards such as services, contact actions, PDFs, websites, and text entries should live in `content/items/*.json` so they can be managed by the intake scripts.
+
 Add a Basic Card
 
 Use this pathway for text cards, link cards, contact cards, or simple generated entries that do not need a PDF copy or website screenshot.

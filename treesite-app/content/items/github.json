@@ -1,0 +1,13 @@
+{
+  "name": "GitHub",
+  "slug": "github",
+  "section": "Contact Me",
+  "type": "contact",
+  "description": "Explore public work, experiments, and technical artifacts.",
+  "value": 7,
+  "kicker": "Code / prototypes",
+  "linkLabel": "github.com/doc1000",
+  "source": "https://github.com/doc1000",
+  "href": "https://github.com/doc1000",
+  "template": "contact"
+}

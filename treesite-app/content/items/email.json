@@ -1,0 +1,13 @@
+{
+  "name": "Email",
+  "slug": "email",
+  "section": "Contact Me",
+  "type": "contact",
+  "description": "Reach out directly by email.",
+  "value": 8,
+  "kicker": "Primary channel",
+  "linkLabel": "info@knowledgealgorithms.com",
+  "source": "mailto:info@knowledgealgorithms.com",
+  "href": "mailto:info@knowledgealgorithms.com",
+  "template": "contact"
+}

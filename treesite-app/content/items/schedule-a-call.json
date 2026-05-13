@@ -1,0 +1,10 @@
+{
+  "name": "Schedule a Call",
+  "slug": "schedule-a-call",
+  "section": "Contact Me",
+  "type": "text",
+  "description": "Suggest three times and describe what you need help with.",
+  "value": 9,
+  "email": "info@knowledgealgorithms.com",
+  "template": "schedule"
+}
