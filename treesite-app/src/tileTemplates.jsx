@@ -6,6 +6,9 @@ export function TileTemplate({ node, box }) {
   const kicker = node.kicker || node.source || node.publication || "Section";
   const title = node.title || node.name;
   const description = node.abstract || node.description;
+  const hasRichContent = Boolean(
+    node.template || node.image || links.length || node.embed || node.html
+  );
 
   if (node.template === "schedule") {
     return <ScheduleTile node={node} box={box} small={small} />;
@@ -15,8 +18,18 @@ export function TileTemplate({ node, box }) {
     return <ContactTile node={node} small={small} />;
   }
 
+  if (!hasRichContent) {
+    return (
+      <MinimalTile
+        title={title}
+        description={description}
+        small={small}
+      />
+    );
+  }
+
   return (
-    <div className={`tile-html ${small ? "tile-small" : ""}`}>
+    <div className={`tile-html tile-rich ${small ? "tile-small" : ""}`}>
       <div className="tile-card">
         <div>
           <div className="tile-kicker">{kicker}</div>
@@ -24,20 +37,45 @@ export function TileTemplate({ node, box }) {
           <p className="tile-desc">{description}</p>
         </div>
 
-        {node.image ? (
+        {node.image && (
           <img className="tile-image" src={node.image} alt="" />
-        ) : (
-          <div className="tile-visual" />
         )}
 
-        <div className="tile-links">
-          {links.slice(0, 3).map(link => (
-            <TileLink key={link.href || link.label} link={link}>
-              {link.label}
-            </TileLink>
-          ))}
-        </div>
+        {node.embed && (
+          <iframe
+            className="tile-embed"
+            src={node.embed}
+            title={title}
+            loading="lazy"
+          />
+        )}
+
+        {node.html && (
+          <div
+            className="tile-html-content"
+            dangerouslySetInnerHTML={{ __html: node.html }}
+          />
+        )}
+
+        {links.length > 0 && (
+          <div className="tile-links">
+            {links.slice(0, 3).map(link => (
+              <TileLink key={link.href || link.label} link={link}>
+                {link.label}
+              </TileLink>
+            ))}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function MinimalTile({ title, description, small }) {
+  return (
+    <div className={`tile-html tile-minimal ${small ? "tile-small" : ""}`}>
+      <h3 className="tile-title">{title}</h3>
+      {description && <p className="tile-desc">{description}</p>}
     </div>
   );
 }
@@ -71,8 +109,6 @@ ${needs}`
             <h3 className="tile-title">Schedule a Call</h3>
             <p className="tile-desc">{node.description}</p>
           </div>
-
-          <div className="tile-visual" />
 
           <div className="tile-links">
             <span className="tile-link tile-link-preview">Open scheduler</span>

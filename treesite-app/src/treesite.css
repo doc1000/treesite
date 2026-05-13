@@ -209,10 +209,22 @@ body {
   pointer-events: auto;
 }
 
+.tile-minimal {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.tile-minimal .tile-desc {
+  max-width: 38ch;
+  color: rgba(255, 255, 255, 0.66);
+  -webkit-line-clamp: 3;
+}
+
 .tile-card {
   height: 100%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -249,6 +261,7 @@ body {
 .tile-links {
   display: grid;
   gap: 5px;
+  margin-top: auto;
   color: rgba(255, 255, 255, 0.9);
   font-size: 11px;
 }
@@ -285,6 +298,7 @@ body {
 }
 
 .schedule-card {
+  display: grid;
   grid-template-rows: auto;
   align-content: start;
 }
@@ -326,32 +340,38 @@ body {
   text-align: center;
 }
 
-.tile-visual,
-.tile-image {
+.tile-image,
+.tile-embed,
+.tile-html-content {
   width: 100%;
   min-height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 14px;
 }
 
-.tile-visual {
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.34), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(7, 9, 15, 0.18));
-}
-
 .tile-image {
-  height: 100%;
+  min-height: 90px;
+  max-height: 46%;
   object-fit: cover;
   opacity: 0.86;
 }
 
-.tile-small {
-  padding: 10px;
+.tile-embed {
+  min-height: 120px;
+  background: rgba(7, 9, 15, 0.28);
 }
 
-.tile-small .tile-card {
-  display: block;
+.tile-html-content {
+  padding: 8px;
+  overflow: hidden;
+  background: rgba(7, 9, 15, 0.22);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tile-small {
+  padding: 10px;
 }
 
 .tile-small .tile-title {
@@ -360,8 +380,9 @@ body {
 
 .tile-small .tile-desc,
 .tile-small .tile-links,
-.tile-small .tile-visual,
 .tile-small .tile-image,
+.tile-small .tile-embed,
+.tile-small .tile-html-content,
 .tile-small .tile-kicker {
   display: none;
 }
