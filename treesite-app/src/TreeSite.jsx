@@ -10,7 +10,14 @@ function displayWeight(d) {
   return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
 }
 
-export default function TreeSite({ siteData, rootOrder }) {
+function siblingSortComparator(a, b) {
+  const vb = Number(b.data.value) || 1;
+  const va = Number(a.data.value) || 1;
+  if (vb !== va) return vb - va;
+  return String(a.data.name || "").localeCompare(String(b.data.name || ""));
+}
+
+export default function TreeSite({ siteData }) {
   const chartRef = useRef(null);
   const [dims, setDims] = useState({ width: 1200, height: 800 });
   const [focusName, setFocusName] = useState(null);
@@ -39,12 +46,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     const r = d3
       .hierarchy(siteData)
       .sum(displayWeight)
-      .sort((a, b) => {
-        if (a.depth === 1 && b.depth === 1 && rootOrder) {
-          return rootOrder.indexOf(a.data.name) - rootOrder.indexOf(b.data.name);
-        }
-        return b.value - a.value;
-      });
+      .sort(siblingSortComparator);
 
     d3
       .treemap()
@@ -71,7 +73,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     });
 
     return r;
-  }, [siteData, rootOrder, dims, showImmediateChildren]);
+  }, [siteData, dims, showImmediateChildren]);
 
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
@@ -82,12 +84,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     const r = d3
       .hierarchy(focus.data)
       .sum(displayWeight)
-      .sort((a, b) => {
-        if (a.depth === 1 && b.depth === 1 && rootOrder) {
-          return rootOrder.indexOf(a.data.name) - rootOrder.indexOf(b.data.name);
-        }
-        return b.value - a.value;
-      });
+      .sort(siblingSortComparator);
 
     d3
       .treemap()
@@ -115,7 +112,7 @@ export default function TreeSite({ siteData, rootOrder }) {
     });
 
     return r;
-  }, [focus, rootOrder, dims, showImmediateChildren]);
+  }, [focus, dims, showImmediateChildren]);
 
   const visibleNodes = useMemo(() => {
     if (!showImmediateChildren) return displayRoot.children || [displayRoot];

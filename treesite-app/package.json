@@ -16,7 +16,11 @@
     "unhide:card": "node scripts/set-card-visibility.js --hidden false",
     "add:pdf": "node scripts/add-pdf.js",
     "add:website": "node scripts/add-website.js",
+    "add:html": "node scripts/add-html.js",
     "rebuild:site-data": "node scripts/rebuild-site-data.js",
+    "migrate:scaffold": "node scripts/migrate-scaffold-from-site-data.js",
+    "inspect:tree": "node scripts/inspect-tree.js",
+    "move:subtree": "node scripts/move-subtree.js",
     "snapshot:websites": "node scripts/snapshot-websites.js"
   },
   "dependencies": {

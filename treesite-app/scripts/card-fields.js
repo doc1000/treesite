@@ -27,6 +27,7 @@ export function applyCardFields(item, args, { allowIdentity = false } = {}) {
   if (args.email !== undefined) item.email = String(args.email);
   if (args.template !== undefined) item.template = String(args.template);
   if (args.linkLabel !== undefined) item.linkLabel = String(args.linkLabel);
+  if (args.color !== undefined) item.color = String(args.color);
 
   const href = args.href || args.url || args.source;
   if (href !== undefined) {
@@ -35,6 +36,10 @@ export function applyCardFields(item, args, { allowIdentity = false } = {}) {
 
     if (item.type === "pdf") {
       item.pdf = value;
+    } else if (item.type === "htmlCard") {
+      item.url = value;
+    } else if (item.type === "section") {
+      /* structural rows use section paths only */
     } else if (["website", "link"].includes(item.type)) {
       item.url = value;
     } else if (item.type === "href" || item.type === "contact") {

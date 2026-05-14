@@ -1,8 +1,9 @@
 {
   "name": "Evidence Library",
   "slug": "evidence-library",
-  "section": "Case Studies",
+  "section": "Projects",
   "type": "text",
   "description": "Screenshots, charts, PDFs, anonymized outputs.",
-  "value": 6
+  "value": 6,
+  "hidden": true
 }

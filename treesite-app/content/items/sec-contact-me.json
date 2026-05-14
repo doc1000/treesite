@@ -1,0 +1,9 @@
+{
+  "name": "Contact Me",
+  "slug": "sec-contact-me",
+  "section": "Home",
+  "type": "section",
+  "description": "Need AI knowledge tools now? Reach out or schedule a call.",
+  "value": 30,
+  "color": "#c7ad72"
+}

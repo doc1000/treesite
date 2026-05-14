@@ -1,0 +1,11 @@
+{
+  "name": "Circular Calendar Interface",
+  "slug": "time-burner",
+  "section": "Projects",
+  "type": "htmlCard",
+  "description": "Visual extension of Google Calendar showing rings representing hours, day, weeks, months, years all in a single moving interface.  Fully functional event add/edit.",
+  "source": "/assets/html/time-burner/index.html",
+  "url": "/assets/html/time-burner/index.html",
+  "previewImage": "/assets/html/time-burner/preview.png",
+  "value": 8
+}

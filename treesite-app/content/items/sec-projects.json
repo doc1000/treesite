@@ -1,0 +1,9 @@
+{
+  "name": "Projects",
+  "slug": "sec-projects",
+  "section": "Home",
+  "type": "section",
+  "description": "Outcome-driven stories showing transformation.",
+  "value": 42,
+  "color": "#c58b78"
+}

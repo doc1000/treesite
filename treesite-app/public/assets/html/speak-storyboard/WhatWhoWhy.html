@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1a1510" />
+  <title>Speak in Pictures — overview</title>
+  <style>
+    :root {
+      /* Aligned with speak_in_pictures_demo.html */
+      --bg-deep: #1a1510;
+      --bg-card: #252018;
+      --bg-panel: #2c231c;
+      --text: #e8e0d5;
+      --muted: #a89888;
+      --border: rgba(184, 154, 107, 0.28);
+      --accent: #b89a6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      line-height: 1.55;
+      color: var(--text);
+      background: radial-gradient(ellipse 120% 80% at 50% 0%, #2a2218 0%, var(--bg-deep) 48%, #0f0c0a 100%);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 2.5rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+      line-height: 1.2;
+    }
+
+    .tagline {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    figure {
+      margin: 0 0 1.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-card);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      vertical-align: middle;
+    }
+
+    figcaption {
+      padding: 0.65rem 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 1.75rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    p {
+      margin: 0 0 0.85rem;
+    }
+
+    ul {
+      margin: 0 0 0.85rem;
+      padding-left: 1.25rem;
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    .stats {
+      margin: 1rem 0 0;
+      padding: 1rem 1.1rem;
+      border-left: 3px solid var(--accent);
+      background: var(--bg-panel);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .stats strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .stats p {
+      margin: 0 0 0.6rem;
+    }
+
+    .stats p:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <article class="wrap">
+    <h1>Speak in Pictures</h1>
+    <p class="tagline">
+      Turn what you say into clear, step-by-step visuals—so conversations work when words alone are not enough.
+    </p>
+
+    <figure>
+      <img
+        src="SampleScreenshot.png"
+        alt="Speak in Pictures interface: a lunch choice is turned into labeled picture steps for soup or a sandwich."
+        loading="lazy"
+      />
+      <figcaption>Sample screen: typed or spoken prompts become a simple visual storyboard.</figcaption>
+    </figure>
+
+    <h2>How it helps</h2>
+    <p>
+      Hearing loss, language gaps, and differences in how we process speech can make back-and-forth dialogue draining or easy to misunderstand. Speak in Pictures supplements speech with concrete images—choices, sequences, and context—so meaning stays visible on the screen and everyone can follow along at their own pace.
+    </p>
+
+    <h2>Who it can help</h2>
+    <div class="stats">
+      <p>
+        Roughly <strong>20 million older Americans</strong> live with hearing loss; pairing audio with visuals can reduce missed details and repeated questions in everyday situations like meals, appointments, and household routines.
+      </p>
+      <p>
+        <strong>Non-verbal children with autism</strong> and others who communicate with limited speech can use a visual channel to express preferences, understand options, and participate without relying on rapid verbal processing alone.
+      </p>
+      <p>
+        <strong>Foreign-language speakers</strong> and mixed-language households often benefit from a visual mode of communication that works alongside written or spoken words—especially for concrete, practical topics where a picture resolves ambiguity faster than translation alone.
+      </p>
+    </div>
+
+    <h2>Origin</h2>
+    <p>
+      This project was developed and recognized in the <strong>Builder Room</strong> at <strong>Boulder Startup Week</strong>—built to explore how humane, accessible technology can support real conversations in real homes and care settings.
+    </p>
+  </article>
+  <!-- Embed: host marketing-embed.html; set img src to your CDN URL if the screenshot path changes. -->
+</body>
+</html>

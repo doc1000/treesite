@@ -16,7 +16,7 @@ export function TileTemplate({
   const title = node.title || node.name;
   const description = node.abstract || node.description;
   const hasPdf = node.type === "pdf" || Boolean(node.pdf);
-  const hasWebsite = node.type === "website";
+  const hasWebsite = node.type === "website" || node.type === "htmlCard";
   const hasRichContent = Boolean(
     hasPdf || hasWebsite || node.template || node.image || links.length || node.embed || node.html
   );
@@ -38,6 +38,19 @@ export function TileTemplate({
     return (
       <ContactTile
         node={node}
+        small={small}
+        labelsAtBottom={labelsAtBottom}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
+      />
+    );
+  }
+
+  if (node.type === "section") {
+    return (
+      <MinimalTile
+        title={title}
+        description={description}
         small={small}
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
@@ -70,6 +83,7 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
+        variant={node.type === "htmlCard" ? "htmlCard" : "website"}
       />
     );
   }
@@ -323,12 +337,27 @@ function PdfTile({ node, title, description, small, labelsAtBottom, suppressTile
   );
 }
 
-function WebsiteTile({ node, title, description, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
+function WebsiteTile({
+  node,
+  title,
+  description,
+  small,
+  labelsAtBottom,
+  suppressTileLabels,
+  headerInMapOverlay,
+  variant = "website"
+}) {
   const [imageFailed, setImageFailed] = useState(false);
-  const links = node.links || (node.url ? [{ label: "Open site", href: node.url }] : []);
+  const openHref = node.url || node.source;
+  const defaultLinkLabel = variant === "htmlCard" ? "Open page" : "Open site";
+  const links =
+    node.links ||
+    (openHref ? [{ label: defaultLinkLabel, href: openHref }] : []);
   const hasLocalPreview = node.previewImage?.startsWith("/");
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
+  const fallbackKicker =
+    variant === "htmlCard" ? "HTML" : node.source || "Website";
 
   if (!hasLocalPreview || imageFailed) {
     return (
@@ -345,9 +374,9 @@ function WebsiteTile({ node, title, description, small, labelsAtBottom, suppress
 
   return (
     <div
-      className={`tile-html preview-tile website-tile ${visualOnly ? "tile-visual-only" : ""} ${small ? "tile-small" : ""} ${
-        labelsAtBottom ? "preview-tile--labels-bottom" : ""
-      }`}
+      className={`tile-html preview-tile website-tile${variant === "htmlCard" ? " html-card-tile" : ""} ${
+        visualOnly ? "tile-visual-only" : ""
+      } ${small ? "tile-small" : ""} ${labelsAtBottom ? "preview-tile--labels-bottom" : ""}`}
     >
       <img
         className="site-preview"
@@ -359,7 +388,7 @@ function WebsiteTile({ node, title, description, small, labelsAtBottom, suppress
 
       {!hideTextChrome && (
         <div className="preview-overlay">
-          <div className="tile-kicker">{node.kicker || node.source || "Website"}</div>
+          <div className="tile-kicker">{node.kicker || fallbackKicker}</div>
           <h3 className="tile-title">{title}</h3>
           {description && <p className="tile-desc">{description}</p>}
         </div>

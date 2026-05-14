@@ -5,7 +5,16 @@ import process from "node:process";
 export const appRoot = process.cwd();
 export const contentItemsDir = path.join(appRoot, "content", "items");
 export const generatedContentPath = path.join(appRoot, "src", "generatedContentItems.js");
-export const supportedContentTypes = ["text", "link", "href", "contact", "pdf", "website"];
+export const supportedContentTypes = [
+  "text",
+  "link",
+  "href",
+  "contact",
+  "pdf",
+  "website",
+  "htmlCard",
+  "section"
+];
 
 export function parseArgs(argv = process.argv.slice(2)) {
   const args = {};
@@ -137,6 +146,16 @@ export function validateContentItem(item, filename = "item") {
 
   if (item.type === "website" && typeof (item.url || item.source) !== "string") {
     throw new Error(`${filename} website items must include "url" or "source".`);
+  }
+
+  if (item.type === "htmlCard" && typeof (item.source || item.html) !== "string") {
+    throw new Error(`${filename} htmlCard items must include "source" or "html".`);
+  }
+
+  if (item.type === "section") {
+    if (item.color !== undefined && typeof item.color !== "string") {
+      throw new Error(`${filename} section color must be a string when provided.`);
+    }
   }
 
   if (["link", "href"].includes(item.type) && typeof (item.href || item.url || item.source) !== "string") {
