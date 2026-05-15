@@ -1,0 +1,9 @@
+{
+  "name": "Process Pillars",
+  "slug": "process-pillars",
+  "section": "Services",
+  "type": "text",
+  "description": "Unify, Evaluate, Visualize",
+  "value": 8,
+  "html": "<h3>Unify data</h3>\n<p>Are your DS/Analysts set up to iterate quickly, with unified systems, minimal friction, measurable results?  Streamline the process - test ideas in hours, not days.  Images, text, emails, slack, business data... doesn't matter.</p>\n<h3>Evaluate</h3>\n<p>Do you know what drives your model outputs?  your customer decisions?  your investments?  Break down complexity into simple, actionable insights.  Avoid unseen risks.  Grab opportunities quickly.  for fund managers, product managers.</p>\n<h3>Visualize</h3>\n<p>Beyond the dashboard.  Intuitive, visual interfaces that preserve cognitive load for decisions.  Plan, read, analyze with speed, context and certainty.</p>\n"
+}

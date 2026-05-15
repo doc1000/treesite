@@ -1,7 +1,7 @@
 {
   "name": "Bio PDF",
   "slug": "bio-pdf",
-  "section": "Who I am/Media",
+  "section": "About KnowAlgo/Media",
   "type": "text",
   "description": "Downloadable one-sheet.",
   "value": 2

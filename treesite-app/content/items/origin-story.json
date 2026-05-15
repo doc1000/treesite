@@ -1,8 +1,9 @@
 {
   "name": "Origin Story",
   "slug": "origin-story",
-  "section": "Who I am",
+  "section": "About KnowAlgo",
   "type": "text",
   "description": "A short founder story that makes the work feel human.",
-  "value": 10
+  "value": 10,
+  "hidden": true
 }

@@ -1,0 +1,9 @@
+{
+  "name": "Backstory",
+  "slug": "backstory",
+  "section": "About KnowAlgo",
+  "type": "text",
+  "description": " ",
+  "value": 12,
+  "html": "<p>Knowledge Algorithms grew out of Energy Algorithms, which focused on energy trading related tools and data analytics.  I realized that <strong>the same approach I successfully used in the most volatile market in the world</strong> can be applied to <strong>decision making and knowlege building</strong> across multiple industries.  </p>\n<h3></h3>\n<p>This is frankly what I love to do in my free time - think about different ways to organize data, extract meaning from it, and present it visually.  </p>\n<h3></h3>\n<p>The outcome I aim for: <strong>confidence of knowing that you can get insight from all parts of your data stack, whatever the world throws at you.</strong></p>\n"
+}

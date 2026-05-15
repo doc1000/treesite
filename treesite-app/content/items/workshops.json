@@ -4,5 +4,6 @@
   "section": "Services",
   "type": "text",
   "description": "Team training and executive education.",
-  "value": 12
+  "value": 12,
+  "hidden": true
 }
