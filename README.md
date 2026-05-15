@@ -156,6 +156,8 @@ treesite-app/scripts/add-website.js
 treesite-app/scripts/add-card.js
 treesite-app/scripts/edit-card.js
 treesite-app/scripts/move-card.js
+treesite-app/scripts/move-subtree.js
+treesite-app/scripts/inspect-tree.js
 ```
 
 Agents should help design and maintain the intake pathway, but the day-to-day process should be triggered by supplying the right inputs to scripts. This keeps adding PDFs and websites predictable, repeatable, and easy to turn into a future admin tool.
@@ -205,6 +207,58 @@ Use `edit:card` to change fields on an existing generated card by slug.
 npm run edit:card -- --slug "office-hours" --description "Book time for AI workflow questions." --value 6
 ```
 
+Rich HTML body (Markdown or plain text)
+
+Use exactly **one** of these HTML sources on each run:
+
+- **`--html`** — Raw HTML string, stored verbatim (same as before; no sanitization).
+- **`--html-file`** — Path to a **`.txt`** or **`.md`** file (UTF-8). The file is converted to HTML and sanitized before storing on the card.
+- **`--html-text`** — Inline body string with **`--format txt`** or **`--format md`** (required).
+
+For **`--html-file`**, format is inferred from the extension (`.txt` / `.md`). Optional **`--format txt`** or **`--format md`** overrides inference (for example, Markdown stored in a non-standard filename).
+
+For **`.txt`** conversion only, **`--txt-mode`** controls layout:
+
+- **`paragraphs`** (default): blank-line-separated blocks become `<p>`; single newlines inside a block become `<br>`.
+- **`pre`**: entire body is escaped and wrapped in `<pre>` (fixed line breaks, e.g. poetry).
+
+Markdown is rendered with **`marked`** (GFM), then passed through **`sanitize-html`** with a strict allowlist (headings, lists, links limited to `http`/`https`/`mailto`, etc.).
+
+Do **not** combine `--html`, `--html-file`, and `--html-text` on the same command.
+
+Optional **`--html-font-size`** applies only to the rich HTML panel (**`tile-html-content`**): accepts values like **`14`**, **`14px`**, **`1rem`**, **`110%`**. Bare numbers are treated as **px**. Pass an empty value (**`--html-font-size ""`**) to remove a per-card override and fall back to the stylesheet default (**14px**).
+
+Examples:
+
+```powershell
+npm run edit:card -- --slug "a-poem-about-work" --html-file ".\poem.txt" --txt-mode pre --description "Short teaser for headers."
+```
+
+```powershell
+npm run edit:card -- --slug "readme-blurb" --html-text "## Hello`n`n[Example](https://example.com)" --format md --description "Promo copy."
+```
+
+Typical flow: **`npm run add:card`** for the card, then **`npm run edit:card`** with `--html-file` or `--html-text` to attach the rich body.
+
+Troubleshooting add/edit cards
+
+- **Run commands from `treesite-app`** (`cd treesite-app`). Paths like `./content/snippets/foo.md` resolve from that directory.
+- **`slug`** comes from the title via `slugify` (e.g. “Process Pillars” → `process-pillars`). Use `npm run inspect:tree -- --text` to confirm names and slugs.
+- **Rich HTML does not show on tiny tiles**: CSS hides `.tile-html-content` when the tile is small; zoom in or use a larger cell to see Markdown/HTML bodies.
+- **`--html-file` format**: Extension **`.md`** uses Markdown + sanitization; **`.txt`** uses plain-text conversion only (`###` is literal text, not a heading). On Windows, **`notes.md.txt`** is still **`.txt`** to the OS—infer picks **`txt`** unless you pass **`--format md`**.
+- **Markdown looks “broken” but uses `.md`**: Check for **backslash escapes** in the file (`\###`, `\*\*foo\*\*`). Those force literal `#` and `*`. Remove the `\` characters. Headings need **`### Title`** (space after hashes). Bold works best as **`**bold**`** without a space immediately after the opening `**`.
+- **Whitespace in Markdown**: Normal rules apply—single newlines often merge; use blank lines between blocks, two trailing spaces or `<br>` for hard breaks, or use **`--format txt`** + **`--txt-mode`** when spacing matters more than Markdown.
+- **Sanitized Markdown**: Tables, images, `<hr>`, and many tags are stripped after render for safety—only the documented allowlist survives.
+- **`description` vs header**: Tile descriptions use line clamping; long copy belongs in **`html`** / **`--html-file`**. The focus strip uses SVG text for descriptions and does not wrap like HTML paragraphs.
+
+Reorder sections and sibling cards
+
+- **Leaf cards** (PDFs, websites, text cards, etc.): raise or lower priority with **`npm run edit:card -- --slug "<slug>" --value <number>`** (larger → earlier among siblings under the same parent).
+- **Explicit section rows** in `content/items/` (`type: "section"`, slugs like `sec-services`): same **`--value`** via **`edit:card`**—those rows compete with other siblings at that depth.
+- **Placeholders only**: Intermediate folders created automatically for paths still default to **`value: 1`** until you add or edit a **`section`** item that targets that path—otherwise siblings with equal **`value`** order by name only.
+- **Inspect**: **`npm run inspect:tree -- --text`** prints the merged tree with **`v=`** values so you can see ordering inputs.
+- **`move:card`** changes **which section** a card lives under; it does **not** set sibling rank—use **`--value`** for rank within the new parent’s children.
+
 Rename a Card (slug, display name, and treemap)
 
 Use `rename:card` to change the **file** `content/items/<slug>.json`, the card’s **`slug`** field (used when merging into the tree), and optionally **`--name`** / **`--title`** or other fields accepted by `edit:card`. The script runs **`rebuild:site-data`** so `src/generatedContentItems.js` and the treemap stay in sync.
@@ -226,6 +280,17 @@ Use `move:card` to place a generated card under a different section.
 ```powershell
 npm run move:card -- --slug "office-hours" --section "Services"
 ```
+
+Move a subtree (reparent a section root and fix descendant paths)
+
+Use **`move:subtree`** when an item is the root of a subtree and every descendant’s **`section`** path must be rewritten (nested sections follow that root).
+
+```powershell
+npm run move:subtree -- --slug "sec-projects" --under-section "Services"
+```
+
+- **`--slug`**: slug of the subtree root item (often a `section` row).
+- **`--under-section`**: new parent section path (same convention as **`section`** on cards: e.g. **`Home`**, **`Services`**, **`Articles/Research`**).
 
 Hide or Unhide a Card
 

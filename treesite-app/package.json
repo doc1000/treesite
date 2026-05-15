@@ -24,9 +24,11 @@
     "snapshot:websites": "node scripts/snapshot-websites.js"
   },
   "dependencies": {
+    "marked": "^18.0.3",
     "pdfjs-dist": "^5.7.284",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "sanitize-html": "^2.17.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

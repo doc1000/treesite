@@ -1,5 +1,27 @@
 import { parseValue, supportedContentTypes } from "./content-utils.js";
 
+/**
+ * Safe lengths for inline font-size (number implies px).
+ * @param {string} value
+ * @returns {string}
+ */
+export function normalizeHtmlFontSize(value) {
+  const v = String(value).trim();
+  if (!v) {
+    throw new Error("--html-font-size must be a non-empty length (e.g. 14, 14px, 1rem).");
+  }
+
+  if (/^\d+(\.\d+)?$/.test(v)) {
+    return `${v}px`;
+  }
+
+  if (/^\d+(\.\d+)?(px|rem|em|%)$/i.test(v)) {
+    return v;
+  }
+
+  throw new Error('--html-font-size must look like "14", "14px", "1rem", "1.1em", or "110%".');
+}
+
 export function normalizeCardType(type = "text") {
   const normalized = String(type).toLowerCase();
   if (!supportedContentTypes.includes(normalized)) {
@@ -24,6 +46,14 @@ export function applyCardFields(item, args, { allowIdentity = false } = {}) {
   if (args.image !== undefined) item.image = String(args.image);
   if (args.embed !== undefined) item.embed = String(args.embed);
   if (args.html !== undefined) item.html = String(args.html);
+  if (args["html-font-size"] !== undefined) {
+    const raw = String(args["html-font-size"]).trim();
+    if (raw === "") {
+      delete item.htmlFontSize;
+    } else {
+      item.htmlFontSize = normalizeHtmlFontSize(raw);
+    }
+  }
   if (args.email !== undefined) item.email = String(args.email);
   if (args.template !== undefined) item.template = String(args.template);
   if (args.linkLabel !== undefined) item.linkLabel = String(args.linkLabel);

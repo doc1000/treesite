@@ -313,8 +313,9 @@ export const generatedContentItems = [
     "slug": "a-poem-about-work",
     "section": "Who I am",
     "type": "text",
-    "description": "But yield who will to their separation,",
-    "value": 8
+    "description": " ",
+    "value": 8,
+    "html": "<p>But yield who will to their separation,<br>My object in living is to unite<br>My avocation and my vocation<br>As my two eyes make one in sight.<br>Only where love and need are one,<br>And the work is play for mortal stakes,<br>Is the deed ever really done<br> - Robert Frost<br>    Two Tramps in Mud Time</p>"
   },
   {
     "name": "Hero Statement",

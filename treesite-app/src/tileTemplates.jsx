@@ -127,6 +127,7 @@ export function TileTemplate({
       {node.html && (
         <div
           className="tile-html-content"
+          style={node.htmlFontSize ? { fontSize: node.htmlFontSize } : undefined}
           dangerouslySetInnerHTML={{ __html: node.html }}
         />
       )}
