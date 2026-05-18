@@ -11,10 +11,12 @@ import {
   slugify,
   writeContentItem
 } from "./content-utils.js";
+import { mergeDescriptionArgs } from "./merge-description-arg.js";
 import { renderPdfPreview } from "./pdf-preview.js";
 
 async function main() {
   const args = parseArgs();
+  await mergeDescriptionArgs(args);
   const file = path.resolve(requireArg(args, "file"));
   const section = requireArg(args, "section");
   const title = requireArg(args, "title");

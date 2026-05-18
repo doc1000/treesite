@@ -14,6 +14,7 @@ import {
   writeContentItem
 } from "./content-utils.js";
 import { applyCardFields } from "./card-fields.js";
+import { mergeDescriptionArgs } from "./merge-description-arg.js";
 
 /**
  * @param {Record<string, unknown>} args
@@ -96,6 +97,7 @@ async function main() {
   const args = parseArgs();
   const slug = requireArg(args, "slug");
 
+  await mergeDescriptionArgs(args);
   await mergeConvertedHtml(args);
 
   const item = await readContentItem(slug);

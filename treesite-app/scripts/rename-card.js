@@ -14,6 +14,7 @@ import {
   writeContentItem
 } from "./content-utils.js";
 import { applyCardFields } from "./card-fields.js";
+import { mergeDescriptionArgs } from "./merge-description-arg.js";
 import {
   buildSlugMaterializedMap,
   replaceLastSegment,
@@ -152,6 +153,7 @@ async function renameSectionFolder(args, fromSlug, toSlug, skipRewrite) {
 
 async function main() {
   const args = parseArgs();
+  await mergeDescriptionArgs(args);
   const fromSlug = requireArg(args, "from");
 
   const toSlugRaw = args.to ?? args["new-slug"];

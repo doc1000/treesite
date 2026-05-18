@@ -12,6 +12,7 @@ import {
   slugify,
   writeContentItem
 } from "./content-utils.js";
+import { mergeDescriptionArgs } from "./merge-description-arg.js";
 
 async function captureWebsitePreview({ url, outputPath }) {
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -39,6 +40,7 @@ async function captureWebsitePreview({ url, outputPath }) {
 
 async function main() {
   const args = parseArgs();
+  await mergeDescriptionArgs(args);
   const url = new URL(requireArg(args, "url")).toString();
   const section = requireArg(args, "section");
   const title = requireArg(args, "title");

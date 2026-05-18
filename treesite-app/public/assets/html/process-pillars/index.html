@@ -1,0 +1,363 @@
+<section class="process-section" aria-labelledby="process-title">
+  <style>
+    .process-section {
+      --bg: #090d14;
+      --panel: rgba(255, 255, 255, 0.065);
+      --panel-strong: rgba(255, 255, 255, 0.11);
+      --text: #eef4fb;
+      --muted: #a8b4c3;
+      --line: rgba(255, 255, 255, 0.16);
+      --blue: #5cc8ff;
+      --gold: #f2c14e;
+      --green: #57d68d;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.025), transparent 22rem),
+        radial-gradient(circle at 18% 18%, rgba(92, 200, 255, 0.15), transparent 28rem),
+        radial-gradient(circle at 82% 70%, rgba(87, 214, 141, 0.12), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      padding: clamp(4rem, 8vw, 7rem) 1.25rem;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .process-wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .process-header {
+      max-width: 850px;
+      margin-bottom: clamp(2.75rem, 5vw, 4.25rem);
+    }
+
+    .process-eyebrow {
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.78rem;
+      font-weight: 750;
+      margin-bottom: 0.8rem;
+    }
+
+    .process-header h2 {
+      font-size: clamp(2.35rem, 5.8vw, 4.8rem);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+      margin: 0 0 1.25rem;
+    }
+
+    .process-header p {
+      color: var(--muted);
+      font-size: clamp(1rem, 1.6vw, 1.2rem);
+      line-height: 1.65;
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .flow-shell {
+      position: relative;
+      padding: clamp(1rem, 2vw, 1.35rem);
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      background: rgba(255, 255, 255, 0.035);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+    }
+
+    .flow-shell::before {
+      content: "";
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: 50%;
+      height: 2px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, transparent, rgba(92,200,255,0.65), rgba(242,193,78,0.65), rgba(87,214,141,0.65), transparent);
+      opacity: 0.8;
+    }
+
+    .process-flow {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .pillar-card {
+      position: relative;
+      min-height: 410px;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(1.25rem, 2vw, 1.65rem);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, var(--glow), transparent 15rem),
+        linear-gradient(150deg, var(--panel-strong), rgba(255,255,255,0.035));
+      backdrop-filter: blur(16px);
+    }
+
+    .pillar-number {
+      width: 2.55rem;
+      height: 2.55rem;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      color: #061018;
+      background: var(--accent);
+      font-weight: 850;
+      box-shadow: 0 0 30px var(--glow-strong);
+      margin-bottom: 1.25rem;
+    }
+
+    .pillar-card h3 {
+      font-size: clamp(1.6rem, 3vw, 2.45rem);
+      line-height: 0.95;
+      letter-spacing: -0.045em;
+      margin: 0 0 0.75rem;
+    }
+
+    .pillar-subtitle {
+      color: var(--accent);
+      font-weight: 750;
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.15rem;
+    }
+
+    .pillar-card p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .pillar-prompts {
+      display: grid;
+      gap: 0.65rem;
+      margin-top: 1.35rem;
+    }
+
+    .prompt-chip {
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      background: rgba(0, 0, 0, 0.17);
+      border-radius: 16px;
+      padding: 0.8rem 0.9rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .pillar-outcome {
+      margin-top: auto;
+      padding-top: 1.4rem;
+    }
+
+    .outcome-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-bottom: 0.55rem;
+    }
+
+    .outcome-value {
+      color: var(--text);
+      font-size: 1.02rem;
+      font-weight: 760;
+      line-height: 1.35;
+    }
+
+    .flow-arrow {
+      position: absolute;
+      top: 50%;
+      right: -0.85rem;
+      transform: translateY(-50%);
+      width: 1.7rem;
+      height: 1.7rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #101722;
+      border: 1px solid var(--line);
+      color: var(--text);
+      z-index: 3;
+    }
+
+    .flow-arrow svg {
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+
+    .process-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 1rem;
+      padding: 1.15rem 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .process-footer p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.55;
+      font-size: 0.98rem;
+    }
+
+    .process-badge {
+      white-space: nowrap;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.055);
+      font-size: 0.9rem;
+      font-weight: 760;
+    }
+
+    @media (max-width: 980px) {
+      .flow-shell::before {
+        top: 5%;
+        bottom: 5%;
+        left: 50%;
+        right: auto;
+        width: 2px;
+        height: auto;
+        transform: translateX(-50%);
+        background: linear-gradient(180deg, transparent, rgba(92,200,255,0.65), rgba(242,193,78,0.65), rgba(87,214,141,0.65), transparent);
+      }
+
+      .process-flow {
+        grid-template-columns: 1fr;
+      }
+
+      .pillar-card {
+        min-height: auto;
+      }
+
+      .flow-arrow {
+        top: auto;
+        right: 50%;
+        bottom: -0.85rem;
+        transform: translateX(50%) rotate(90deg);
+      }
+
+      .process-footer {
+        grid-template-columns: 1fr;
+      }
+
+      .process-badge {
+        white-space: normal;
+        width: fit-content;
+      }
+    }
+  </style>
+
+  <div class="process-wrap">
+    <header class="process-header">
+      <div class="process-eyebrow">Decision Analytics Process</div>
+      <h2 id="process-title">Unify. Evaluate. Visualize.</h2>
+      <p>
+        A lightweight operating system for faster, clearer decisions.
+      </p>
+    </header>
+
+    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.4rem;">
+      <div style="padding:1.2rem 1rem; border:1px solid rgba(255,255,255,0.14); border-radius:22px; background:rgba(255,255,255,0.04); text-align:center;">
+        <div style="color:#5cc8ff; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; font-weight:800; margin-bottom:0.55rem;">Unify</div>
+        <div style="font-size:1.15rem; font-weight:750; color:#eef4fb; margin-bottom:0.45rem;">Reduce friction</div>
+        <div style="font-size:0.92rem; line-height:1.5; color:#a8b4c3;">Connect people, systems, and data so teams can iterate in hours — not days.</div>
+      </div>
+
+      <div style="padding:1.2rem 1rem; border:1px solid rgba(255,255,255,0.14); border-radius:22px; background:rgba(255,255,255,0.04); text-align:center;">
+        <div style="color:#f2c14e; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; font-weight:800; margin-bottom:0.55rem;">Evaluate</div>
+        <div style="font-size:1.15rem; font-weight:750; color:#eef4fb; margin-bottom:0.45rem;">Understand drivers</div>
+        <div style="font-size:0.92rem; line-height:1.5; color:#a8b4c3;">Break complexity into actionable signals. See risks and opportunities earlier.</div>
+      </div>
+
+      <div style="padding:1.2rem 1rem; border:1px solid rgba(255,255,255,0.14); border-radius:22px; background:rgba(255,255,255,0.04); text-align:center;">
+        <div style="color:#57d68d; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; font-weight:800; margin-bottom:0.55rem;">Visualize</div>
+        <div style="font-size:1.15rem; font-weight:750; color:#eef4fb; margin-bottom:0.45rem;">Preserve cognition</div>
+        <div style="font-size:0.92rem; line-height:1.5; color:#a8b4c3;">Interfaces that help people plan, analyze, and decide with clarity under pressure.</div>
+      </div>
+    </div>
+
+    <div class="flow-shell">
+      <div class="process-flow" aria-label="Three process pillars for decision analytics">
+        <article class="pillar-card" style="--accent:#5cc8ff; --glow:rgba(92,200,255,0.17); --glow-strong:rgba(92,200,255,0.45);">
+          <div class="pillar-number">1</div>
+          <h3>Unify</h3>
+          <div class="pillar-subtitle">Decision analytics + data science</div>
+          <p>
+            Are your data scientists and analysts set up to iterate quickly, with unified systems, minimal friction, and measurable results? Streamline the process so teams can test ideas in hours, not days.
+          </p>
+          <div class="pillar-prompts">
+            <div class="prompt-chip">Connect fragmented data and workflows.</div>
+            <div class="prompt-chip">Reduce handoffs, rework, and reporting drag.</div>
+            <div class="prompt-chip">Create fast feedback loops for experimentation.</div>
+          </div>
+          <div class="pillar-outcome">
+            <div class="outcome-label">Outcome</div>
+            <div class="outcome-value">A cleaner analytics engine built for rapid iteration.</div>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </article>
+
+        <article class="pillar-card" style="--accent:#f2c14e; --glow:rgba(242,193,78,0.16); --glow-strong:rgba(242,193,78,0.42);">
+          <div class="pillar-number">2</div>
+          <h3>Evaluate</h3>
+          <div class="pillar-subtitle">Evals + factor modeling</div>
+          <p>
+            Do you know what drives your model outputs, customer decisions, or investment performance? Break complexity into simple, actionable insights so teams can avoid unseen risks and grab opportunities quickly.
+          </p>
+          <div class="pillar-prompts">
+            <div class="prompt-chip">Identify the factors that actually matter.</div>
+            <div class="prompt-chip">Pressure-test assumptions and edge cases.</div>
+            <div class="prompt-chip">Turn opaque models into explainable decisions.</div>
+          </div>
+          <div class="pillar-outcome">
+            <div class="outcome-label">Outcome</div>
+            <div class="outcome-value">Clearer judgment for fund managers, product managers, and operators.</div>
+          </div>
+          <div class="flow-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </article>
+
+        <article class="pillar-card" style="--accent:#57d68d; --glow:rgba(87,214,141,0.16); --glow-strong:rgba(87,214,141,0.42);">
+          <div class="pillar-number">3</div>
+          <h3>Visualize</h3>
+          <div class="pillar-subtitle">Beyond the dashboard</div>
+          <p>
+            Build intuitive visual interfaces that preserve cognitive load for decisions. Plan, read, analyze, and act with speed, context, and certainty—without forcing people to decode another static report.
+          </p>
+          <div class="pillar-prompts">
+            <div class="prompt-chip">Use spatial reasoning, color, and form.</div>
+            <div class="prompt-chip">Cluster documents, emails, timelines, and signals.</div>
+            <div class="prompt-chip">Surface what needs attention now.</div>
+          </div>
+          <div class="pillar-outcome">
+            <div class="outcome-label">Outcome</div>
+            <div class="outcome-value">Interfaces that make complex work feel navigable.</div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="process-footer">
+      <p>
+        The process starts by reducing friction, then builds confidence through evaluation, and ends with visual systems that help people make better decisions under pressure.
+      </p>
+      <div class="process-badge">Built for high-leverage decisions</div>
+    </div>
+  </div>
+</section>

@@ -4,5 +4,6 @@
   "section": "Services",
   "type": "section",
   "description": "Sales decks, scope examples, screenshots.",
-  "value": 10
+  "value": 10,
+  "hidden": true
 }

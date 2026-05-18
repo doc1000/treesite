@@ -247,7 +247,7 @@ export const generatedContentItems = [
     "slug": "sec-articles",
     "section": "Home",
     "type": "section",
-    "description": "Published research, toolkits, articles, and future writing ideas.",
+    "description": "Research, Articles, Substack",
     "value": 58,
     "color": "#6fa892"
   },
@@ -265,7 +265,7 @@ export const generatedContentItems = [
     "slug": "sec-projects",
     "section": "Home",
     "type": "section",
-    "description": "Outcome-driven stories showing transformation.",
+    "description": "Cool productivity tools",
     "value": 42,
     "color": "#c58b78"
   },
@@ -274,7 +274,7 @@ export const generatedContentItems = [
     "slug": "sec-services",
     "section": "Home",
     "type": "section",
-    "description": "Primary offers and paths for prospective clients.",
+    "description": "See your edge.\n\nMulti-modal analytics and AI-native data flows.  Unlocked in weeks, not months.  For founders, traders, product managers.",
     "value": 52,
     "color": "#8b79b8"
   },
@@ -376,10 +376,12 @@ export const generatedContentItems = [
     "name": "Process Pillars",
     "slug": "process-pillars",
     "section": "Services",
-    "type": "text",
+    "type": "htmlCard",
     "description": "Unify, Evaluate, Visualize",
-    "value": 8,
-    "html": "<h3>Unify data</h3>\n<p>Are your DS/Analysts set up to iterate quickly, with unified systems, minimal friction, measurable results?  Streamline the process - test ideas in hours, not days.  Images, text, emails, slack, business data... doesn't matter.</p>\n<h3>Evaluate</h3>\n<p>Do you know what drives your model outputs?  your customer decisions?  your investments?  Break down complexity into simple, actionable insights.  Avoid unseen risks.  Grab opportunities quickly.  for fund managers, product managers.</p>\n<h3>Visualize</h3>\n<p>Beyond the dashboard.  Intuitive, visual interfaces that preserve cognitive load for decisions.  Plan, read, analyze with speed, context and certainty.</p>\n"
+    "source": "/assets/html/process-pillars/index.html",
+    "url": "/assets/html/process-pillars/index.html",
+    "previewImage": "/assets/html/process-pillars/preview.png",
+    "value": 8
   },
   {
     "name": "Service Assets",
@@ -387,7 +389,8 @@ export const generatedContentItems = [
     "section": "Services",
     "type": "section",
     "description": "Sales decks, scope examples, screenshots.",
-    "value": 10
+    "value": 10,
+    "hidden": true
   },
   {
     "name": "Strategy Sessions",

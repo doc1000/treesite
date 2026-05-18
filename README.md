@@ -210,6 +210,14 @@ Use `edit:card` to change fields on an existing generated card by slug.
 npm run edit:card -- --slug "office-hours" --description "Book time for AI workflow questions." --value 6
 ```
 
+**Description from a file** (UTF-8; Windows `CRLF` line endings are normalized): use **`--description-file`** with a path **instead of** **`--description`** — not both.
+
+Supported on **`add:card`**, **`edit:card`**, **`add:pdf`**, **`add:website`**, **`add:html`**, and **`rename:card`** (when passing other **`edit`-style** fields alongside a rename).
+
+```powershell
+npm run edit:card -- --slug sec-services --description-file .\content\snippets\services-blurb.txt
+```
+
 Rich HTML body (Markdown or plain text)
 
 Use exactly **one** of these HTML sources on each run:

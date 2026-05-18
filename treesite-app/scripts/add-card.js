@@ -9,9 +9,11 @@ import {
   writeContentItem
 } from "./content-utils.js";
 import { applyCardFields, normalizeCardType } from "./card-fields.js";
+import { mergeDescriptionArgs } from "./merge-description-arg.js";
 
 async function main() {
   const args = parseArgs();
+  await mergeDescriptionArgs(args);
   const name = requireArg({ name: args.name || args.title }, "name");
   const section = requireArg(args, "section");
   const type = normalizeCardType(args.type || "text");
