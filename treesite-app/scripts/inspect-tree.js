@@ -2,7 +2,12 @@
  * Derivative tree snapshot: merges flat JSON items into minimal Home root (same as app).
  */
 import process from "node:process";
-import { applyContentItems, minimalSiteRoot } from "../src/contentItems.js";
+import {
+  applyContentItems,
+  collectHiddenSectionSubtreePrefixes,
+  isContentItemExcludedFromSite,
+  minimalSiteRoot
+} from "../src/contentItems.js";
 import { readContentItems } from "./content-utils.js";
 
 function buildSlugMaterializedMap(node, trailParts, out) {
@@ -45,7 +50,7 @@ function printText(node, indent = 0) {
   }
 }
 
-function checkFlat(items, slugMap) {
+function checkFlat(items, slugMap, hiddenSubtreePrefixes) {
   const errors = [];
   const seen = new Set();
   for (const item of items) {
@@ -54,7 +59,8 @@ function checkFlat(items, slugMap) {
   }
 
   for (const item of items) {
-    if (!item.hidden && item.slug && slugMap[item.slug] === undefined) {
+    if (!item.slug || isContentItemExcludedFromSite(item, hiddenSubtreePrefixes)) continue;
+    if (slugMap[item.slug] === undefined) {
       errors.push(`slug missing from merged tree: ${item.slug}`);
     }
   }
@@ -68,6 +74,8 @@ async function main() {
   const checkMode = args.includes("--check");
 
   const items = await readContentItems();
+  const rootName = minimalSiteRoot.name;
+  const hiddenSubtreePrefixes = collectHiddenSectionSubtreePrefixes(items, rootName);
   const tree = applyContentItems(minimalSiteRoot, items);
   const slugMap = {};
   buildSlugMaterializedMap(tree, [], slugMap);
@@ -75,7 +83,7 @@ async function main() {
   const summary = summarize(tree, []);
 
   if (checkMode) {
-    const errs = checkFlat(items, slugMap);
+    const errs = checkFlat(items, slugMap, hiddenSubtreePrefixes);
     if (errs.length) {
       console.error(errs.join("\n"));
       process.exitCode = 1;

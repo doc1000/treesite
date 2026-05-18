@@ -1,4 +1,5 @@
 import process from "node:process";
+import { canonicalSectionSubtreePrefix, minimalSiteRoot } from "../src/contentItems.js";
 import {
   parseArgs,
   readContentItem,
@@ -25,6 +26,16 @@ async function main() {
   const count = await rebuildGeneratedContent();
 
   console.log(`${hidden ? "Hid" : "Unhid"} card: ${slug}`);
+  if (item.type === "section") {
+    const path = canonicalSectionSubtreePrefix(item, minimalSiteRoot.name);
+    if (path) {
+      console.log(
+        hidden
+          ? `Subtree paths under "${path}" are omitted from the site until this section is visible again (cascade; descendant JSON unchanged).`
+          : `Subtree paths under "${path}" can appear again. Cards still marked hidden stay hidden.`
+      );
+    }
+  }
   console.log(`Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`);
 }
 

@@ -4,5 +4,6 @@
   "section": "About KnowAlgo",
   "type": "section",
   "description": "Portraits, short intro video, downloadable bio.",
-  "value": 10
+  "value": 10,
+  "hidden": true
 }

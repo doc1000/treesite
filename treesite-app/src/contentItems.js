@@ -12,12 +12,45 @@ function cloneNode(node) {
   };
 }
 
-function sectionParts(section, rootName) {
-  return section
+export function sectionParts(section, rootName) {
+  return String(section ?? "")
     .split("/")
     .map(part => part.trim())
     .filter(Boolean)
     .filter((part, index) => !(index === 0 && part === rootName));
+}
+
+/** Canonical `section`-path prefix for subtree items under this section tile (matches `findOrCreateSection` + attach). */
+export function canonicalSectionSubtreePrefix(sectionItem, rootName) {
+  const parts = sectionParts(sectionItem.section, rootName);
+  const name = String(sectionItem.name ?? "").trim();
+  if (!name) return "";
+  return [...parts, name].join("/");
+}
+
+export function collectHiddenSectionSubtreePrefixes(items, rootName) {
+  const prefixes = [];
+  for (const item of items) {
+    if (item.type !== "section" || !item.hidden) continue;
+    const p = canonicalSectionSubtreePrefix(item, rootName);
+    if (p) prefixes.push(p);
+  }
+  return prefixes;
+}
+
+/** True when `section` string (as on a content item) is this prefix or nested under it. */
+export function sectionPathUnderPrefix(sectionPathRaw, prefix) {
+  const s = String(sectionPathRaw ?? "").trim();
+  if (!s || !prefix) return false;
+  return s === prefix || s.startsWith(`${prefix}/`);
+}
+
+export function isContentItemExcludedFromSite(item, hiddenSubtreePrefixes) {
+  if (item.hidden) return true;
+  for (const p of hiddenSubtreePrefixes) {
+    if (sectionPathUnderPrefix(item.section, p)) return true;
+  }
+  return false;
 }
 
 function ensureChild(parent, name) {
@@ -142,12 +175,13 @@ function attachLeafChild(parent, node) {
 
 export function applyContentItems(siteData, items, rootName = siteData.name) {
   const next = cloneNode(siteData);
+  const hiddenSubtreePrefixes = collectHiddenSectionSubtreePrefixes(items, rootName);
 
   const sections = [];
   const leaves = [];
 
   for (const item of items) {
-    if (item.hidden) continue;
+    if (isContentItemExcludedFromSite(item, hiddenSubtreePrefixes)) continue;
     if (item.type === "section") sections.push(item);
     else leaves.push(item);
   }

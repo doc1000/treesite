@@ -2,7 +2,10 @@
   "name": "Doster Esh",
   "slug": "doster-esh",
   "section": "About KnowAlgo",
-  "type": "text",
+  "type": "htmlCard",
   "description": "",
+  "source": "/assets/html/doster-esh/index.html",
+  "url": "/assets/html/doster-esh/index.html",
+  "previewImage": "/assets/html/doster-esh/preview.png",
   "value": 8
 }

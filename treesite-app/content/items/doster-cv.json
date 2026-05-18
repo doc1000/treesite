@@ -1,0 +1,11 @@
+{
+  "name": "Doster CV",
+  "slug": "doster-cv",
+  "section": "About KnowAlgo",
+  "type": "pdf",
+  "description": "",
+  "source": "/assets/pdfs/doster-cv.pdf",
+  "pdf": "/assets/pdfs/doster-cv.pdf",
+  "previewImage": "/assets/previews/doster-cv.png",
+  "value": 8
+}

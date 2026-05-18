@@ -10,11 +10,25 @@ export const generatedContentItems = [
     "html": "<p>Knowledge Algorithms grew out of Energy Algorithms, which focused on energy trading related tools and data analytics.  I realized that <strong>the same approach I successfully used in the most volatile market in the world</strong> can be applied to <strong>decision making and knowlege building</strong> across multiple industries.  </p>\n<h3></h3>\n<p>This is frankly what I love to do in my free time - think about different ways to organize data, extract meaning from it, and present it visually.  </p>\n<h3></h3>\n<p>The outcome I aim for: <strong>confidence of knowing that you can get insight from all parts of your data stack, whatever the world throws at you.</strong></p>\n"
   },
   {
+    "name": "Doster CV",
+    "slug": "doster-cv",
+    "section": "About KnowAlgo",
+    "type": "pdf",
+    "description": "",
+    "source": "/assets/pdfs/doster-cv.pdf",
+    "pdf": "/assets/pdfs/doster-cv.pdf",
+    "previewImage": "/assets/previews/doster-cv.png",
+    "value": 8
+  },
+  {
     "name": "Doster Esh",
     "slug": "doster-esh",
     "section": "About KnowAlgo",
-    "type": "text",
+    "type": "htmlCard",
     "description": "",
+    "source": "/assets/html/doster-esh/index.html",
+    "url": "/assets/html/doster-esh/index.html",
+    "previewImage": "/assets/html/doster-esh/preview.png",
     "value": 8
   },
   {
@@ -23,7 +37,8 @@ export const generatedContentItems = [
     "section": "About KnowAlgo",
     "type": "section",
     "description": "Portraits, short intro video, downloadable bio.",
-    "value": 10
+    "value": 10,
+    "hidden": true
   },
   {
     "name": "My Perspective",

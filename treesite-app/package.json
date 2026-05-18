@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "add:card": "node scripts/add-card.js",
+    "delete:card": "node scripts/delete-card.js",
     "edit:card": "node scripts/edit-card.js",
     "rename:card": "node scripts/rename-card.js",
     "move:card": "node scripts/move-card.js",

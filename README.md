@@ -168,6 +168,9 @@ Run intake commands from the app directory:
 cd treesite-app
 ```
 
+terminal commands to start service:
+npm run dev
+
 Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, rename, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
 
 `siteData.js` should now stay mostly structural: top-level sections, colors, and durable subsection containers. Leaf cards such as services, contact actions, PDFs, websites, and text entries should live in `content/items/*.json` so they can be managed by the intake scripts.
@@ -296,9 +299,20 @@ Hide or Unhide a Card
 
 Hidden cards stay in `content/items/` but are skipped when `siteData` is assembled.
 
+For **`type: "section"`** cards with **`hidden: true`**, every other item whose **`section`** path is that section’s subtree (same canonical path prefix as its section tile) is omitted as well—with **no edits** to those JSON files. Unhiding the section brings the subtree back; descendants that **still include `"hidden": true`** stay hidden individually.
+
 ```powershell
 npm run hide:card -- --slug "office-hours"
 npm run unhide:card -- --slug "office-hours"
+```
+
+Delete a card
+
+Removes `content/items/<slug>.json` and rebuilds generated content. By default you must type **`yes`** to confirm; use **`--yes`** to skip the prompt. For **`htmlCard`**, it deletes `public/assets/html/<slug>/`; for **`pdf`** / **`website`**, it removes associated files under `public/assets/` when the item points there. Deleting a **`section`** can leave stale **`section`** paths on other items.
+
+```powershell
+npm run delete:card -- --slug "office-hours"
+npm run delete:card -- --slug "office-hours" --yes
 ```
 
 Add a PDF
