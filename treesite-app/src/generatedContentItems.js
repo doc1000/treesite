@@ -29,7 +29,7 @@ export const generatedContentItems = [
     "source": "/assets/html/doster-esh/index.html",
     "url": "/assets/html/doster-esh/index.html",
     "previewImage": "/assets/html/doster-esh/preview.png",
-    "value": 8
+    "value": 60
   },
   {
     "name": "Media",
@@ -64,7 +64,8 @@ export const generatedContentItems = [
     "section": "About KnowAlgo",
     "type": "text",
     "description": "Logos, testimonials, credentials, awards, or outcomes.",
-    "value": 8
+    "value": 8,
+    "hidden": true
   },
   {
     "name": "Vocation",
@@ -294,7 +295,8 @@ export const generatedContentItems = [
     "section": "Projects",
     "type": "section",
     "description": "Problem, approach, result, evidence.",
-    "value": 14
+    "value": 14,
+    "hidden": true
   },
   {
     "name": "Evidence Library",
@@ -358,6 +360,17 @@ export const generatedContentItems = [
     "type": "text",
     "description": "Build workflows, agents, automations, or prototypes.",
     "value": 16
+  },
+  {
+    "name": "Philosophy & services",
+    "slug": "philosophy-services",
+    "section": "Services",
+    "type": "htmlCard",
+    "description": "",
+    "source": "/assets/html/philosophy-services/index.html",
+    "url": "/assets/html/philosophy-services/index.html",
+    "previewImage": "/assets/html/philosophy-services/preview.png",
+    "value": 8
   },
   {
     "name": "Process Pillars",

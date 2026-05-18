@@ -4,5 +4,6 @@
   "section": "About KnowAlgo",
   "type": "text",
   "description": "Logos, testimonials, credentials, awards, or outcomes.",
-  "value": 8
+  "value": 8,
+  "hidden": true
 }

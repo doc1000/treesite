@@ -1,0 +1,11 @@
+{
+  "name": "Philosophy & services",
+  "slug": "philosophy-services",
+  "section": "Services",
+  "type": "htmlCard",
+  "description": "",
+  "source": "/assets/html/philosophy-services/index.html",
+  "url": "/assets/html/philosophy-services/index.html",
+  "previewImage": "/assets/html/philosophy-services/preview.png",
+  "value": 8
+}

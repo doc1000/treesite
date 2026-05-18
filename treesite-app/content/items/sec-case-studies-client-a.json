@@ -4,5 +4,6 @@
   "section": "Projects",
   "type": "section",
   "description": "Problem, approach, result, evidence.",
-  "value": 14
+  "value": 14,
+  "hidden": true
 }
