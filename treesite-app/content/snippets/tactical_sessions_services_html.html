@@ -1,0 +1,367 @@
+<section class="tactical-section" aria-labelledby="tactical-title">
+  <style>
+    .tactical-section {
+      --bg: #080c12;
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel-strong: rgba(255, 255, 255, 0.105);
+      --text: #eef4fb;
+      --muted: #a9b4c2;
+      --line: rgba(255, 255, 255, 0.15);
+      --blue: #5cc8ff;
+      --gold: #f2c14e;
+      --green: #57d68d;
+      --purple: #b794f4;
+      background:
+        radial-gradient(circle at 14% 18%, rgba(92, 200, 255, 0.15), transparent 30rem),
+        radial-gradient(circle at 85% 25%, rgba(242, 193, 78, 0.11), transparent 28rem),
+        radial-gradient(circle at 55% 95%, rgba(183, 148, 244, 0.12), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      padding: clamp(4rem, 8vw, 7rem) 1.25rem;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .tactical-wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .tactical-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(280px, 1.05fr);
+      gap: clamp(2rem, 5vw, 4rem);
+      align-items: end;
+      margin-bottom: clamp(2.25rem, 5vw, 4rem);
+    }
+
+    .tactical-eyebrow {
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-bottom: 0.8rem;
+    }
+
+    .tactical-hero h2 {
+      font-size: clamp(2.45rem, 6vw, 5rem);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      margin: 0;
+    }
+
+    .tactical-lede {
+      color: var(--muted);
+      font-size: clamp(1rem, 1.6vw, 1.18rem);
+      line-height: 1.65;
+      margin: 0;
+      border-left: 1px solid var(--line);
+      padding-left: 1.25rem;
+    }
+
+    .session-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+    }
+
+    .session-card {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 310px;
+      padding: clamp(1.25rem, 2vw, 1.65rem);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, var(--glow), transparent 15rem),
+        linear-gradient(145deg, var(--panel-strong), rgba(255,255,255,0.032));
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+    }
+
+    .session-card.small { grid-column: span 6; }
+    .session-card.large { grid-column: span 6; min-height: 380px; }
+    .session-card.wide { grid-column: span 12; min-height: 300px; }
+
+    .session-topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1.35rem;
+    }
+
+    .session-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 850;
+    }
+
+    .session-time::before {
+      content: "";
+      width: 0.68rem;
+      height: 0.68rem;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 22px var(--accent);
+    }
+
+    .session-tag {
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      border-radius: 999px;
+      padding: 0.46rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .session-card h3 {
+      font-size: clamp(1.55rem, 3vw, 2.45rem);
+      line-height: 0.98;
+      letter-spacing: -0.045em;
+      margin: 0 0 0.9rem;
+    }
+
+    .session-card p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.62;
+      margin: 0;
+      max-width: 70ch;
+    }
+
+    .session-list {
+      display: grid;
+      gap: 0.65rem;
+      margin: 1.25rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .session-list li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.65rem;
+      color: var(--text);
+      font-size: 0.93rem;
+      line-height: 1.45;
+    }
+
+    .session-list li::before {
+      content: "";
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 999px;
+      background: var(--accent);
+      margin-top: 0.48rem;
+      box-shadow: 0 0 16px var(--accent);
+    }
+
+    .session-footer {
+      margin-top: auto;
+      padding-top: 1.5rem;
+    }
+
+    .session-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      color: #071018;
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 0.78rem 1rem;
+      font-size: 0.92rem;
+      font-weight: 850;
+      text-decoration: none;
+      box-shadow: 0 12px 38px var(--button-glow);
+    }
+
+    .embedded-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+      gap: clamp(1.5rem, 4vw, 3rem);
+      align-items: start;
+    }
+
+    .capability-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.2rem;
+    }
+
+    .capability-cloud span {
+      padding: 0.65rem 0.8rem;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.055);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .tactical-note {
+      margin-top: 1rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.045);
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.96rem;
+    }
+
+    @media (max-width: 900px) {
+      .tactical-hero,
+      .embedded-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .session-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .session-card.small,
+      .session-card.large,
+      .session-card.wide {
+        grid-column: auto;
+        min-height: auto;
+      }
+
+      .session-topline {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+
+  <div class="tactical-wrap">
+    <header class="tactical-hero">
+      <div>
+        <div class="tactical-eyebrow">Tactical Sessions</div>
+        <h2 id="tactical-title">Get unstuck. Get clear. Move forward.</h2>
+      </div>
+      <p class="tactical-lede">
+        Not every problem needs a long engagement. Sometimes you need an outside eye, a sharper frame, or a technical partner who can help you see the next move quickly.
+      </p>
+    </header>
+
+    <div class="session-grid">
+      <article class="session-card small" style="--accent:#5cc8ff; --glow:rgba(92,200,255,0.16); --button-glow:rgba(92,200,255,0.26);">
+        <div class="session-topline">
+          <div class="session-time">20 minutes</div>
+          <div class="session-tag">Fit check</div>
+        </div>
+        <h3>Intro Session</h3>
+        <p>
+          Bring your roadblocks. Bring your desired outcomes. We will know quickly whether I am the right fit and where the highest-leverage next step might be.
+        </p>
+        <ul class="session-list">
+          <li>Clarify the problem and desired outcome.</li>
+          <li>Identify whether a tactical session or deeper engagement makes sense.</li>
+          <li>Leave with a sharper sense of what to do next.</li>
+        </ul>
+        <div class="session-footer">
+          <a class="session-cta" href="#contact">Book an intro</a>
+        </div>
+      </article>
+
+      <article class="session-card small" style="--accent:#f2c14e; --glow:rgba(242,193,78,0.15); --button-glow:rgba(242,193,78,0.25);">
+        <div class="session-topline">
+          <div class="session-time">45 minutes</div>
+          <div class="session-tag">Fast feedback</div>
+        </div>
+        <h3>Knock Out Session</h3>
+        <p>
+          Knock out questions, technical issues, or risk problems quickly. This is not deep. It is fast, incisive feedback when you need enough clarity to move forward on your own.
+        </p>
+        <ul class="session-list">
+          <li>Process, model approach, risk analytics, or decision workflow review.</li>
+          <li>Pitch presentation or analytics narrative feedback.</li>
+          <li>Follow-up thoughts after the session to keep you moving.</li>
+        </ul>
+        <div class="session-footer">
+          <a class="session-cta" href="#contact">Knock it out</a>
+        </div>
+      </article>
+
+      <article class="session-card large" style="--accent:#57d68d; --glow:rgba(87,214,141,0.15); --button-glow:rgba(87,214,141,0.24);">
+        <div class="session-topline">
+          <div class="session-time">90 minutes</div>
+          <div class="session-tag">Scoped deep dive</div>
+        </div>
+        <h3>Process Deep Dive</h3>
+        <p>
+          A lot of low-hanging fruit can be isolated in one well-scoped session. We will develop a scope of work, identify simple solutions, and determine what needs deeper buildout.
+        </p>
+        <ul class="session-list">
+          <li>Validate ideas with a grounded outside perspective.</li>
+          <li>Explore whether you need a database, agent/chat overlay, predictive labeling, or heads-up interface.</li>
+          <li>Walk away with a clearer path to your desired outcome.</li>
+          <li>Includes a formal written follow-up.</li>
+        </ul>
+        <div class="session-footer">
+          <a class="session-cta" href="#contact">Start a deep dive</a>
+        </div>
+      </article>
+
+      <article class="session-card large" style="--accent:#b794f4; --glow:rgba(183,148,244,0.16); --button-glow:rgba(183,148,244,0.24);">
+        <div class="session-topline">
+          <div class="session-time">Embedded</div>
+          <div class="session-tag">Hands-on build support</div>
+        </div>
+        <h3>Fully Embedded</h3>
+        <p>
+          Need an AI-enabled data scientist to embed with your workflows and current people, understand the flow, scope the problem, and help build the solution? I can step in and help make the push.
+        </p>
+        <ul class="session-list">
+          <li>Useful when the problem is important but not fully defined.</li>
+          <li>Works best when you have people, process, and urgency already in motion.</li>
+          <li>The clearer the target, the more we can get done.</li>
+        </ul>
+        <div class="session-footer">
+          <a class="session-cta" href="#contact">Discuss embedded work</a>
+        </div>
+      </article>
+
+      <article class="session-card wide" style="--accent:#5cc8ff; --glow:rgba(92,200,255,0.12); --button-glow:rgba(92,200,255,0.22);">
+        <div class="embedded-layout">
+          <div>
+            <div class="session-topline">
+              <div class="session-time">Where I can plug in</div>
+            </div>
+            <h3>Data, risk, AI, and workflow execution.</h3>
+            <p>
+              You do not have to know exactly what needs to be done before we talk. The job is to get grounded in the real workflow, separate signal from noise, and find the practical path from stuck to shipped.
+            </p>
+          </div>
+          <div class="capability-cloud" aria-label="Capabilities">
+            <span>Python</span>
+            <span>SQL</span>
+            <span>Risk modeling</span>
+            <span>Machine learning</span>
+            <span>Knowledge bases</span>
+            <span>Decision analytics</span>
+            <span>Process mapping</span>
+            <span>AI overlays</span>
+            <span>Dashboards</span>
+            <span>Visual interfaces</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="tactical-note">
+      The 45-minute session is intentionally 45 minutes because transition time is real. You should have time to record notes, reflect, and context-switch without rushing directly into the next thing.
+    </div>
+  </div>
+</section>

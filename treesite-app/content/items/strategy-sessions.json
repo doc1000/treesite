@@ -4,5 +4,6 @@
   "section": "Services",
   "type": "text",
   "description": "Advisory offer with scheduling CTA.",
-  "value": 14
+  "value": 14,
+  "hidden": true
 }

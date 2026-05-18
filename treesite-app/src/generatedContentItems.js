@@ -398,7 +398,19 @@ export const generatedContentItems = [
     "section": "Services",
     "type": "text",
     "description": "Advisory offer with scheduling CTA.",
-    "value": 14
+    "value": 14,
+    "hidden": true
+  },
+  {
+    "name": "Tactical Sessions",
+    "slug": "tactical-sessions",
+    "section": "Services",
+    "type": "htmlCard",
+    "description": "Schedule a session focused on practical next steps and direct technical advice",
+    "source": "/assets/html/tactical-sessions/index.html",
+    "url": "/assets/html/tactical-sessions/index.html",
+    "previewImage": "/assets/html/tactical-sessions/preview.png",
+    "value": 17
   },
   {
     "name": "Workshops",
