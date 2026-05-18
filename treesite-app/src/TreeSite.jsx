@@ -17,6 +17,98 @@ function siblingSortComparator(a, b) {
   return String(a.data.name || "").localeCompare(String(b.data.name || ""));
 }
 
+const INTERNAL_VIEWER_TYPES = new Set(["pdf", "htmlCard", "text", "section", "note", "markdown"]);
+
+/** Logical viewer URL / resource selector (iframe may omit `html` — see {@link getIframeSrc}). */
+function getViewerUrl(item) {
+  if (!item || typeof item !== "object") return null;
+  if (item.type === "pdf") {
+    return item.pdf || item.url || item.source || item.embed || null;
+  }
+  if (item.type === "htmlCard") {
+    return item.url || item.source || item.html || item.embed || null;
+  }
+  return item.embed || item.url || item.source || null;
+}
+
+function isExternalUrl(url) {
+  if (url == null || typeof url !== "string") return false;
+  const t = url.trim();
+  return t.startsWith("http://") || t.startsWith("https://");
+}
+
+function stripHtmlToPlain(html) {
+  if (!html || typeof html !== "string") return "";
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const text = doc.body?.textContent ?? "";
+    return text.replace(/\s+/g, " ").trim();
+  } catch {
+    return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+}
+
+/** Plain text only (no dangerouslySetInnerHTML). */
+function getTextContent(item) {
+  if (!item || typeof item !== "object") return "";
+  const fromField = v => (typeof v === "string" && v.trim() ? v.trim() : "");
+  const picked =
+    fromField(item.text) ||
+    fromField(item.content) ||
+    fromField(item.description) ||
+    fromField(item.summary);
+  if (picked) return picked;
+  if (typeof item.html === "string" && item.html.trim()) {
+    const plain = stripHtmlToPlain(item.html);
+    return plain || "";
+  }
+  return "";
+}
+
+/** URL usable as iframe `src` — never HTML markup. */
+function getIframeSrc(item) {
+  if (!item || typeof item !== "object") return null;
+
+  let candidate;
+  if (item.type === "pdf" || item.pdf) {
+    candidate = item.pdf || item.url || item.source || item.embed || null;
+  } else if (item.type === "htmlCard") {
+    candidate = item.url || item.source || item.embed || null;
+  } else {
+    return null;
+  }
+
+  if (candidate == null || typeof candidate !== "string") return null;
+  const t = candidate.trim();
+  if (t.startsWith("<")) return null;
+  if (isExternalUrl(t)) return null;
+  return t || null;
+}
+
+function isEmbeddableInternalItem(item) {
+  if (!item || typeof item !== "object") return false;
+  if (item.type === "website") return false;
+  if (item.type === "contact" || item.template === "contact") return false;
+  if (item.template === "schedule") return false;
+
+  const vu = getViewerUrl(item);
+  if (vu != null && typeof vu === "string" && isExternalUrl(vu)) return false;
+
+  if (item.type && INTERNAL_VIEWER_TYPES.has(item.type)) return true;
+
+  return ["html", "text", "content", "description", "summary"].some(
+    field => typeof item[field] === "string" && item[field].trim() !== ""
+  );
+}
+
+/** Sole-tile drill-in: iframe and/or plaintext body must exist. */
+function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
+  if (!item) return false;
+  if (!isEmbeddableInternalItem(item)) return false;
+  if (iframeSrc) return true;
+  return plainTextBody.trim().length > 0;
+}
+
 export default function TreeSite({ siteData }) {
   const chartRef = useRef(null);
   const [dims, setDims] = useState({ width: 1200, height: 800 });
@@ -73,7 +165,7 @@ export default function TreeSite({ siteData }) {
     });
 
     return r;
-  }, [siteData, dims, showImmediateChildren]);
+  }, [siteData, dims, contentHeight, showImmediateChildren]);
 
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
@@ -112,7 +204,7 @@ export default function TreeSite({ siteData }) {
     });
 
     return r;
-  }, [focus, dims, showImmediateChildren]);
+  }, [focus, dims, contentHeight, showImmediateChildren]);
 
   const visibleNodes = useMemo(() => {
     if (!showImmediateChildren) return displayRoot.children || [displayRoot];
@@ -134,6 +226,36 @@ export default function TreeSite({ siteData }) {
     );
   }, [displayRoot, showImmediateChildren]);
 
+  const soleFocusCard = useMemo(
+    () =>
+      visibleNodes.length === 1 &&
+      visibleNodes[0].fullName === focus.fullName,
+    [visibleNodes, focus.fullName]
+  );
+
+  const focusPlainText = useMemo(
+    () => (soleFocusCard ? getTextContent(focus.data) : ""),
+    [soleFocusCard, focus.data]
+  );
+
+  const focusIframeSrc = useMemo(
+    () => (soleFocusCard ? getIframeSrc(focus.data) : null),
+    [soleFocusCard, focus.data]
+  );
+
+  const useFocusedViewer = useMemo(
+    () =>
+      soleFocusCard &&
+      !showImmediateChildren &&
+      shouldUseFocusedViewer(focus.data, focusIframeSrc, focusPlainText),
+    [
+      soleFocusCard,
+      showImmediateChildren,
+      focus.data,
+      focusIframeSrc,
+      focusPlainText
+    ]
+  );
 
   function sectionColor(d) {
     const original = root.descendants().find(x => x.fullName === d.fullName) || d;
@@ -214,12 +336,14 @@ export default function TreeSite({ siteData }) {
                 key={d.fullName}
                 transform={`translate(${b.x},${b.y})`}
                 onClick={
-                  isChildPreview
+                  useFocusedViewer
                     ? undefined
-                    : e => {
-                        e.stopPropagation();
-                        goTo(d);
-                      }
+                    : isChildPreview
+                      ? undefined
+                      : e => {
+                          e.stopPropagation();
+                          goTo(d);
+                        }
                 }
                 className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}`}
                 aria-label={isChildPreview ? d.data.name : undefined}
@@ -240,12 +364,27 @@ export default function TreeSite({ siteData }) {
                   height={b.h}
                   className={isChildPreview ? "tree-node-child-fo" : undefined}
                 >
-                  <TileTemplate
-                    node={d.data}
-                    box={b}
-                    suppressTileLabels={isChildPreview}
-                    headerInMapOverlay={headerInMapOverlay}
-                  />
+                  {useFocusedViewer && !isChildPreview ? (
+                    <div className="tileViewerHost" xmlns="http://www.w3.org/1999/xhtml">
+                      <FocusedCardViewer
+                        item={d.data}
+                        iframeSrc={focusIframeSrc}
+                        plainText={focusPlainText}
+                        canGoBack={Boolean(focus.parent)}
+                        onBack={e => {
+                          e.stopPropagation();
+                          if (focus.parent) goTo(focus.parent);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <TileTemplate
+                      node={d.data}
+                      box={b}
+                      suppressTileLabels={isChildPreview}
+                      headerInMapOverlay={headerInMapOverlay}
+                    />
+                  )}
                 </foreignObject>
               </g>
             );
@@ -278,6 +417,55 @@ export default function TreeSite({ siteData }) {
           />
         </svg>
       </main>
+    </div>
+  );
+}
+
+function FocusedCardViewer({ item, iframeSrc, plainText, canGoBack, onBack }) {
+  const title = item.title || item.name || "Card";
+  const subtitle = item.section || item.kicker || item.source;
+  const showIframe = Boolean(iframeSrc);
+
+  return (
+    <div
+      className="tileViewer"
+      xmlns="http://www.w3.org/1999/xhtml"
+      onClick={e => e.stopPropagation()}
+    >
+      <div
+        className={`tileViewerToolbar${showIframe ? " tileViewerToolbar--withOpenFull" : ""}`}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="tileViewerToolbarStart">
+          {canGoBack ? (
+            <button type="button" onClick={onBack}>
+              Back
+            </button>
+          ) : null}
+        </div>
+        <div className="tileViewerTitle" title={title}>
+          {title}
+        </div>
+        <div className="tileViewerToolbarEnd">
+          {showIframe ? (
+            <a href={iframeSrc} target="_blank" rel="noopener noreferrer">
+              Open full page
+            </a>
+          ) : null}
+        </div>
+      </div>
+      {showIframe ? (
+        <iframe
+          className="tileViewerFrame"
+          src={iframeSrc}
+          title={title}
+        />
+      ) : (
+        <div className="tileViewerBody">
+          {subtitle && <div className="tileViewerSubtitle">{subtitle}</div>}
+          <div className="tileViewerText">{plainText}</div>
+        </div>
+      )}
     </div>
   );
 }
