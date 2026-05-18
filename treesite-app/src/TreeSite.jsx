@@ -370,11 +370,6 @@ export default function TreeSite({ siteData }) {
                         item={d.data}
                         iframeSrc={focusIframeSrc}
                         plainText={focusPlainText}
-                        canGoBack={Boolean(focus.parent)}
-                        onBack={e => {
-                          e.stopPropagation();
-                          if (focus.parent) goTo(focus.parent);
-                        }}
                       />
                     </div>
                   ) : (
@@ -421,8 +416,8 @@ export default function TreeSite({ siteData }) {
   );
 }
 
-function FocusedCardViewer({ item, iframeSrc, plainText, canGoBack, onBack }) {
-  const title = item.title || item.name || "Card";
+function FocusedCardViewer({ item, iframeSrc, plainText }) {
+  const title = item.title || item.name || "Embedded viewer";
   const subtitle = item.section || item.kicker || item.source;
   const showIframe = Boolean(iframeSrc);
 
@@ -432,28 +427,6 @@ function FocusedCardViewer({ item, iframeSrc, plainText, canGoBack, onBack }) {
       xmlns="http://www.w3.org/1999/xhtml"
       onClick={e => e.stopPropagation()}
     >
-      <div
-        className={`tileViewerToolbar${showIframe ? " tileViewerToolbar--withOpenFull" : ""}`}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="tileViewerToolbarStart">
-          {canGoBack ? (
-            <button type="button" onClick={onBack}>
-              Back
-            </button>
-          ) : null}
-        </div>
-        <div className="tileViewerTitle" title={title}>
-          {title}
-        </div>
-        <div className="tileViewerToolbarEnd">
-          {showIframe ? (
-            <a href={iframeSrc} target="_blank" rel="noopener noreferrer">
-              Open full page
-            </a>
-          ) : null}
-        </div>
-      </div>
       {showIframe ? (
         <iframe
           className="tileViewerFrame"
