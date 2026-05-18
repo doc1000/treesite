@@ -354,15 +354,18 @@ export const generatedContentItems = [
     "value": 4
   },
   {
-    "name": "AI Implementation",
-    "slug": "ai-implementation",
+    "name": "Build Decision Making Tools",
+    "slug": "service-capabilities",
     "section": "Services",
-    "type": "text",
-    "description": "Build workflows, agents, automations, or prototypes.",
+    "type": "htmlCard",
+    "description": "",
+    "source": "/assets/html/service-capabilities/index.html",
+    "url": "/assets/html/service-capabilities/index.html",
+    "previewImage": "/assets/html/service-capabilities/preview.png",
     "value": 16
   },
   {
-    "name": "Philosophy & services",
+    "name": "Philosophy",
     "slug": "philosophy-services",
     "section": "Services",
     "type": "htmlCard",
