@@ -246,11 +246,9 @@ export default function TreeSite({ siteData }) {
   const useFocusedViewer = useMemo(
     () =>
       soleFocusCard &&
-      !showImmediateChildren &&
       shouldUseFocusedViewer(focus.data, focusIframeSrc, focusPlainText),
     [
       soleFocusCard,
-      showImmediateChildren,
       focus.data,
       focusIframeSrc,
       focusPlainText
