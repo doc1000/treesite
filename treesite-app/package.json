@@ -21,6 +21,7 @@
     "rebuild:site-data": "node scripts/rebuild-site-data.js",
     "migrate:scaffold": "node scripts/migrate-scaffold-from-site-data.js",
     "inspect:tree": "node scripts/inspect-tree.js",
+    "inspect:card-index": "node scripts/inspect-tree.js --card-index",
     "move:subtree": "node scripts/move-subtree.js",
     "snapshot:websites": "node scripts/snapshot-websites.js"
   },

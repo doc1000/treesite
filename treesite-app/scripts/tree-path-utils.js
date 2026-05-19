@@ -1,6 +1,9 @@
 /**
  * Materialized paths under Home (no leading "Home/" segment).
+ * Re-exports slug map from shared app source — keep imports via this file so scripts resolve once.
  */
+
+export { buildSlugMaterializedMap } from "../src/treePaths.js";
 
 export function rewriteSectionPath(section, oldMat, newMat) {
   if (!oldMat || oldMat === newMat) return section;
@@ -20,15 +23,4 @@ export function replaceLastSegment(materializedPath, newLeafName) {
   if (parts.length === 0) return newLeafName;
   parts[parts.length - 1] = newLeafName;
   return parts.join("/");
-}
-
-/** Mutates `out` map slug -> materialized path from tree root (omit Home name). */
-export function buildSlugMaterializedMap(node, trailParts, out) {
-  const parts = [...trailParts];
-  if (node.slug) {
-    out[node.slug] = parts.join("/");
-  }
-  for (const child of node.children || []) {
-    buildSlugMaterializedMap(child, [...parts, child.name], out);
-  }
 }

@@ -173,6 +173,28 @@ npm run dev
 
 Generated cards are identified by `slug`. The slug is created from the title by default and is used by edit, rename, move, hide, and unhide commands. Prefer managing generated cards through these scripts instead of editing `siteData.js` directly.
 
+Deep links (`#/card/<slug>`) navigate the Living Sitemap to that card regardless of section. Sidebar search matches slug, title, path, and description across the merged tree.
+
+- **Tiles with inline HTML** — embed normal links:
+
+  ```html
+  <p>Ready to talk? Jump to <a href="#/card/schedule-a-call">Schedule a Call</a>.</p>
+  ```
+
+- **Bundled HTML pages (`htmlCard` iframes)** — host them under `treesite-app/public/` and attach the bridge helper (same origin as Vite):
+
+  ```html
+  <script src="/assets/js/treesite-card-nav.js"></script>
+  ```
+
+  ```html
+  <button type="button" onclick="treesiteNavigateToCard('schedule-a-call')">Open schedule</button>
+  <!-- Or: -->
+  <a href="#" data-treesite-card="schedule-a-call">Schedule</a>
+  ```
+
+- **Discover slugs** — run `npm run inspect:tree -- --text`. Export `{ slug, materializedPath }` pairs for tooling: `npm run inspect:card-index`. Example HTML fragment you can paste into bodies: [`treesite-app/content/snippets/_internal_card_link_example.html`](treesite-app/content/snippets/_internal_card_link_example.html).
+
 `siteData.js` should now stay mostly structural: top-level sections, colors, and durable subsection containers. Leaf cards such as services, contact actions, PDFs, websites, and text entries should live in `content/items/*.json` so they can be managed by the intake scripts.
 
 Add a Basic Card

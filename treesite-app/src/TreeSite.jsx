@@ -1,9 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { TileTemplate } from "./tileTemplates";
+import { buildCardIndex } from "./cardIndex";
+import {
+  applyCardSlugToFragment,
+  parseCardHash,
+  planNavigateSteps,
+  runPlannedNavigateSteps,
+  stripCardHashFromHistory
+} from "./cardNavigation";
 
 /** Top fraction of the main map reserved for the current focus title (not treemap area). */
 const FOCUS_HEADER_RATIO = 0.1;
+
+const CARD_NAV_STEP_MS = 420;
+const SEARCH_RESULT_LIMIT = 14;
 
 function displayWeight(d) {
   const raw = Math.max(1, d.value || 1);
@@ -110,12 +121,20 @@ function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
 }
 
 export default function TreeSite({ siteData }) {
+  const treesiteRef = useRef(null);
   const chartRef = useRef(null);
+  const highlightClearTimerRef = useRef(null);
+  const navigateGeneration = useRef(0);
+  const focusNameRef = useRef(null);
+  const navigateCardRef = useRef(null);
+
   const [dims, setDims] = useState({ width: 1200, height: 800 });
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
   const [recentTrail, setRecentTrail] = useState([]);
   const [showImmediateChildren, setShowImmediateChildren] = useState(false);
+  const [highlightSlug, setHighlightSlug] = useState(null);
+  const [chartNavigating, setChartNavigating] = useState(false);
 
   useEffect(() => {
     const el = chartRef.current;
@@ -133,6 +152,21 @@ export default function TreeSite({ siteData }) {
   }, []);
 
   const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
+
+  const indexHierarchy = useMemo(() => {
+    const r = d3
+      .hierarchy(siteData)
+      .sum(displayWeight)
+      .sort(siblingSortComparator);
+
+    r.each(d => {
+      d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
+    });
+
+    return r;
+  }, [siteData]);
+
+  const cardIndex = useMemo(() => buildCardIndex(indexHierarchy), [indexHierarchy]);
 
   const root = useMemo(() => {
     const r = d3
@@ -255,6 +289,24 @@ export default function TreeSite({ siteData }) {
     ]
   );
 
+  useEffect(() => {
+    focusNameRef.current = focus.fullName;
+  }, [focus.fullName]);
+
+  const searchMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q.length) return [];
+    return cardIndex.searchRows
+      .filter(r => r.haystack.includes(q))
+      .slice(0, SEARCH_RESULT_LIMIT);
+  }, [cardIndex.searchRows, query]);
+
+  const haystackBySlug = useMemo(() => {
+    const m = new Map();
+    for (const row of cardIndex.searchRows) m.set(row.slug, row.haystack);
+    return m;
+  }, [cardIndex.searchRows]);
+
   function sectionColor(d) {
     const original = root.descendants().find(x => x.fullName === d.fullName) || d;
     const top =
@@ -264,17 +316,209 @@ export default function TreeSite({ siteData }) {
     return top?.data.color || "#8b79b8";
   }
 
-  function goTo(d) {
-    if (!d) return;
-    setFocusName(d.fullName);
-    setRecentTrail(prev => {
-      const next = [...prev, d.fullName];
-      return next.slice(-10);
+  const flashHighlightSlug = useCallback(slug => {
+    if (highlightClearTimerRef.current)
+      window.clearTimeout(highlightClearTimerRef.current);
+    setHighlightSlug(slug);
+    highlightClearTimerRef.current = window.setTimeout(() => {
+      setHighlightSlug(null);
+      highlightClearTimerRef.current = null;
+    }, 2600);
+  }, []);
+
+  const goTo = useCallback(
+    (d, options = {}) => {
+      const { syncSlug = true, recordTrail = true } = options;
+      if (!d) return;
+      setFocusName(d.fullName);
+      if (recordTrail)
+        setRecentTrail(prev => [...prev, d.fullName].slice(-10));
+
+      if (syncSlug && typeof window !== "undefined") {
+        const slug = d.data?.slug;
+        if (slug) applyCardSlugToFragment(String(slug), { replace: true });
+        else stripCardHashFromHistory();
+      }
+    },
+    []
+  );
+
+  const navigateToCard = useCallback(
+    async (
+      slug,
+      {
+        animate = true,
+        updateHash = true,
+        bumpGeneration = true,
+        suppressHighlight = false
+      } = {}
+    ) => {
+      const entry = cardIndex.bySlug.get(slug);
+      if (!entry) {
+        console.warn(`treesite: unknown card slug "${slug}"`);
+        return;
+      }
+
+      const targetNode =
+        root.descendants().find(n => n.fullName === entry.fullName) || null;
+      if (!targetNode) {
+        console.warn(`treesite: card "${slug}" not found on current layout root`);
+        return;
+      }
+      if (bumpGeneration) navigateGeneration.current += 1;
+      const genStart = navigateGeneration.current;
+
+      if (typeof window !== "undefined" && updateHash) {
+        applyCardSlugToFragment(slug, { replace: false });
+      }
+
+      const focusResolved =
+        root.descendants().find(n => n.fullName === focusNameRef.current) || root;
+
+      const steps = planNavigateSteps({
+        root,
+        focus: focusResolved,
+        target: targetNode
+      });
+
+      const animateSeries = animate && steps.length > 1;
+      if (animateSeries) setChartNavigating(true);
+
+      await runPlannedNavigateSteps({
+        steps,
+        animate,
+        stepMs: CARD_NAV_STEP_MS,
+        getNavigateGen: () => navigateGeneration.current,
+        navigateGen: genStart,
+        applyGoTo: (dStep, opts) => {
+          if (navigateGeneration.current !== genStart) return;
+          goTo(dStep, {
+            syncSlug: false,
+            recordTrail: opts?.recordTrail !== false
+          });
+        }
+      });
+
+      setChartNavigating(false);
+
+      if (navigateGeneration.current !== genStart) return;
+
+      goTo(targetNode, { syncSlug: false, recordTrail: true });
+
+      if (!suppressHighlight && typeof window !== "undefined") flashHighlightSlug(slug);
+    },
+    [cardIndex, root, goTo, flashHighlightSlug]
+  );
+
+  useEffect(() => {
+    navigateCardRef.current = navigateToCard;
+  }, [navigateToCard]);
+
+  useEffect(
+    () => () => {
+      if (highlightClearTimerRef.current) {
+        window.clearTimeout(highlightClearTimerRef.current);
+      }
+    },
+    []
+  );
+
+  /** Cold-load deep links: hash present on first bundle paint. */
+  useEffect(() => {
+    const slug = parseCardHash();
+    if (!slug || !cardIndex.bySlug.has(slug)) return;
+    void navigateCardRef.current(slug, {
+      animate: false,
+      updateHash: false,
+      bumpGeneration: false,
+      suppressHighlight: true
     });
-  }
+  }, [siteData, cardIndex]);
+
+  useEffect(() => {
+    function onFragmentChange() {
+      navigateGeneration.current += 1;
+      const slug = parseCardHash();
+      if (!slug) {
+        setFocusName(null);
+        return;
+      }
+      void navigateToCard(slug, {
+        animate: true,
+        updateHash: false,
+        bumpGeneration: false,
+        suppressHighlight: false
+      });
+    }
+
+    window.addEventListener("hashchange", onFragmentChange);
+    window.addEventListener("popstate", onFragmentChange);
+    return () => {
+      window.removeEventListener("hashchange", onFragmentChange);
+      window.removeEventListener("popstate", onFragmentChange);
+    };
+  }, [navigateToCard]);
+
+  useEffect(() => {
+    function onCaptureClick(e) {
+      const wrap = treesiteRef.current;
+      const link =
+        typeof e.target?.closest === "function"
+          ? e.target.closest("a[href]")
+          : null;
+      if (!wrap || !link || !wrap.contains(link)) return;
+      const raw = link.getAttribute("href")?.trim() ?? "";
+      const m =
+        raw.match(/^#\/card\/(.+)$/iu) || raw.match(/^#card\/(.+)$/iu);
+      if (!m) return;
+      e.preventDefault();
+      navigateGeneration.current += 1;
+      let slugDecoded = m[1].trim();
+      try {
+        slugDecoded = decodeURIComponent(slugDecoded);
+      } catch {
+        /* keep raw */
+      }
+      void navigateToCard(slugDecoded, {
+        animate: true,
+        updateHash: true,
+        bumpGeneration: false
+      });
+    }
+
+    document.addEventListener("click", onCaptureClick, true);
+    return () => document.removeEventListener("click", onCaptureClick, true);
+  }, [navigateToCard]);
+
+  useEffect(() => {
+    function onMessage(e) {
+      if (!e?.data || e.origin !== window.location.origin) return;
+      if (e.data.type !== "treesite:navigate") return;
+      const slug = e.data.slug;
+      if (!slug || typeof slug !== "string") return;
+      if (!cardIndex.bySlug.has(slug)) return;
+      navigateGeneration.current += 1;
+      void navigateToCard(slug, {
+        animate: true,
+        updateHash: true,
+        bumpGeneration: false
+      });
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [cardIndex, navigateToCard]);
+
+  const goToInteractive = useCallback(
+    d => {
+      navigateGeneration.current += 1;
+      goTo(d);
+    },
+    [goTo]
+  );
 
   return (
-    <div className="treesite">
+    <div className="treesite" ref={treesiteRef}>
       <aside className="treesite-sidebar">
         <h1>Living Sitemap</h1>
         <p>
@@ -285,15 +529,45 @@ export default function TreeSite({ siteData }) {
         <input
           className="treesite-search"
           placeholder="Search the sitemap…"
+          aria-autocomplete="list"
+          aria-controls="treesite-search-results"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
+
+        {searchMatches.length > 0 && (
+          <ul
+            id="treesite-search-results"
+            className="treesite-search-results"
+            role="listbox"
+            aria-label="Matching cards"
+          >
+            {searchMatches.map(row => (
+              <li key={row.slug}>
+                <button
+                  type="button"
+                  className="treesite-search-result"
+                  role="option"
+                  onClick={() =>
+                    navigateToCard(row.slug, {
+                      animate: true,
+                      bumpGeneration: true
+                    })
+                  }
+                >
+                  <span className="treesite-search-result-label">{row.label}</span>
+                  <span className="treesite-search-result-path">{row.sublabel}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <MiniMap
           root={root}
           focus={focus}
           recentTrail={recentTrail}
-          onSelect={goTo}
+          onSelect={goToInteractive}
           sectionColor={sectionColor}
         />
 
@@ -308,10 +582,10 @@ export default function TreeSite({ siteData }) {
         ref={chartRef}
         style={{ "--focus-header-ratio": FOCUS_HEADER_RATIO }}
       >
-        <Breadcrumbs focus={focus} onSelect={goTo} />
+        <Breadcrumbs focus={focus} onSelect={goToInteractive} />
 
         <svg
-          className="treesite-chart"
+          className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}`}
           viewBox={`0 0 ${dims.width} ${dims.height}`}
         >
           {visibleNodes.map(d => {
@@ -326,8 +600,18 @@ export default function TreeSite({ siteData }) {
               showImmediateChildren &&
               !isChildPreview &&
               Boolean(d.children?.length);
-            const isMatch =
-              query && d.fullName.toLowerCase().includes(query.toLowerCase());
+            const qTrim = query.trim().toLowerCase();
+            const nodeSlug = d.data?.slug;
+            const hay = nodeSlug ? haystackBySlug.get(nodeSlug) : undefined;
+            const isMatchGlobal = Boolean(qTrim && hay?.includes(qTrim));
+
+            const isNavSlugHighlight =
+              highlightSlug &&
+              d.data?.slug &&
+              String(d.data.slug) === highlightSlug;
+
+            const showSearchStroke =
+              Boolean(isMatchGlobal) || Boolean(isNavSlugHighlight);
 
             return (
               <g
@@ -340,10 +624,12 @@ export default function TreeSite({ siteData }) {
                       ? undefined
                       : e => {
                           e.stopPropagation();
-                          goTo(d);
+                          goToInteractive(d);
                         }
                 }
-                className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}`}
+                className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}${
+                  isNavSlugHighlight ? " tree-node-nav-target" : ""
+                }`}
                 aria-label={isChildPreview ? d.data.name : undefined}
               >
                 <rect
@@ -353,8 +639,8 @@ export default function TreeSite({ siteData }) {
                   ry="16"
                   fill={sectionColor(d)}
                   opacity={isChildPreview ? 0.28 : d.children ? 0.78 : 0.52}
-                  stroke={isMatch ? "#fff" : "rgba(255,255,255,.18)"}
-                  strokeWidth={isMatch ? 3 : 1}
+                  stroke={showSearchStroke ? "#fff" : "rgba(255,255,255,.18)"}
+                  strokeWidth={showSearchStroke ? 3 : 1}
                 />
 
                 <foreignObject
@@ -368,6 +654,13 @@ export default function TreeSite({ siteData }) {
                         item={d.data}
                         iframeSrc={focusIframeSrc}
                         plainText={focusPlainText}
+                        isNavHighlight={
+                          !!(
+                            soleFocusCard &&
+                            focus.data?.slug &&
+                            highlightSlug === focus.data.slug
+                          )
+                        }
                       />
                     </div>
                   ) : (
@@ -397,7 +690,7 @@ export default function TreeSite({ siteData }) {
                   pointerEvents="all"
                   onClick={e => {
                     e.stopPropagation();
-                    goTo(d);
+                    goToInteractive(d);
                   }}
                 />
               ))}
@@ -414,14 +707,14 @@ export default function TreeSite({ siteData }) {
   );
 }
 
-function FocusedCardViewer({ item, iframeSrc, plainText }) {
+function FocusedCardViewer({ item, iframeSrc, plainText, isNavHighlight }) {
   const title = item.title || item.name || "Embedded viewer";
   const subtitle = item.section || item.kicker || item.source;
   const showIframe = Boolean(iframeSrc);
 
   return (
     <div
-      className="tileViewer"
+      className={`tileViewer${isNavHighlight ? " tileViewer-nav-highlight" : ""}`}
       xmlns="http://www.w3.org/1999/xhtml"
       onClick={e => e.stopPropagation()}
     >

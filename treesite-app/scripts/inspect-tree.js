@@ -9,15 +9,28 @@ import {
   minimalSiteRoot
 } from "../src/contentItems.js";
 import { readContentItems } from "./content-utils.js";
+import { buildSlugMaterializedMap } from "./tree-path-utils.js";
 
-function buildSlugMaterializedMap(node, trailParts, out) {
-  const parts = [...trailParts];
-  if (node.slug) {
-    out[node.slug] = parts.join("/");
+function emitCardIndexFlat(tree) {
+  /** @type {Array<{ slug: string, materializedPath: string, name: string, type: string | null }>} */
+  const out = [];
+  function walk(node, trailParts) {
+    const parts = [...trailParts];
+    if (node.slug) {
+      out.push({
+        slug: node.slug,
+        materializedPath: parts.join("/"),
+        name: node.name,
+        type: node.type ?? null
+      });
+    }
+    for (const child of node.children || []) {
+      walk(child, [...parts, child.name]);
+    }
   }
-  for (const child of node.children || []) {
-    buildSlugMaterializedMap(child, [...parts, child.name], out);
-  }
+  walk(tree, []);
+  out.sort((a, b) => String(a.slug).localeCompare(String(b.slug)));
+  return out;
 }
 
 function summarize(node, trailParts) {
@@ -72,6 +85,7 @@ async function main() {
   const args = process.argv.slice(2);
   const textMode = args.includes("--text") || args.includes("--human");
   const checkMode = args.includes("--check");
+  const cardIndexMode = args.includes("--card-index");
 
   const items = await readContentItems();
   const rootName = minimalSiteRoot.name;
@@ -81,6 +95,12 @@ async function main() {
   buildSlugMaterializedMap(tree, [], slugMap);
 
   const summary = summarize(tree, []);
+
+  if (cardIndexMode) {
+    const flat = emitCardIndexFlat(tree);
+    console.log(JSON.stringify(flat, null, 2));
+    return;
+  }
 
   if (checkMode) {
     const errs = checkFlat(items, slugMap, hiddenSubtreePrefixes);
