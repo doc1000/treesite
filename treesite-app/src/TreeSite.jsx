@@ -9,6 +9,34 @@ import {
   runPlannedNavigateSteps,
   stripCardHashFromHistory
 } from "./cardNavigation";
+import {
+  buildSectionFillMap,
+  createSectionColorFn,
+  loadSchemeManifest,
+  loadTreemapSchemeFile,
+  sectionColorFromContent
+} from "./treemapColorScheme";
+
+const COLOR_SCHEMES_BASE = "/color-schemes";
+const COLOR_SCHEME_STORAGE_ID = "treesite.colorSchemeId";
+const COLOR_SCHEME_STORAGE_MINIMAP = "treesite.applySchemeToMinimap";
+
+function readStoredSchemeId() {
+  try {
+    const v = localStorage.getItem(COLOR_SCHEME_STORAGE_ID);
+    return v && v.trim() ? v.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredApplySchemeToMinimap() {
+  try {
+    return localStorage.getItem(COLOR_SCHEME_STORAGE_MINIMAP) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /** Top fraction of the main map reserved for the current focus title (not treemap area). */
 const FOCUS_HEADER_RATIO = 0.1;
@@ -213,6 +241,14 @@ export default function TreeSite({ siteData }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [minimapOpen, setMinimapOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(true);
+  const [schemeManifest, setSchemeManifest] = useState(null);
+  const [schemeManifestError, setSchemeManifestError] = useState(null);
+  const [activeSchemeId, setActiveSchemeId] = useState(readStoredSchemeId);
+  const [resolvedSchemeDoc, setResolvedSchemeDoc] = useState(null);
+  const [schemeLoadError, setSchemeLoadError] = useState(null);
+  const [applySchemeToMinimap, setApplySchemeToMinimap] = useState(
+    readStoredApplySchemeToMinimap
+  );
 
   useEffect(() => {
     const el = chartRef.current;
@@ -237,6 +273,80 @@ export default function TreeSite({ siteData }) {
     });
     return () => window.cancelAnimationFrame(id);
   }, [sidebarExpanded, searchOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadSchemeManifest(COLOR_SCHEMES_BASE)
+      .then(manifest => {
+        if (cancelled) return;
+        setSchemeManifest(manifest);
+        setSchemeManifestError(null);
+        const ids = new Set(manifest.schemes.map(s => s.id));
+        setActiveSchemeId(prev => {
+          if (prev && ids.has(prev)) return prev;
+          const stored = readStoredSchemeId();
+          if (stored && ids.has(stored)) return stored;
+          return manifest.defaultSchemeId;
+        });
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setSchemeManifest(null);
+          setSchemeManifestError(err.message || String(err));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeSchemeId) return;
+    try {
+      localStorage.setItem(COLOR_SCHEME_STORAGE_ID, activeSchemeId);
+    } catch {
+      /* ignore */
+    }
+  }, [activeSchemeId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        COLOR_SCHEME_STORAGE_MINIMAP,
+        applySchemeToMinimap ? "1" : "0"
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [applySchemeToMinimap]);
+
+  useEffect(() => {
+    if (!schemeManifest || !activeSchemeId) return;
+    const entry = schemeManifest.schemes.find(s => s.id === activeSchemeId);
+    if (!entry) {
+      setResolvedSchemeDoc(null);
+      setSchemeLoadError("Unknown color scheme.");
+      return;
+    }
+    let cancelled = false;
+    setSchemeLoadError(null);
+    loadTreemapSchemeFile(COLOR_SCHEMES_BASE, entry.file)
+      .then(scheme => {
+        if (!cancelled) {
+          setResolvedSchemeDoc(scheme);
+          setSchemeLoadError(null);
+        }
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setResolvedSchemeDoc(null);
+          setSchemeLoadError(err.message || String(err));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schemeManifest, activeSchemeId]);
 
   const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
 
@@ -394,14 +504,29 @@ export default function TreeSite({ siteData }) {
     return m;
   }, [cardIndex.searchRows]);
 
-  function sectionColor(d) {
-    const original = root.descendants().find(x => x.fullName === d.fullName) || d;
-    const top =
-      original.depth === 1
-        ? original
-        : original.ancestors().find(a => a.depth === 1);
-    return top?.data.color || "#8b79b8";
-  }
+  const sectionFillMap = useMemo(() => {
+    if (!resolvedSchemeDoc || resolvedSchemeDoc.useContentColors) return null;
+    return buildSectionFillMap(root, resolvedSchemeDoc);
+  }, [root, resolvedSchemeDoc]);
+
+  const sectionColorContent = useCallback(
+    d => sectionColorFromContent(root, d),
+    [root]
+  );
+
+  const sectionColorMain = useMemo(
+    () =>
+      sectionFillMap
+        ? createSectionColorFn(sectionFillMap, root, sectionColorContent)
+        : sectionColorContent,
+    [sectionFillMap, root, sectionColorContent]
+  );
+
+  const sectionColorMini = useMemo(
+    () =>
+      applySchemeToMinimap ? sectionColorMain : sectionColorContent,
+    [applySchemeToMinimap, sectionColorMain, sectionColorContent]
+  );
 
   const flashHighlightSlug = useCallback(slug => {
     if (highlightClearTimerRef.current)
@@ -684,7 +809,7 @@ export default function TreeSite({ siteData }) {
                   height={Math.max(0, b.h)}
                   rx="16"
                   ry="16"
-                  fill={sectionColor(d)}
+                  fill={sectionColorMain(d)}
                   opacity={rectOpacity}
                   stroke={showSearchStroke ? "#fff" : "rgba(255,255,255,.18)"}
                   strokeWidth={showSearchStroke ? 3 : 1}
@@ -823,7 +948,7 @@ export default function TreeSite({ siteData }) {
                     focus={focus}
                     recentTrail={recentTrail}
                     onSelect={goToInteractive}
-                    sectionColor={sectionColor}
+                    sectionColor={sectionColorMini}
                   />
                 </div>
               ) : null}
@@ -897,6 +1022,14 @@ export default function TreeSite({ siteData }) {
                     <SettingsPanel
                       tileMapLevel={tileMapLevel}
                       onTileMapLevelChange={setTileMapLevel}
+                      schemeManifest={schemeManifest}
+                      schemeManifestError={schemeManifestError}
+                      schemeLoadError={schemeLoadError}
+                      activeSchemeId={activeSchemeId}
+                      onActiveSchemeIdChange={setActiveSchemeId}
+                      resolvedSchemeDoc={resolvedSchemeDoc}
+                      applySchemeToMinimap={applySchemeToMinimap}
+                      onApplySchemeToMinimapChange={setApplySchemeToMinimap}
                     />
                   </div>
                 ) : null}
@@ -1195,13 +1328,98 @@ function FocusLabel({ focus, headerHeight, hasParent }) {
   );
 }
 
-function SettingsPanel({ tileMapLevel, onTileMapLevelChange }) {
+function SettingsPanel({
+  tileMapLevel,
+  onTileMapLevelChange,
+  schemeManifest,
+  schemeManifestError,
+  schemeLoadError,
+  activeSchemeId,
+  onActiveSchemeIdChange,
+  resolvedSchemeDoc,
+  applySchemeToMinimap,
+  onApplySchemeToMinimapChange
+}) {
   const preset = TILE_MAP_PRESETS[tileMapLevel];
   const datalistId = "treesite-tile-map-level-marks";
+
+  const palettePreview =
+    resolvedSchemeDoc &&
+    !resolvedSchemeDoc.useContentColors &&
+    resolvedSchemeDoc.colors?.length
+      ? resolvedSchemeDoc.colors
+      : [];
 
   return (
     <section className="treesite-settings" aria-label="Display settings">
       <div className="settings-heading">Settings</div>
+
+      <div className="settings-scheme-block">
+        <div className="settings-slider-row">
+          <strong className="settings-slider-title">Section colors</strong>
+        </div>
+        <p className="settings-slider-help">
+          Treemap tile fills only (embedded cards unchanged). Pick a palette JSON from{" "}
+          <code className="settings-inline-code">/color-schemes/</code>.
+        </p>
+        {schemeManifestError ? (
+          <p className="settings-scheme-error" role="alert">
+            Could not load color schemes: {schemeManifestError}
+          </p>
+        ) : schemeManifest ? (
+          <>
+            <label className="settings-scheme-label" htmlFor="treesite-scheme-select">
+              Color scheme
+            </label>
+            <select
+              id="treesite-scheme-select"
+              className="settings-scheme-select"
+              value={activeSchemeId || ""}
+              onChange={e => onActiveSchemeIdChange(e.target.value)}
+            >
+              {schemeManifest.schemes.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.label || s.id}
+                </option>
+              ))}
+            </select>
+            {schemeLoadError ? (
+              <p className="settings-scheme-error" role="alert">
+                {schemeLoadError}
+              </p>
+            ) : null}
+            {palettePreview.length ? (
+              <div className="settings-scheme-swatches" aria-hidden="true">
+                {palettePreview.map((c, i) => (
+                  <span
+                    key={`${c}-${i}`}
+                    className="settings-scheme-swatch"
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
+            ) : resolvedSchemeDoc?.useContentColors ? (
+              <p className="settings-slider-help settings-slider-help--tight">
+                Using colors from content JSON for treemap fills.
+              </p>
+            ) : null}
+            <label className="settings-scheme-checkbox-row">
+              <input
+                type="checkbox"
+                checked={applySchemeToMinimap}
+                onChange={e => onApplySchemeToMinimapChange(e.target.checked)}
+              />
+              <span>
+                Apply scheme to mini-map section fills (navigation trail stays gold).
+              </span>
+            </label>
+          </>
+        ) : (
+          <p className="settings-slider-help">Loading color schemes…</p>
+        )}
+      </div>
+
       <div className="settings-slider-block">
         <div className="settings-slider-row">
           <strong className="settings-slider-title">Nested tile map</strong>

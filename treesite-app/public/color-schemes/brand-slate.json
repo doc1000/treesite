@@ -1,0 +1,17 @@
+{
+  "id": "brand-slate",
+  "label": "Brand slate",
+  "colors": ["#252f3d", "#2f3c4d", "#3a4a5d", "#46586f", "#546a82"],
+  "assignments": {
+    "sec-about-knowalgo": "#252f3d",
+    "About KnowAlgo": "#252f3d",
+    "sec-articles": "#2f3c4d",
+    "Articles": "#2f3c4d",
+    "sec-contact-me": "#3a4a5d",
+    "Contact Me": "#3a4a5d",
+    "sec-projects": "#46586f",
+    "Projects": "#46586f",
+    "sec-services": "#546a82",
+    "Services": "#546a82"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemes": [
+    {
+      "id": "content-default",
+      "label": "Content defaults",
+      "file": "content-default.json"
+    },
+    {
+      "id": "brand-slate",
+      "label": "Brand slate",
+      "file": "brand-slate.json"
+    }
+  ],
+  "defaultSchemeId": "brand-slate"
+}
