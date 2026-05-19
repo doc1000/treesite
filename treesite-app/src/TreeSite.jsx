@@ -41,6 +41,11 @@ function readStoredApplySchemeToMinimap() {
 /** Top fraction of the main map reserved for the current focus title (not treemap area). */
 const FOCUS_HEADER_RATIO = 0.1;
 
+/** Must match `@media (max-width: …)` for treemap mobile layout in `treesite.css`. */
+const MOBILE_TREEMAP_MAX_WIDTH = 880;
+
+const MOBILE_TREEMAP_MEDIA = `(max-width: ${MOBILE_TREEMAP_MAX_WIDTH}px)`;
+
 /** Max index for nested tile map prominence (`input[type="range"]`). */
 const TILE_MAP_LEVEL_MAX = 4;
 
@@ -250,6 +255,16 @@ export default function TreeSite({ siteData }) {
     readStoredApplySchemeToMinimap
   );
 
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_TREEMAP_MEDIA);
+    const sync = () => setIsNarrowViewport(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
   useEffect(() => {
     const el = chartRef.current;
     if (!el) return;
@@ -448,14 +463,22 @@ export default function TreeSite({ siteData }) {
   }, [displayRoot, showImmediateChildren]);
 
   const parentHeaderOverlayNodes = useMemo(() => {
-    if (!showImmediateChildren) return [];
+    if (!showImmediateChildren || isNarrowViewport) return [];
     return displayRoot.descendants().filter(
       d =>
         d.depth === 1 &&
         d.children &&
         d.children.length > 0
     );
-  }, [displayRoot, showImmediateChildren]);
+  }, [displayRoot, showImmediateChildren, isNarrowViewport]);
+
+  const mobileFocusStripContent = useMemo(() => {
+    if (!isNarrowViewport) return null;
+    const title =
+      focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
+    const description = focus.data.abstract || focus.data.description;
+    return { title, description };
+  }, [isNarrowViewport, focus]);
 
   const soleFocusCard = useMemo(
     () =>
@@ -735,7 +758,7 @@ export default function TreeSite({ siteData }) {
       ref={treesiteRef}
     >
       <main
-        className="treesite-stage"
+        className={`treesite-stage${isNarrowViewport ? " treesite-stage--narrow" : ""}`}
         ref={chartRef}
         style={{
           "--focus-header-ratio": FOCUS_HEADER_RATIO,
@@ -750,8 +773,28 @@ export default function TreeSite({ siteData }) {
           <CrumbBackButton parent={focus.parent} onSelect={goToInteractive} />
         </nav>
 
+        {mobileFocusStripContent ? (
+          <div
+            className="treesite-mobile-focus-strip"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <p className="treesite-mobile-focus-strip-title">
+              {mobileFocusStripContent.title}
+            </p>
+            {mobileFocusStripContent.description ? (
+              <p className="treesite-mobile-focus-strip-desc">
+                {mobileFocusStripContent.description}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <svg
-          className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}`}
+          className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}${
+            isNarrowViewport ? " treesite-chart--narrow" : ""
+          }`}
           viewBox={`0 0 ${dims.width} ${dims.height}`}
         >
           {visibleNodes.map(d => {
@@ -763,6 +806,7 @@ export default function TreeSite({ siteData }) {
             };
             const isChildPreview = showImmediateChildren && d.depth > 1;
             const headerInMapOverlay =
+              !isNarrowViewport &&
               showImmediateChildren &&
               !isChildPreview &&
               Boolean(d.children?.length);
@@ -841,6 +885,9 @@ export default function TreeSite({ siteData }) {
                       box={b}
                       suppressTileLabels={isChildPreview}
                       headerInMapOverlay={headerInMapOverlay}
+                      hideDocumentPreviews={
+                        isNarrowViewport && isChildPreview
+                      }
                     />
                   )}
                 </foreignObject>
@@ -869,11 +916,13 @@ export default function TreeSite({ siteData }) {
           {parentHeaderOverlayNodes.map(d => (
             <ParentMapHeaderOverlay key={`map-hdr-${d.fullName}`} d={d} focusHeaderHeight={focusHeaderHeight} />
           ))}
-          <FocusLabel
-            focus={focus}
-            headerHeight={focusHeaderHeight}
-            hasParent={Boolean(focus.parent)}
-          />
+          {!isNarrowViewport ? (
+            <FocusLabel
+              focus={focus}
+              headerHeight={focusHeaderHeight}
+              hasParent={Boolean(focus.parent)}
+            />
+          ) : null}
         </svg>
       </main>
 

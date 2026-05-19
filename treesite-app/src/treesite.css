@@ -1337,6 +1337,75 @@ body {
   .treesite-sidebar {
     min-height: auto;
   }
+
+  /* Nested map ParentMapHeaderOverlay disabled on narrow screens; lighten tile paint */
+  .tree-node:not(.tree-node-child-preview):hover rect {
+    filter: none;
+    opacity: 0.94;
+  }
+
+  .tree-node rect {
+    filter: none;
+  }
+
+  .tree-node.tree-node-nav-target rect {
+    filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.42));
+  }
+
+  .tree-node-child-preview rect {
+    filter: none;
+  }
+
+  /* HTML focus ribbon (replacing unreliable SVG/text + foreignObject on iOS WebKit). */
+  .treesite-mobile-focus-strip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    z-index: 4;
+    box-sizing: border-box;
+    min-height: calc(100% * var(--focus-header-ratio, 0.1));
+    padding: 6px max(100px, 40vw) 6px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    pointer-events: none;
+  }
+
+  .treesite-mobile-focus-strip-title {
+    margin: 0;
+    font-size: clamp(15px, 3.9vw, 18px);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.22;
+    color: rgba(255, 255, 255, 0.94);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .treesite-mobile-focus-strip-desc {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, 0.62);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Nested thumbnails: WebKit stacks preview imgs in foreignObjects at the top */
+  .treesite-stage--narrow .tree-node-child-preview .pdf-preview,
+  .treesite-stage--narrow .tree-node-child-preview .site-preview,
+  .treesite-stage--narrow .tree-node-child-preview .tile-image,
+  .treesite-stage--narrow .tree-node-child-preview canvas.pdf-preview {
+    display: none !important;
+  }
 }
 
 /* Focused sole-tile embedded viewer (inside SVG foreignObject) */
