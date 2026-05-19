@@ -13,6 +13,66 @@ import {
 /** Top fraction of the main map reserved for the current focus title (not treemap area). */
 const FOCUS_HEADER_RATIO = 0.1;
 
+/** Max index for nested tile map prominence (`input[type="range"]`). */
+const TILE_MAP_LEVEL_MAX = 4;
+
+/**
+ * Nested tile map prominence: 0 = no nested previews (same layout as old toggle off),
+ * 4 = previous default (full nested thumbnails).
+ */
+const TILE_MAP_PRESETS = [
+  {
+    label: "Hidden",
+    tickLabel: "Off",
+    ariaDetail: "Only top-level tiles are shown.",
+    childRectOpacity: 0,
+    childFoOpacity: 1,
+    childBrightness: 1,
+    parentWithChildrenRectOpacity: 0.78,
+    leafRectOpacity: 0.52
+  },
+  {
+    label: "Subtle",
+    tickLabel: "Subtle",
+    ariaDetail: "Nested previews are subtle and dark.",
+    childRectOpacity: 0.12,
+    childFoOpacity: 0.42,
+    childBrightness: 0.55,
+    parentWithChildrenRectOpacity: 0.92,
+    leafRectOpacity: 0.52
+  },
+  {
+    label: "Balanced",
+    tickLabel: "Balanced",
+    ariaDetail: "Nested previews are toned down mid-way.",
+    childRectOpacity: 0.18,
+    childFoOpacity: 0.62,
+    childBrightness: 0.72,
+    parentWithChildrenRectOpacity: 0.86,
+    leafRectOpacity: 0.52
+  },
+  {
+    label: "Clear",
+    tickLabel: "Clear",
+    ariaDetail: "Nested previews are fairly visible.",
+    childRectOpacity: 0.22,
+    childFoOpacity: 0.82,
+    childBrightness: 0.88,
+    parentWithChildrenRectOpacity: 0.82,
+    leafRectOpacity: 0.52
+  },
+  {
+    label: "Full",
+    tickLabel: "Full",
+    ariaDetail: "Nested previews at full visibility.",
+    childRectOpacity: 0.28,
+    childFoOpacity: 1,
+    childBrightness: 1,
+    parentWithChildrenRectOpacity: 0.78,
+    leafRectOpacity: 0.52
+  }
+];
+
 const CARD_NAV_STEP_MS = 420;
 const SEARCH_RESULT_LIMIT = 14;
 
@@ -138,7 +198,9 @@ export default function TreeSite({ siteData }) {
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
   const [recentTrail, setRecentTrail] = useState([]);
-  const [showImmediateChildren, setShowImmediateChildren] = useState(true);
+  const [tileMapLevel, setTileMapLevel] = useState(TILE_MAP_LEVEL_MAX);
+  const showImmediateChildren = tileMapLevel > 0;
+  const tileMapPreset = TILE_MAP_PRESETS[tileMapLevel];
   const [highlightSlug, setHighlightSlug] = useState(null);
   const [chartNavigating, setChartNavigating] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -534,7 +596,13 @@ export default function TreeSite({ siteData }) {
       <main
         className="treesite-stage"
         ref={chartRef}
-        style={{ "--focus-header-ratio": FOCUS_HEADER_RATIO }}
+        style={{
+          "--focus-header-ratio": FOCUS_HEADER_RATIO,
+          ...(showImmediateChildren && {
+            "--child-preview-fo-opacity": String(tileMapPreset.childFoOpacity),
+            "--child-preview-brightness": String(tileMapPreset.childBrightness)
+          })
+        }}
       >
         <Breadcrumbs focus={focus} onSelect={goToInteractive} />
 
@@ -567,6 +635,12 @@ export default function TreeSite({ siteData }) {
             const showSearchStroke =
               Boolean(isMatchGlobal) || Boolean(isNavSlugHighlight);
 
+            const rectOpacity = isChildPreview
+              ? tileMapPreset.childRectOpacity
+              : d.children
+                ? tileMapPreset.parentWithChildrenRectOpacity
+                : tileMapPreset.leafRectOpacity;
+
             return (
               <g
                 key={d.fullName}
@@ -592,7 +666,7 @@ export default function TreeSite({ siteData }) {
                   rx="16"
                   ry="16"
                   fill={sectionColor(d)}
-                  opacity={isChildPreview ? 0.28 : d.children ? 0.78 : 0.52}
+                  opacity={rectOpacity}
                   stroke={showSearchStroke ? "#fff" : "rgba(255,255,255,.18)"}
                   strokeWidth={showSearchStroke ? 3 : 1}
                 />
@@ -743,8 +817,8 @@ export default function TreeSite({ siteData }) {
                 icon={<GearIcon />}
               >
                 <SettingsPanel
-                  showImmediateChildren={showImmediateChildren}
-                  onShowImmediateChildrenChange={setShowImmediateChildren}
+                  tileMapLevel={tileMapLevel}
+                  onTileMapLevelChange={setTileMapLevel}
                 />
               </SidebarIconCollapsible>
             </div>
@@ -944,21 +1018,48 @@ function FocusLabel({ focus, headerHeight }) {
   );
 }
 
-function SettingsPanel({ showImmediateChildren, onShowImmediateChildrenChange }) {
+function SettingsPanel({ tileMapLevel, onTileMapLevelChange }) {
+  const preset = TILE_MAP_PRESETS[tileMapLevel];
+  const datalistId = "treesite-tile-map-level-marks";
+
   return (
     <section className="treesite-settings" aria-label="Display settings">
       <div className="settings-heading">Settings</div>
-      <label className="settings-toggle">
-        <span>
-          <strong>Show tiles</strong>
-          <small>Reveal one nested level on the main map.</small>
-        </span>
+      <div className="settings-slider-block">
+        <div className="settings-slider-row">
+          <strong className="settings-slider-title">Nested tile map</strong>
+          <span className="settings-slider-current" aria-live="polite">
+            {preset.label}
+          </span>
+        </div>
+        <p className="settings-slider-help">
+          Drag left to hide nested thumbnails, right for full strength; middle levels keep the map but soften background previews.
+        </p>
         <input
-          type="checkbox"
-          checked={showImmediateChildren}
-          onChange={e => onShowImmediateChildrenChange(e.target.checked)}
+          type="range"
+          className="settings-slider"
+          min={0}
+          max={TILE_MAP_LEVEL_MAX}
+          step={1}
+          value={tileMapLevel}
+          onChange={e => onTileMapLevelChange(Number(e.target.value))}
+          aria-valuemin={0}
+          aria-valuemax={TILE_MAP_LEVEL_MAX}
+          aria-valuenow={tileMapLevel}
+          aria-valuetext={`${preset.label}. ${preset.ariaDetail}`}
+          list={datalistId}
         />
-      </label>
+        <datalist id={datalistId}>
+          {TILE_MAP_PRESETS.map((p, i) => (
+            <option key={`treesite-tile-map-${i}`} value={i} label={p.tickLabel} />
+          ))}
+        </datalist>
+        <div className="settings-slider-ticks" aria-hidden="true">
+          {TILE_MAP_PRESETS.map((p, i) => (
+            <span key={`treesite-tile-map-tick-${i}`}>{p.tickLabel}</span>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
