@@ -26,6 +26,7 @@
     "snapshot:websites": "node scripts/snapshot-websites.js"
   },
   "dependencies": {
+    "d3": "^7.9.0",
     "marked": "^18.0.3",
     "pdfjs-dist": "^5.7.284",
     "react": "^19.2.6",
