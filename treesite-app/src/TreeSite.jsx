@@ -16,6 +16,12 @@ const FOCUS_HEADER_RATIO = 0.1;
 const CARD_NAV_STEP_MS = 420;
 const SEARCH_RESULT_LIMIT = 14;
 
+function rootDisplayTitle(data) {
+  if (!data || typeof data !== "object") return "Home";
+  const pick = v => (typeof v === "string" && v.trim() ? v.trim() : "");
+  return pick(data.displayName) || pick(data.title) || pick(data.name) || "Home";
+}
+
 function displayWeight(d) {
   const raw = Math.max(1, d.value || 1);
   return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
@@ -132,9 +138,12 @@ export default function TreeSite({ siteData }) {
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
   const [recentTrail, setRecentTrail] = useState([]);
-  const [showImmediateChildren, setShowImmediateChildren] = useState(false);
+  const [showImmediateChildren, setShowImmediateChildren] = useState(true);
   const [highlightSlug, setHighlightSlug] = useState(null);
   const [chartNavigating, setChartNavigating] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [livingTreemapOpen, setLivingTreemapOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const el = chartRef.current;
@@ -518,65 +527,10 @@ export default function TreeSite({ siteData }) {
   );
 
   return (
-    <div className="treesite" ref={treesiteRef}>
-      <aside className="treesite-sidebar">
-        <h1>Living Sitemap</h1>
-        <p>
-          Click any tile to enter it. Use the minimap or breadcrumbs to move
-          around.
-        </p>
-
-        <input
-          className="treesite-search"
-          placeholder="Search the sitemap…"
-          aria-autocomplete="list"
-          aria-controls="treesite-search-results"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-        />
-
-        {searchMatches.length > 0 && (
-          <ul
-            id="treesite-search-results"
-            className="treesite-search-results"
-            role="listbox"
-            aria-label="Matching cards"
-          >
-            {searchMatches.map(row => (
-              <li key={row.slug}>
-                <button
-                  type="button"
-                  className="treesite-search-result"
-                  role="option"
-                  onClick={() =>
-                    navigateToCard(row.slug, {
-                      animate: true,
-                      bumpGeneration: true
-                    })
-                  }
-                >
-                  <span className="treesite-search-result-label">{row.label}</span>
-                  <span className="treesite-search-result-path">{row.sublabel}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <MiniMap
-          root={root}
-          focus={focus}
-          recentTrail={recentTrail}
-          onSelect={goToInteractive}
-          sectionColor={sectionColor}
-        />
-
-        <SettingsPanel
-          showImmediateChildren={showImmediateChildren}
-          onShowImmediateChildrenChange={setShowImmediateChildren}
-        />
-      </aside>
-
+    <div
+      className={`treesite${sidebarExpanded ? "" : " treesite--sidebar-collapsed"}`}
+      ref={treesiteRef}
+    >
       <main
         className="treesite-stage"
         ref={chartRef}
@@ -703,6 +657,203 @@ export default function TreeSite({ siteData }) {
           />
         </svg>
       </main>
+
+      <aside
+        className={`treesite-sidebar${sidebarExpanded ? "" : " treesite-sidebar--collapsed"}`}
+      >
+        <button
+          type="button"
+          className="treesite-sidebar-rail"
+          aria-expanded={sidebarExpanded}
+          aria-label={sidebarExpanded ? "Collapse side panel" : "Expand side panel"}
+          onClick={() => setSidebarExpanded(v => !v)}
+        >
+          <ChevronSideIcon direction={sidebarExpanded ? "right" : "left"} />
+        </button>
+
+        {sidebarExpanded ? (
+          <>
+            <MiniMap
+              root={root}
+              focus={focus}
+              recentTrail={recentTrail}
+              onSelect={goToInteractive}
+              sectionColor={sectionColor}
+            />
+
+            <div className="treesite-sidebar-mid">
+              <input
+                className="treesite-search"
+                placeholder="Search the website"
+                aria-autocomplete="list"
+                aria-controls="treesite-search-results"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              />
+
+              {searchMatches.length > 0 && (
+                <ul
+                  id="treesite-search-results"
+                  className="treesite-search-results"
+                  role="listbox"
+                  aria-label="Matching cards"
+                >
+                  {searchMatches.map(row => (
+                    <li key={row.slug}>
+                      <button
+                        type="button"
+                        className="treesite-search-result"
+                        role="option"
+                        onClick={() =>
+                          navigateToCard(row.slug, {
+                            animate: true,
+                            bumpGeneration: true
+                          })
+                        }
+                      >
+                        <span className="treesite-search-result-label">{row.label}</span>
+                        <span className="treesite-search-result-path">{row.sublabel}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="treesite-sidebar-footer">
+              <SidebarIconCollapsible
+                panelId="treesite-spatial-navigation-panel"
+                expanded={livingTreemapOpen}
+                onExpandedChange={setLivingTreemapOpen}
+                ariaLabel="Spatial Navigation information"
+                icon={<CompassIcon />}
+              >
+                <h2 className="treesite-footer-panel-title">Spatial Navigation</h2>
+                <p className="treesite-sidebar-intro">
+                  Click any tile to enter it. Use the minimap or breadcrumbs to move
+                  around. Never Lost.&nbsp;&nbsp;Contact me to make your own.
+                </p>
+              </SidebarIconCollapsible>
+
+              <SidebarIconCollapsible
+                panelId="treesite-settings-panel"
+                expanded={settingsOpen}
+                onExpandedChange={setSettingsOpen}
+                ariaLabel="Settings"
+                icon={<GearIcon />}
+              >
+                <SettingsPanel
+                  showImmediateChildren={showImmediateChildren}
+                  onShowImmediateChildrenChange={setShowImmediateChildren}
+                />
+              </SidebarIconCollapsible>
+            </div>
+          </>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function ChevronSideIcon({ direction }) {
+  const isLeft = direction === "left";
+  return (
+    <svg
+      className="treesite-sidebar-chevron"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d={isLeft ? "M14 6l-6 6 6 6" : "M10 6l6 6-6 6"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CompassIcon() {
+  return (
+    <svg
+      className="treesite-icon-compass"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="8.25" />
+        <circle cx="12" cy="12" r="1.2" strokeWidth="1.6" />
+        <path
+          d="M12 4.95v3.05M17.92 12h-3M12 17.92v-3M6.08 12h3"
+          strokeWidth="1.55"
+          opacity={0.9}
+        />
+        <path d="M12 6L8.85 17.95h6.3L12 6" strokeLinejoin="round" strokeLinecap="square" />
+      </g>
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg
+      className="treesite-icon-gear"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 3.9l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.84 1 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SidebarIconCollapsible({
+  panelId,
+  expanded,
+  onExpandedChange,
+  ariaLabel,
+  icon,
+  children
+}) {
+  return (
+    <div className="treesite-sidebar-footer-block">
+      <button
+        type="button"
+        className="treesite-sidebar-icon-trigger"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        aria-label={ariaLabel}
+        onClick={() => onExpandedChange(!expanded)}
+      >
+        {icon}
+      </button>
+      {expanded ? (
+        <div id={panelId} className="treesite-sidebar-footer-panel" role="region">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -773,7 +924,8 @@ function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
 }
 
 function FocusLabel({ focus, headerHeight }) {
-  const title = focus.depth === 0 ? "Home" : focus.data.name;
+  const title =
+    focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
   const description = focus.data.abstract || focus.data.description;
   const titleY = Math.max(20, headerHeight * 0.52);
   const descY = Math.max(32, headerHeight * 0.82);
@@ -798,7 +950,7 @@ function SettingsPanel({ showImmediateChildren, onShowImmediateChildrenChange })
       <div className="settings-heading">Settings</div>
       <label className="settings-toggle">
         <span>
-          <strong>Show child cards</strong>
+          <strong>Show tiles</strong>
           <small>Reveal one nested level on the main map.</small>
         </span>
         <input

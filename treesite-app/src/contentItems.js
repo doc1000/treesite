@@ -1,7 +1,8 @@
 /** Minimal tree root merged with flat JSON items from content/items. */
 export const minimalSiteRoot = {
   name: "Home",
-  description: "Full sitemap view.",
+  displayName: "Knowledge Algorithms",
+  description: "Unify data.  Evaluate models.  Visualize results.",
   children: []
 };
 
