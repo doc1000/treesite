@@ -453,6 +453,21 @@ export default function TreeSite({ siteData }) {
     return r;
   }, [siteData, dims.width, dims.height, contentHeight, showImmediateChildren, isMobile]);
 
+  /** Sidebar minimap always uses squarified layout so it stays usable when the main map is slice/stack. */
+  const minimapRoot = useMemo(() => {
+    const r = d3.hierarchy(siteData).sort(siblingSortComparator);
+    runTreemapLayout(r, dims.width, contentHeight, {
+      isMobile: false,
+      showImmediateChildren
+    });
+
+    r.each(d => {
+      d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
+    });
+
+    return r;
+  }, [siteData, dims.width, dims.height, contentHeight, showImmediateChildren]);
+
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
 
@@ -513,6 +528,13 @@ export default function TreeSite({ siteData }) {
     const description = focus.data.abstract || focus.data.description;
     return { title, description };
   }, [stackPageChrome, focus]);
+
+  const minimapFocus = useMemo(() => {
+    return (
+      minimapRoot.descendants().find(d => d.fullName === focus.fullName) ||
+      minimapRoot
+    );
+  }, [minimapRoot, focus.fullName]);
 
   const soleFocusCard = useMemo(
     () =>
@@ -1061,8 +1083,8 @@ export default function TreeSite({ siteData }) {
                   aria-label="Mini map"
                 >
                   <MiniMap
-                    root={root}
-                    focus={focus}
+                    root={minimapRoot}
+                    focus={minimapFocus}
                     recentTrail={recentTrail}
                     onSelect={goToInteractive}
                     sectionColor={sectionColorMini}
