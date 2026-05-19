@@ -920,6 +920,15 @@ body {
 .pdf-overlay,
 .preview-overlay {
   position: absolute;
+  inset: 0 0 auto 0;
+  padding: 13px 14px 44px;
+  border-radius: 16px 16px 0 0;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 12, 0.98), rgba(5, 7, 12, 0.92) 42%, transparent);
+}
+
+.pdf-tile--labels-bottom .pdf-overlay,
+.preview-tile--labels-bottom .preview-overlay {
   inset: auto 0 0;
   padding: 44px 14px 13px;
   border-radius: 0 0 16px 16px;
@@ -974,8 +983,12 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
+}
+
+.pdf-tile--labels-bottom .pdf-fallback-body {
+  justify-content: flex-end;
 }
 
 .pdf-icon {
@@ -1014,10 +1027,15 @@ body {
 }
 
 .tile-small .pdf-overlay {
-  padding: 28px 10px 10px;
+  padding: 10px 10px 28px;
 }
 
 .tile-small .preview-overlay {
+  padding: 10px 10px 28px;
+}
+
+.pdf-tile--labels-bottom.tile-small .pdf-overlay,
+.preview-tile--labels-bottom.tile-small .preview-overlay {
   padding: 28px 10px 10px;
 }
 
@@ -1054,7 +1072,35 @@ body {
   background: rgba(7, 9, 15, 0.62);
 }
 
-.treesite-crumbs button {
+.treesite-focus-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  height: calc(100% * var(--focus-header-ratio, 0.1));
+  min-height: 2.25rem;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 4px 10px;
+  pointer-events: auto;
+}
+
+.treesite-focus-back .treesite-crumb-btn {
+  opacity: 0.92;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.treesite-focus-back:hover .treesite-crumb-btn,
+.treesite-focus-back .treesite-crumb-btn:hover {
+  opacity: 1;
+}
+
+.treesite-crumb-btn {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.045);
@@ -1071,13 +1117,13 @@ body {
   transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
-.treesite-crumbs button:hover {
+.treesite-crumb-btn:hover {
   transform: translateY(-1px);
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.13);
 }
 
-.treesite-crumbs button:focus-visible {
+.treesite-crumb-btn:focus-visible {
   outline: 2px solid rgba(157, 220, 255, 0.72);
   outline-offset: 2px;
 }

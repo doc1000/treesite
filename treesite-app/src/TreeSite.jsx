@@ -605,6 +605,9 @@ export default function TreeSite({ siteData }) {
         }}
       >
         <Breadcrumbs focus={focus} onSelect={goToInteractive} />
+        <nav className="treesite-focus-back" aria-label="Go back">
+          <CrumbBackButton parent={focus.parent} onSelect={goToInteractive} />
+        </nav>
 
         <svg
           className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}`}
@@ -728,6 +731,7 @@ export default function TreeSite({ siteData }) {
           <FocusLabel
             focus={focus}
             headerHeight={focusHeaderHeight}
+            hasParent={Boolean(focus.parent)}
           />
         </svg>
       </main>
@@ -997,20 +1001,21 @@ function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
   );
 }
 
-function FocusLabel({ focus, headerHeight }) {
+function FocusLabel({ focus, headerHeight, hasParent }) {
   const title =
     focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
   const description = focus.data.abstract || focus.data.description;
+  const titleX = hasParent ? 44 : 16;
   const titleY = Math.max(20, headerHeight * 0.52);
   const descY = Math.max(32, headerHeight * 0.82);
 
   return (
     <g className="focus-label" pointerEvents="none">
-      <text x="16" y={titleY}>
+      <text x={titleX} y={titleY}>
         {title}
       </text>
       {description && headerHeight > 40 && (
-        <text className="focus-label-desc" x="16" y={descY}>
+        <text className="focus-label-desc" x={titleX} y={descY}>
           {description}
         </text>
       )}
@@ -1064,16 +1069,33 @@ function SettingsPanel({ tileMapLevel, onTileMapLevelChange }) {
   );
 }
 
+function CrumbBackButton({ parent, onSelect }) {
+  if (!parent) return null;
+  return (
+    <button
+      type="button"
+      className="treesite-crumb-btn"
+      aria-label="Go back"
+      onClick={() => onSelect(parent)}
+    >
+      ←
+    </button>
+  );
+}
+
 function Breadcrumbs({ focus, onSelect }) {
   const trail = focus.ancestors().reverse();
 
   return (
     <nav className="treesite-crumbs">
-      {focus.parent && (
-        <button onClick={() => onSelect(focus.parent)}>←</button>
-      )}
+      <CrumbBackButton parent={focus.parent} onSelect={onSelect} />
       {trail.map(d => (
-        <button key={d.fullName} onClick={() => onSelect(d)}>
+        <button
+          key={d.fullName}
+          type="button"
+          className="treesite-crumb-btn"
+          onClick={() => onSelect(d)}
+        >
           {d.depth === 0 ? "Home" : d.data.name}
         </button>
       ))}
