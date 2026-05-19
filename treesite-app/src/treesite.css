@@ -99,6 +99,47 @@ body {
   background: transparent;
 }
 
+.treesite-sidebar-icon-bar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: -4px -2px 0;
+  padding: 4px 2px 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(18, 24, 39, 0.98) 0%,
+    rgba(18, 24, 39, 0.94) 52%,
+    rgba(18, 24, 39, 0) 100%
+  );
+}
+
+.treesite-sidebar-section-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.treesite-sidebar-footer--stacked {
+  margin-top: auto;
+}
+
+.treesite-sidebar-icon-trigger--bar {
+  align-self: center;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 36px;
+  max-width: 44px;
+}
+
 .treesite-sidebar--collapsed {
   padding: 10px 6px;
   align-items: center;
@@ -189,12 +230,6 @@ body {
   flex-direction: column;
   gap: 12px;
   margin-top: auto;
-}
-
-.treesite-sidebar-section-block {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .treesite-sidebar-icon-trigger {

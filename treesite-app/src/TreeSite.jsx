@@ -767,97 +767,140 @@ export default function TreeSite({ siteData }) {
 
         {sidebarExpanded ? (
           <div className="treesite-sidebar-scroll">
-            <SidebarIconCollapsible
-              panelId="treesite-minimap-panel"
-              expanded={minimapOpen}
-              onExpandedChange={setMinimapOpen}
-              ariaLabel="Mini map"
-              icon={<WorldMapIcon />}
-            >
-              <MiniMap
-                root={root}
-                focus={focus}
-                recentTrail={recentTrail}
-                onSelect={goToInteractive}
-                sectionColor={sectionColor}
-              />
-            </SidebarIconCollapsible>
+            <div className="treesite-sidebar-icon-bar" role="toolbar" aria-label="Side panel sections">
+              <button
+                type="button"
+                className="treesite-sidebar-icon-trigger treesite-sidebar-icon-trigger--bar"
+                aria-expanded={minimapOpen}
+                aria-controls="treesite-minimap-panel"
+                aria-label="Mini map"
+                onClick={() => setMinimapOpen(v => !v)}
+              >
+                <RoadmapIcon />
+              </button>
+              <button
+                type="button"
+                className="treesite-sidebar-icon-trigger treesite-sidebar-icon-trigger--bar"
+                aria-expanded={searchOpen}
+                aria-controls="treesite-search-panel"
+                aria-label="Search"
+                onClick={() => setSearchOpen(v => !v)}
+              >
+                <QuestionMarkIcon />
+              </button>
+              <button
+                type="button"
+                className="treesite-sidebar-icon-trigger treesite-sidebar-icon-trigger--bar"
+                aria-expanded={livingTreemapOpen}
+                aria-controls="treesite-spatial-navigation-panel"
+                aria-label="Spatial Navigation information"
+                onClick={() => setLivingTreemapOpen(v => !v)}
+              >
+                <CompassIcon />
+              </button>
+              <button
+                type="button"
+                className="treesite-sidebar-icon-trigger treesite-sidebar-icon-trigger--bar"
+                aria-expanded={settingsOpen}
+                aria-controls="treesite-settings-panel"
+                aria-label="Settings"
+                onClick={() => setSettingsOpen(v => !v)}
+              >
+                <GearIcon />
+              </button>
+            </div>
 
-            <SidebarIconCollapsible
-              panelId="treesite-search-panel"
-              expanded={searchOpen}
-              onExpandedChange={setSearchOpen}
-              ariaLabel="Search"
-              icon={<QuestionMarkIcon />}
-            >
-              <div className="treesite-sidebar-mid">
-                <input
-                  ref={searchInputRef}
-                  className="treesite-search"
-                  placeholder="Search the website"
-                  aria-autocomplete="list"
-                  aria-controls="treesite-search-results"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                />
+            <div className="treesite-sidebar-section-stack">
+              {minimapOpen ? (
+                <div
+                  id="treesite-minimap-panel"
+                  className="treesite-sidebar-footer-panel"
+                  role="region"
+                  aria-label="Mini map"
+                >
+                  <MiniMap
+                    root={root}
+                    focus={focus}
+                    recentTrail={recentTrail}
+                    onSelect={goToInteractive}
+                    sectionColor={sectionColor}
+                  />
+                </div>
+              ) : null}
 
-                {searchMatches.length > 0 && (
-                  <ul
-                    id="treesite-search-results"
-                    className="treesite-search-results"
-                    role="listbox"
-                    aria-label="Matching cards"
+              {searchOpen ? (
+                <div
+                  id="treesite-search-panel"
+                  className="treesite-sidebar-footer-panel"
+                  role="region"
+                  aria-label="Search"
+                >
+                  <div className="treesite-sidebar-mid">
+                    <input
+                      ref={searchInputRef}
+                      className="treesite-search"
+                      placeholder="Search the website"
+                      aria-autocomplete="list"
+                      aria-controls="treesite-search-results"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                    />
+
+                    {searchMatches.length > 0 && (
+                      <ul
+                        id="treesite-search-results"
+                        className="treesite-search-results"
+                        role="listbox"
+                        aria-label="Matching cards"
+                      >
+                        {searchMatches.map(row => (
+                          <li key={row.slug}>
+                            <button
+                              type="button"
+                              className="treesite-search-result"
+                              role="option"
+                              onClick={() =>
+                                navigateToCard(row.slug, {
+                                  animate: true,
+                                  bumpGeneration: true
+                                })
+                              }
+                            >
+                              <span className="treesite-search-result-label">{row.label}</span>
+                              <span className="treesite-search-result-path">{row.sublabel}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="treesite-sidebar-footer treesite-sidebar-footer--stacked">
+                {livingTreemapOpen ? (
+                  <div
+                    id="treesite-spatial-navigation-panel"
+                    className="treesite-sidebar-footer-panel"
+                    role="region"
                   >
-                    {searchMatches.map(row => (
-                      <li key={row.slug}>
-                        <button
-                          type="button"
-                          className="treesite-search-result"
-                          role="option"
-                          onClick={() =>
-                            navigateToCard(row.slug, {
-                              animate: true,
-                              bumpGeneration: true
-                            })
-                          }
-                        >
-                          <span className="treesite-search-result-label">{row.label}</span>
-                          <span className="treesite-search-result-path">{row.sublabel}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                    <h2 className="treesite-footer-panel-title">Spatial Navigation</h2>
+                    <p className="treesite-sidebar-intro">
+                      Click any tile to enter it. Use the minimap or breadcrumbs to move
+                      around. Never Lost.&nbsp;&nbsp;Contact me to make your own.
+                    </p>
+                  </div>
+                ) : null}
+
+                {settingsOpen ? (
+                  <div id="treesite-settings-panel" className="treesite-sidebar-footer-panel" role="region">
+                    <SettingsPanel
+                      tileMapLevel={tileMapLevel}
+                      onTileMapLevelChange={setTileMapLevel}
+                    />
+                  </div>
+                ) : null}
               </div>
-            </SidebarIconCollapsible>
-
-            <div className="treesite-sidebar-footer">
-              <SidebarIconCollapsible
-                panelId="treesite-spatial-navigation-panel"
-                expanded={livingTreemapOpen}
-                onExpandedChange={setLivingTreemapOpen}
-                ariaLabel="Spatial Navigation information"
-                icon={<CompassIcon />}
-              >
-                <h2 className="treesite-footer-panel-title">Spatial Navigation</h2>
-                <p className="treesite-sidebar-intro">
-                  Click any tile to enter it. Use the minimap or breadcrumbs to move
-                  around. Never Lost.&nbsp;&nbsp;Contact me to make your own.
-                </p>
-              </SidebarIconCollapsible>
-
-              <SidebarIconCollapsible
-                panelId="treesite-settings-panel"
-                expanded={settingsOpen}
-                onExpandedChange={setSettingsOpen}
-                ariaLabel="Settings"
-                icon={<GearIcon />}
-              >
-                <SettingsPanel
-                  tileMapLevel={tileMapLevel}
-                  onTileMapLevelChange={setTileMapLevel}
-                />
-              </SidebarIconCollapsible>
             </div>
           </div>
         ) : (
@@ -871,7 +914,7 @@ export default function TreeSite({ siteData }) {
                 setMinimapOpen(true);
               }}
             >
-              <WorldMapIcon />
+              <RoadmapIcon />
             </button>
             <button
               type="button"
@@ -941,30 +984,6 @@ function QuestionMarkIcon() {
   return (
     <svg
       className="treesite-icon-help"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
-      <path
-        d="M9.8 9.2c0-1.21 1-2.2 2.2-2.2s2.2.99 2.2 2.2c0 1.05-.73 1.95-1.72 2.17-.43.1-.78.49-.78.93V13"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="16.85" r="1.05" fill="currentColor" />
-    </svg>
-  );
-}
-
-function WorldMapIcon() {
-  return (
-    <svg
-      className="treesite-icon-world"
       width="22"
       height="22"
       viewBox="0 0 24 24"
@@ -972,21 +991,62 @@ function WorldMapIcon() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <rect x="3.25" y="3.25" width="17.5" height="17.5" rx="2.5" stroke="currentColor" strokeWidth="1.75" />
-      <ellipse cx="12" cy="12" rx="5.75" ry="8.25" stroke="currentColor" strokeWidth="1.5" />
       <path
-        d="M3.75 12h16.5M12 3.75v16.5"
+        d="M9.35 8.85c0-1.47 1.2-2.65 2.65-2.65s2.65 1.18 2.65 2.65c0 1.28-.87 2.38-2.08 2.68-.52.13-.92.58-.92 1.12v.65"
         stroke="currentColor"
-        strokeWidth="1.35"
+        strokeWidth="2.35"
         strokeLinecap="round"
-        opacity={0.88}
+        strokeLinejoin="round"
+      />
+      <circle cx="11.95" cy="17.35" r="1.55" fill="currentColor" />
+    </svg>
+  );
+}
+
+function RoadmapIcon() {
+  return (
+    <svg
+      className="treesite-icon-roadmap"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M4.75 7.25 L11.75 6.35 L11.75 17.65 L4.75 16.75 Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
       />
       <path
-        d="M6 8.25c2.15 1.05 4 1.58 6 1.58s3.85-.53 6-1.58M6 15.75c2.15-1.05 4-1.58 6-1.58s3.85.53 6 1.58"
+        d="M11.75 6.35 L18.85 7.55 L18.85 16.45 L11.75 17.65 Z"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.75 6.35 V17.65"
         stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
-        opacity={0.72}
+        opacity={0.65}
+      />
+      <path
+        d="M6.4 13.2 Q8.2 10.8 10.2 12.4 M7.2 15.6 Q8.6 14.8 10 15.9"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.2 11.5 L15.8 10.2 M13.8 14.6 Q15.6 13.8 17.4 15.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.92}
       />
     </svg>
   );
@@ -1002,16 +1062,21 @@ function CompassIcon() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <g fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="8.25" />
-        <circle cx="12" cy="12" r="1.2" strokeWidth="1.6" />
-        <path
-          d="M12 4.95v3.05M17.92 12h-3M12 17.92v-3M6.08 12h3"
-          strokeWidth="1.55"
-          opacity={0.9}
-        />
-        <path d="M12 6L8.85 17.95h6.3L12 6" strokeLinejoin="round" strokeLinecap="square" />
-      </g>
+      <circle
+        cx="12"
+        cy="12"
+        r="8.35"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      {/* Elongated diamond pivot — aligned toward NE */}
+      <path
+        d="M13.49 10.51 L12.39 12.39 L10.51 13.49 L11.61 11.61 Z"
+        fill="currentColor"
+        opacity={0.42}
+      />
+      <path d="M12 12 L17 7 L14 10 Z" fill="currentColor" />
     </svg>
   );
 }
@@ -1040,35 +1105,6 @@ function GearIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  );
-}
-
-function SidebarIconCollapsible({
-  panelId,
-  expanded,
-  onExpandedChange,
-  ariaLabel,
-  icon,
-  children
-}) {
-  return (
-    <div className="treesite-sidebar-section-block">
-      <button
-        type="button"
-        className="treesite-sidebar-icon-trigger"
-        aria-expanded={expanded}
-        aria-controls={panelId}
-        aria-label={ariaLabel}
-        onClick={() => onExpandedChange(!expanded)}
-      >
-        {icon}
-      </button>
-      {expanded ? (
-        <div id={panelId} className="treesite-sidebar-footer-panel" role="region">
-          {children}
-        </div>
-      ) : null}
-    </div>
   );
 }
 
