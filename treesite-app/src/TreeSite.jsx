@@ -38,13 +38,15 @@ function readStoredApplySchemeToMinimap() {
   }
 }
 
-/** Top fraction of the main map reserved for the current focus title (not treemap area). */
+/** Top fraction of the main map reserved for the current focus title (not treemap area). Desktop only. */
 const FOCUS_HEADER_RATIO = 0.1;
 
-/** Must match `@media (max-width: …)` for treemap mobile layout in `treesite.css`. */
-const MOBILE_TREEMAP_MAX_WIDTH = 880;
+/** Page shell: stacked stage + in-flow chart header (below this viewport width). */
+const PAGE_STACK_MAX_WIDTH_PX = 880;
+const PAGE_STACK_MEDIA = `(max-width: ${PAGE_STACK_MAX_WIDTH_PX}px)`;
 
-const MOBILE_TREEMAP_MEDIA = `(max-width: ${MOBILE_TREEMAP_MAX_WIDTH}px)`;
+/** Treemap switches to slice/deck layout when measured chart width is below this value. */
+const MOBILE_LAYOUT_MAX_WIDTH = 700;
 
 /** Max index for nested tile map prominence (`input[type="range"]`). */
 const TILE_MAP_LEVEL_MAX = 4;
@@ -128,6 +130,58 @@ function siblingSortComparator(a, b) {
   const va = Number(a.data.value) || 1;
   if (vb !== va) return vb - va;
   return String(a.data.name || "").localeCompare(String(b.data.name || ""));
+}
+
+function leafSumWeight(isMobile, d) {
+  if (d.children) return 0;
+  return isMobile ? 1 : displayWeight(d);
+}
+
+function desktopTreemapPaddingTop(d, showImmediateChildren) {
+  if (d.depth === 0) return 0;
+  if (
+    showImmediateChildren &&
+    d.depth === 1 &&
+    d.children &&
+    d.children.length > 0
+  ) {
+    return 62;
+  }
+  return 18;
+}
+
+/**
+ * Mutates hierarchy: sets `.sum` and runs treemap partition.
+ */
+function runTreemapLayout(hierarchy, sizeW, sizeH, { isMobile, showImmediateChildren }) {
+  hierarchy.sum(d => leafSumWeight(isMobile, d));
+  const tm = d3.treemap().size([sizeW, sizeH]).round(true);
+
+  if (isMobile) {
+    tm.tile(d3.treemapSlice)
+      .paddingInner(6)
+      .paddingOuter(6)
+      .paddingTop(d => (d.children ? 32 : 0));
+  } else {
+    tm.tile(d3.treemapSquarify.ratio(1.2))
+      .paddingInner(2)
+      .paddingOuter(2)
+      .paddingTop(d => desktopTreemapPaddingTop(d, showImmediateChildren));
+  }
+
+  tm(hierarchy);
+}
+
+function isTreemapTileBoxInvalid(box) {
+  const { x, y, w, h } = box;
+  return (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(w) ||
+    !Number.isFinite(h) ||
+    w < 50 ||
+    h < 50
+  );
 }
 
 const INTERNAL_VIEWER_TYPES = new Set(["pdf", "htmlCard", "text", "section", "note", "markdown"]);
@@ -224,7 +278,7 @@ function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
 
 export default function TreeSite({ siteData }) {
   const treesiteRef = useRef(null);
-  const chartRef = useRef(null);
+  const chartWrapRef = useRef(null);
   const highlightClearTimerRef = useRef(null);
   const navigateGeneration = useRef(0);
   const focusNameRef = useRef(null);
@@ -255,18 +309,18 @@ export default function TreeSite({ siteData }) {
     readStoredApplySchemeToMinimap
   );
 
-  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [stackPageChrome, setStackPageChrome] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia(MOBILE_TREEMAP_MEDIA);
-    const sync = () => setIsNarrowViewport(mq.matches);
+    const mq = window.matchMedia(PAGE_STACK_MEDIA);
+    const sync = () => setStackPageChrome(mq.matches);
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
-    const el = chartRef.current;
+    const el = chartWrapRef.current;
     if (!el) return;
 
     const resize = () => {
@@ -363,7 +417,12 @@ export default function TreeSite({ siteData }) {
     };
   }, [schemeManifest, activeSchemeId]);
 
-  const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
+  const isMobile =
+    dims.width > 0 && dims.width < MOBILE_LAYOUT_MAX_WIDTH;
+
+  const contentHeight = stackPageChrome
+    ? dims.height
+    : dims.height * (1 - FOCUS_HEADER_RATIO);
 
   const indexHierarchy = useMemo(() => {
     const r = d3
@@ -381,68 +440,31 @@ export default function TreeSite({ siteData }) {
   const cardIndex = useMemo(() => buildCardIndex(indexHierarchy), [indexHierarchy]);
 
   const root = useMemo(() => {
-    const r = d3
-      .hierarchy(siteData)
-      .sum(displayWeight)
-      .sort(siblingSortComparator);
-
-    d3
-      .treemap()
-      .tile(d3.treemapSquarify.ratio(1.2))
-      .size([dims.width, contentHeight])
-      .paddingTop(d => {
-        if (d.depth === 0) return 0;
-        if (
-          showImmediateChildren &&
-          d.depth === 1 &&
-          d.children &&
-          d.children.length > 0
-        ) {
-          return 62;
-        }
-        return 18;
-      })
-      .paddingInner(2)
-      .paddingOuter(2)
-      .round(true)(r);
+    const r = d3.hierarchy(siteData).sort(siblingSortComparator);
+    runTreemapLayout(r, dims.width, contentHeight, {
+      isMobile,
+      showImmediateChildren
+    });
 
     r.each(d => {
       d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
     });
 
     return r;
-  }, [siteData, dims, contentHeight, showImmediateChildren]);
+  }, [siteData, dims.width, dims.height, contentHeight, showImmediateChildren, isMobile]);
 
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
 
-  const focusHeaderHeight = dims.height * FOCUS_HEADER_RATIO;
+  const treemapTopInset = stackPageChrome ? 0 : dims.height * FOCUS_HEADER_RATIO;
+  const focusHeaderHeight = treemapTopInset;
 
   const displayRoot = useMemo(() => {
-    const r = d3
-      .hierarchy(focus.data)
-      .sum(displayWeight)
-      .sort(siblingSortComparator);
-
-    d3
-      .treemap()
-      .tile(d3.treemapSquarify.ratio(1.2))
-      .size([dims.width, contentHeight])
-      .paddingTop(d => {
-        if (d.depth === 0) return 0;
-        if (
-          showImmediateChildren &&
-          d.depth === 1 &&
-          d.children &&
-          d.children.length > 0
-        ) {
-          return 62;
-        }
-        return 18;
-      })
-      .paddingInner(2)
-      .paddingOuter(2)
-      .round(true)(r);
+    const r = d3.hierarchy(focus.data).sort(siblingSortComparator);
+    runTreemapLayout(r, dims.width, contentHeight, {
+      isMobile,
+      showImmediateChildren
+    });
 
     r.each(d => {
       const names = d.ancestors().reverse().slice(1).map(x => x.data.name);
@@ -450,9 +472,21 @@ export default function TreeSite({ siteData }) {
     });
 
     return r;
-  }, [focus, dims, contentHeight, showImmediateChildren]);
+  }, [
+    focus,
+    focus.fullName,
+    dims.width,
+    dims.height,
+    contentHeight,
+    showImmediateChildren,
+    isMobile
+  ]);
 
   const visibleNodes = useMemo(() => {
+    if (isMobile) {
+      const ch = displayRoot.children || [];
+      return ch.length > 0 ? ch : [displayRoot];
+    }
     if (!showImmediateChildren) return displayRoot.children || [displayRoot];
 
     const nodes = displayRoot.descendants().filter(d => {
@@ -460,25 +494,25 @@ export default function TreeSite({ siteData }) {
     });
 
     return nodes.length > 0 ? nodes : [displayRoot];
-  }, [displayRoot, showImmediateChildren]);
+  }, [displayRoot, showImmediateChildren, isMobile]);
 
   const parentHeaderOverlayNodes = useMemo(() => {
-    if (!showImmediateChildren || isNarrowViewport) return [];
+    if (!showImmediateChildren || isMobile) return [];
     return displayRoot.descendants().filter(
       d =>
         d.depth === 1 &&
         d.children &&
         d.children.length > 0
     );
-  }, [displayRoot, showImmediateChildren, isNarrowViewport]);
+  }, [displayRoot, showImmediateChildren, isMobile]);
 
   const mobileFocusStripContent = useMemo(() => {
-    if (!isNarrowViewport) return null;
+    if (!stackPageChrome) return null;
     const title =
       focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
     const description = focus.data.abstract || focus.data.description;
     return { title, description };
-  }, [isNarrowViewport, focus]);
+  }, [stackPageChrome, focus]);
 
   const soleFocusCard = useMemo(
     () =>
@@ -758,8 +792,9 @@ export default function TreeSite({ siteData }) {
       ref={treesiteRef}
     >
       <main
-        className={`treesite-stage${isNarrowViewport ? " treesite-stage--narrow" : ""}`}
-        ref={chartRef}
+        className={`treesite-stage${stackPageChrome ? " treesite-stage--page-stack" : ""}${
+          isMobile ? " treesite-stage--mobile-deck" : ""
+        }`}
         style={{
           "--focus-header-ratio": FOCUS_HEADER_RATIO,
           ...(showImmediateChildren && {
@@ -768,45 +803,78 @@ export default function TreeSite({ siteData }) {
           })
         }}
       >
-        <Breadcrumbs focus={focus} onSelect={goToInteractive} />
-        <nav className="treesite-focus-back" aria-label="Go back">
-          <CrumbBackButton parent={focus.parent} onSelect={goToInteractive} />
-        </nav>
-
-        {mobileFocusStripContent ? (
-          <div
-            className="treesite-mobile-focus-strip"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <p className="treesite-mobile-focus-strip-title">
-              {mobileFocusStripContent.title}
-            </p>
-            {mobileFocusStripContent.description ? (
-              <p className="treesite-mobile-focus-strip-desc">
-                {mobileFocusStripContent.description}
-              </p>
+        {stackPageChrome ? (
+          <header className="treesite-mobile-header">
+            <nav className="treesite-focus-back" aria-label="Go back">
+              <CrumbBackButton parent={focus.parent} onSelect={goToInteractive} />
+            </nav>
+            {mobileFocusStripContent ? (
+              <div
+                className="treesite-mobile-focus-strip"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <p className="treesite-mobile-focus-strip-title">
+                  {mobileFocusStripContent.title}
+                </p>
+                {mobileFocusStripContent.description ? (
+                  <p className="treesite-mobile-focus-strip-desc">
+                    {mobileFocusStripContent.description}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
-          </div>
-        ) : null}
+            <Breadcrumbs
+              focus={focus}
+              onSelect={goToInteractive}
+              includeBack={false}
+            />
+          </header>
+        ) : (
+          <>
+            <Breadcrumbs focus={focus} onSelect={goToInteractive} />
+            <nav className="treesite-focus-back" aria-label="Go back">
+              <CrumbBackButton parent={focus.parent} onSelect={goToInteractive} />
+            </nav>
+          </>
+        )}
 
-        <svg
-          className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}${
-            isNarrowViewport ? " treesite-chart--narrow" : ""
-          }`}
-          viewBox={`0 0 ${dims.width} ${dims.height}`}
-        >
+        <div className="treesite-chart-wrap" ref={chartWrapRef}>
+          <svg
+            className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}${
+              isMobile ? " treesite-chart--deck" : ""
+            }`}
+            viewBox={`0 0 ${dims.width} ${dims.height}`}
+          >
           {visibleNodes.map(d => {
-            const b = {
+            const bRaw = {
               x: d.x0,
               y: d.y0 + focusHeaderHeight,
               w: d.x1 - d.x0,
               h: d.y1 - d.y0
             };
-            const isChildPreview = showImmediateChildren && d.depth > 1;
+            if (isTreemapTileBoxInvalid(bRaw)) {
+              if (import.meta.env.DEV) {
+                console.warn("[TreeSite] skip invalid tile box", {
+                  fullName: d.fullName,
+                  ...bRaw
+                });
+              }
+              return null;
+            }
+
+            const b = {
+              x: bRaw.x,
+              y: bRaw.y,
+              w: Math.max(0, bRaw.w),
+              h: Math.max(0, bRaw.h)
+            };
+
+            const isChildPreview =
+              !isMobile && showImmediateChildren && d.depth > 1;
             const headerInMapOverlay =
-              !isNarrowViewport &&
+              !isMobile &&
               showImmediateChildren &&
               !isChildPreview &&
               Boolean(d.children?.length);
@@ -851,8 +919,8 @@ export default function TreeSite({ siteData }) {
                 <rect
                   width={Math.max(0, b.w)}
                   height={Math.max(0, b.h)}
-                  rx="16"
-                  ry="16"
+                  rx={isMobile ? 12 : 16}
+                  ry={isMobile ? 12 : 16}
                   fill={sectionColorMain(d)}
                   opacity={rectOpacity}
                   stroke={showSearchStroke ? "#fff" : "rgba(255,255,255,.18)"}
@@ -883,11 +951,9 @@ export default function TreeSite({ siteData }) {
                     <TileTemplate
                       node={d.data}
                       box={b}
+                      isMobile={isMobile}
                       suppressTileLabels={isChildPreview}
                       headerInMapOverlay={headerInMapOverlay}
-                      hideDocumentPreviews={
-                        isNarrowViewport && isChildPreview
-                      }
                     />
                   )}
                 </foreignObject>
@@ -895,6 +961,7 @@ export default function TreeSite({ siteData }) {
             );
           })}
           {showImmediateChildren &&
+            !isMobile &&
             (displayRoot.children || [])
               .filter(d => d.children && d.children.length > 0)
               .map(d => (
@@ -916,14 +983,15 @@ export default function TreeSite({ siteData }) {
           {parentHeaderOverlayNodes.map(d => (
             <ParentMapHeaderOverlay key={`map-hdr-${d.fullName}`} d={d} focusHeaderHeight={focusHeaderHeight} />
           ))}
-          {!isNarrowViewport ? (
+          {!stackPageChrome ? (
             <FocusLabel
               focus={focus}
               headerHeight={focusHeaderHeight}
               hasParent={Boolean(focus.parent)}
             />
           ) : null}
-        </svg>
+          </svg>
+        </div>
       </main>
 
       <aside
@@ -1522,12 +1590,14 @@ function CrumbBackButton({ parent, onSelect }) {
   );
 }
 
-function Breadcrumbs({ focus, onSelect }) {
+function Breadcrumbs({ focus, onSelect, includeBack = true }) {
   const trail = focus.ancestors().reverse();
 
   return (
     <nav className="treesite-crumbs">
-      <CrumbBackButton parent={focus.parent} onSelect={onSelect} />
+      {includeBack ? (
+        <CrumbBackButton parent={focus.parent} onSelect={onSelect} />
+      ) : null}
       {trail.map(d => (
         <button
           key={d.fullName}

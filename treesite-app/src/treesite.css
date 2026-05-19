@@ -658,7 +658,16 @@ body {
 .treesite-stage {
   position: relative;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   --focus-header-ratio: 0.1;
+}
+
+.treesite-chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 .treesite-stage::before {
@@ -872,6 +881,72 @@ body {
   color: #fff;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   pointer-events: auto;
+}
+
+/* Mobile treemap slice stack: text-only tiles inside foreignObject */
+.tile-html.tile-mobile {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  pointer-events: none;
+}
+
+.tile-mobile__kicker {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-mobile__title {
+  margin: 0;
+  font-size: clamp(14px, 3.8vw, 17px);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
+}
+
+.tile-mobile__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.38;
+  color: rgba(255, 255, 255, 0.68);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.tile-mobile.tile-mobile--tight {
+  padding: 10px 12px;
+  gap: 4px;
+}
+
+.tile-mobile.tile-mobile--tight .tile-mobile__title {
+  font-size: 13px;
+}
+
+.tile-mobile.tile-mobile--tight .tile-mobile__desc {
+  -webkit-line-clamp: 2;
+  font-size: 11px;
+}
+
+.treesite-chart--deck {
+  display: block;
+}
+
+.treesite-stage--mobile-deck .treesite-chart-wrap {
+  min-height: min(62vh, 560px);
 }
 
 .tile-minimal {
@@ -1321,6 +1396,50 @@ body {
     min-height: 70vh;
   }
 
+  .treesite-mobile-header {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(7, 9, 15, 0.55);
+  }
+
+  .treesite-stage--page-stack .treesite-mobile-header .treesite-focus-back,
+  .treesite-stage--page-stack .treesite-mobile-header .treesite-mobile-focus-strip,
+  .treesite-stage--page-stack .treesite-mobile-header .treesite-crumbs {
+    position: static;
+    top: auto;
+    right: auto;
+    left: auto;
+    height: auto;
+    min-height: 0;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: none;
+    opacity: 1;
+    z-index: auto;
+    pointer-events: auto;
+  }
+
+  .treesite-stage--page-stack .treesite-mobile-header .treesite-crumbs {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .treesite-stage--page-stack .treesite-chart-wrap {
+    flex: 1 1 auto;
+    min-height: min(55vh, 520px);
+  }
+
   .treesite-crumbs {
     top: 0;
     right: 0;
@@ -1338,7 +1457,7 @@ body {
     min-height: auto;
   }
 
-  /* Nested map ParentMapHeaderOverlay disabled on narrow screens; lighten tile paint */
+  /* ParentMapHeaderOverlay is off when chart is slice/deck (<700px width); lighten hover */
   .tree-node:not(.tree-node-child-preview):hover rect {
     filter: none;
     opacity: 0.94;
@@ -1356,20 +1475,14 @@ body {
     filter: none;
   }
 
-  /* HTML focus ribbon (replacing unreliable SVG/text + foreignObject on iOS WebKit). */
+  /* In-flow focus title (see .treesite-mobile-header); not overlaid on treemap */
   .treesite-mobile-focus-strip {
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    z-index: 4;
     box-sizing: border-box;
-    min-height: calc(100% * var(--focus-header-ratio, 0.1));
-    padding: 6px max(100px, 40vw) 6px 44px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 2px;
+    min-width: 0;
     pointer-events: none;
   }
 
@@ -1399,13 +1512,6 @@ body {
     -webkit-box-orient: vertical;
   }
 
-  /* Nested thumbnails: WebKit stacks preview imgs in foreignObjects at the top */
-  .treesite-stage--narrow .tree-node-child-preview .pdf-preview,
-  .treesite-stage--narrow .tree-node-child-preview .site-preview,
-  .treesite-stage--narrow .tree-node-child-preview .tile-image,
-  .treesite-stage--narrow .tree-node-child-preview canvas.pdf-preview {
-    display: none !important;
-  }
 }
 
 /* Focused sole-tile embedded viewer (inside SVG foreignObject) */

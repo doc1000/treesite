@@ -1,15 +1,63 @@
 import { useEffect, useRef, useState } from "react";
 
+function deckTypeLabel(node) {
+  if (!node || typeof node !== "object") return "Card";
+  if (node.template === "schedule") return "Schedule";
+  if (node.template === "contact") return "Contact";
+  if (node.type === "pdf" || node.pdf) return "PDF";
+  if (node.type === "htmlCard") return "HTML";
+  if (node.type === "website") return "Site";
+  if (node.type === "section") return "Section";
+  return "Card";
+}
+
+export function MobileTileContent({ node, box }) {
+  const title = node.title || node.name || "Untitled";
+  const rawDesc = node.abstract || node.description;
+  let descShort =
+    typeof rawDesc === "string" ? rawDesc.replace(/\s+/g, " ").trim() : "";
+  if (descShort.length > 220) descShort = `${descShort.slice(0, 217)}…`;
+
+  const kickerPick =
+    (typeof node.kicker === "string" && node.kicker.trim()) ||
+    (typeof node.source === "string" &&
+      node.source.trim() &&
+      !node.source.startsWith("/")
+      ? node.source.trim()
+      : "") ||
+    (typeof node.section === "string" && node.section.trim()) ||
+    deckTypeLabel(node);
+
+  const tight = box.h < 120;
+
+  return (
+    <div
+      className={`tile-html tile-mobile${tight ? " tile-mobile--tight" : ""}`}
+      xmlns="http://www.w3.org/1999/xhtml"
+    >
+      {kickerPick ? (
+        <div className="tile-mobile__kicker">{kickerPick}</div>
+      ) : null}
+      <h3 className="tile-mobile__title">{title}</h3>
+      {descShort ? (
+        <p className="tile-mobile__desc">{descShort}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function TileTemplate({
   node,
   box,
   labelPlacement = "top",
   suppressTileLabels = false,
-  /** Title/kicker/description drawn in TreeSite on top of child previews */
   headerInMapOverlay = false,
-  /** Narrow viewport: skip PDF/site preview thumbnails (avoids WebKit foreignObject stacking). */
-  hideDocumentPreviews = false
+  isMobile = false
 }) {
+  if (isMobile) {
+    return <MobileTileContent node={node} box={box} />;
+  }
+
   const labelsAtBottom = labelPlacement === "bottom";
   const small = box.w < 170 || box.h < 110;
   const hasChildren = Boolean(node.children?.length);
@@ -32,7 +80,6 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
-        hideDocumentPreviews={hideDocumentPreviews}
       />
     );
   }
@@ -45,7 +92,6 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
-        hideDocumentPreviews={hideDocumentPreviews}
       />
     );
   }
@@ -59,7 +105,6 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
-        hideDocumentPreviews={hideDocumentPreviews}
       />
     );
   }
@@ -74,7 +119,6 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
-        hideDocumentPreviews={hideDocumentPreviews}
       />
     );
   }
@@ -90,7 +134,6 @@ export function TileTemplate({
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
         variant={node.type === "htmlCard" ? "htmlCard" : "website"}
-        hideDocumentPreviews={hideDocumentPreviews}
       />
     );
   }
@@ -118,7 +161,7 @@ export function TileTemplate({
 
   const mediaBlocks = (
     <>
-      {node.image && !hideDocumentPreviews && (
+      {node.image && (
         <img className="tile-image" src={node.image} alt="" />
       )}
 
@@ -153,9 +196,7 @@ export function TileTemplate({
     ) : null;
 
   if (suppressTileLabels || headerInMapOverlay) {
-    const hasVisualMedia = Boolean(
-      (!hideDocumentPreviews && node.image) || node.embed || node.html
-    );
+    const hasVisualMedia = Boolean(node.image || node.embed || node.html);
     if (!hasVisualMedia) {
       return (
         <div
@@ -230,8 +271,7 @@ function PdfTile({
   small,
   labelsAtBottom,
   suppressTileLabels,
-  headerInMapOverlay,
-  hideDocumentPreviews = false
+  headerInMapOverlay
 }) {
   const canvasRef = useRef(null);
   const tileRef = useRef(null);
@@ -241,7 +281,6 @@ function PdfTile({
   const links = node.links || (pdfUrl ? [{ label: "Open PDF", href: pdfUrl }] : []);
 
   useEffect(() => {
-    if (hideDocumentPreviews) return;
     const tile = tileRef.current;
     if (!tile || node.previewImage) return;
 
@@ -257,10 +296,9 @@ function PdfTile({
 
     observer.observe(tile);
     return () => observer.disconnect();
-  }, [hideDocumentPreviews, node.previewImage]);
+  }, [node.previewImage]);
 
   useEffect(() => {
-    if (hideDocumentPreviews) return;
     if (!isVisible || node.previewImage || !pdfUrl || !canvasRef.current) return;
 
     let cancelled = false;
@@ -305,21 +343,10 @@ function PdfTile({
       cancelled = true;
       renderTask?.cancel();
     };
-  }, [hideDocumentPreviews, isVisible, node.previewImage, pdfUrl]);
+  }, [isVisible, node.previewImage, pdfUrl]);
 
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
-
-  if (hideDocumentPreviews && visualOnly) {
-    return (
-      <div
-        className="tile-html tile-child-preview-hull"
-        aria-hidden="true"
-      />
-    );
-  }
-
-  const showPdfThumbnail = !hideDocumentPreviews;
 
   return (
     <div
@@ -340,14 +367,10 @@ function PdfTile({
         )
       ) : (
         <>
-          {showPdfThumbnail ? (
-            node.previewImage ? (
-              <img className="pdf-preview" src={node.previewImage} alt="" loading="lazy" />
-            ) : (
-              <canvas ref={canvasRef} className="pdf-preview" aria-hidden="true" />
-            )
+          {node.previewImage ? (
+            <img className="pdf-preview" src={node.previewImage} alt="" loading="lazy" />
           ) : (
-            <div className="pdf-preview pdf-preview--empty" aria-hidden="true" />
+            <canvas ref={canvasRef} className="pdf-preview" aria-hidden="true" />
           )}
 
           {!hideTextChrome && (
@@ -381,7 +404,6 @@ function WebsiteTile({
   labelsAtBottom,
   suppressTileLabels,
   headerInMapOverlay,
-  hideDocumentPreviews = false,
   variant = "website"
 }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -390,21 +412,11 @@ function WebsiteTile({
   const links =
     node.links ||
     (openHref ? [{ label: defaultLinkLabel, href: openHref }] : []);
-  const hasLocalPreview =
-    !hideDocumentPreviews && node.previewImage?.startsWith("/");
+  const hasLocalPreview = node.previewImage?.startsWith("/");
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
   const fallbackKicker =
     variant === "htmlCard" ? "HTML" : node.source || "Website";
-
-  if (hideDocumentPreviews && visualOnly) {
-    return (
-      <div
-        className="tile-html tile-child-preview-hull"
-        aria-hidden="true"
-      />
-    );
-  }
 
   if (!hasLocalPreview || imageFailed) {
     return (
