@@ -16,9 +16,12 @@ const FOCUS_HEADER_RATIO = 0.1;
 /** Max index for nested tile map prominence (`input[type="range"]`). */
 const TILE_MAP_LEVEL_MAX = 4;
 
+/** Default prominence level (`TILE_MAP_PRESETS` index): Balanced. */
+const TILE_MAP_LEVEL_DEFAULT = 2;
+
 /**
  * Nested tile map prominence: 0 = no nested previews (same layout as old toggle off),
- * 4 = previous default (full nested thumbnails).
+ * 4 = full nested thumbnails (previous toggle-on strength).
  */
 const TILE_MAP_PRESETS = [
   {
@@ -34,31 +37,31 @@ const TILE_MAP_PRESETS = [
   {
     label: "Subtle",
     tickLabel: "Subtle",
-    ariaDetail: "Nested previews are subtle and dark.",
-    childRectOpacity: 0.12,
-    childFoOpacity: 0.42,
-    childBrightness: 0.55,
-    parentWithChildrenRectOpacity: 0.92,
+    ariaDetail: "Nested previews are softer but easier to read.",
+    childRectOpacity: 0.17,
+    childFoOpacity: 0.58,
+    childBrightness: 0.68,
+    parentWithChildrenRectOpacity: 0.88,
     leafRectOpacity: 0.52
   },
   {
     label: "Balanced",
     tickLabel: "Balanced",
-    ariaDetail: "Nested previews are toned down mid-way.",
-    childRectOpacity: 0.18,
-    childFoOpacity: 0.62,
-    childBrightness: 0.72,
-    parentWithChildrenRectOpacity: 0.86,
+    ariaDetail: "Nested previews are visible with mild background emphasis.",
+    childRectOpacity: 0.23,
+    childFoOpacity: 0.78,
+    childBrightness: 0.84,
+    parentWithChildrenRectOpacity: 0.805,
     leafRectOpacity: 0.52
   },
   {
     label: "Clear",
     tickLabel: "Clear",
-    ariaDetail: "Nested previews are fairly visible.",
-    childRectOpacity: 0.22,
-    childFoOpacity: 0.82,
-    childBrightness: 0.88,
-    parentWithChildrenRectOpacity: 0.82,
+    ariaDetail: "Nested previews are nearly as strong as full.",
+    childRectOpacity: 0.26,
+    childFoOpacity: 0.94,
+    childBrightness: 0.94,
+    parentWithChildrenRectOpacity: 0.785,
     leafRectOpacity: 0.52
   },
   {
@@ -193,12 +196,14 @@ export default function TreeSite({ siteData }) {
   const navigateGeneration = useRef(0);
   const focusNameRef = useRef(null);
   const navigateCardRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const pendingSearchFocusRef = useRef(false);
 
   const [dims, setDims] = useState({ width: 1200, height: 800 });
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
   const [recentTrail, setRecentTrail] = useState([]);
-  const [tileMapLevel, setTileMapLevel] = useState(TILE_MAP_LEVEL_MAX);
+  const [tileMapLevel, setTileMapLevel] = useState(TILE_MAP_LEVEL_DEFAULT);
   const showImmediateChildren = tileMapLevel > 0;
   const tileMapPreset = TILE_MAP_PRESETS[tileMapLevel];
   const [highlightSlug, setHighlightSlug] = useState(null);
@@ -206,6 +211,8 @@ export default function TreeSite({ siteData }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [livingTreemapOpen, setLivingTreemapOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [minimapOpen, setMinimapOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(true);
 
   useEffect(() => {
     const el = chartRef.current;
@@ -221,6 +228,15 @@ export default function TreeSite({ siteData }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!sidebarExpanded || !searchOpen || !pendingSearchFocusRef.current) return;
+    pendingSearchFocusRef.current = false;
+    const id = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [sidebarExpanded, searchOpen]);
 
   const contentHeight = dims.height * (1 - FOCUS_HEADER_RATIO);
 
@@ -750,53 +766,70 @@ export default function TreeSite({ siteData }) {
         </button>
 
         {sidebarExpanded ? (
-          <>
-            <MiniMap
-              root={root}
-              focus={focus}
-              recentTrail={recentTrail}
-              onSelect={goToInteractive}
-              sectionColor={sectionColor}
-            />
-
-            <div className="treesite-sidebar-mid">
-              <input
-                className="treesite-search"
-                placeholder="Search the website"
-                aria-autocomplete="list"
-                aria-controls="treesite-search-results"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
+          <div className="treesite-sidebar-scroll">
+            <SidebarIconCollapsible
+              panelId="treesite-minimap-panel"
+              expanded={minimapOpen}
+              onExpandedChange={setMinimapOpen}
+              ariaLabel="Mini map"
+              icon={<WorldMapIcon />}
+            >
+              <MiniMap
+                root={root}
+                focus={focus}
+                recentTrail={recentTrail}
+                onSelect={goToInteractive}
+                sectionColor={sectionColor}
               />
+            </SidebarIconCollapsible>
 
-              {searchMatches.length > 0 && (
-                <ul
-                  id="treesite-search-results"
-                  className="treesite-search-results"
-                  role="listbox"
-                  aria-label="Matching cards"
-                >
-                  {searchMatches.map(row => (
-                    <li key={row.slug}>
-                      <button
-                        type="button"
-                        className="treesite-search-result"
-                        role="option"
-                        onClick={() =>
-                          navigateToCard(row.slug, {
-                            animate: true,
-                            bumpGeneration: true
-                          })
-                        }
-                      >
-                        <span className="treesite-search-result-label">{row.label}</span>
-                        <span className="treesite-search-result-path">{row.sublabel}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <SidebarIconCollapsible
+              panelId="treesite-search-panel"
+              expanded={searchOpen}
+              onExpandedChange={setSearchOpen}
+              ariaLabel="Search"
+              icon={<QuestionMarkIcon />}
+            >
+              <div className="treesite-sidebar-mid">
+                <input
+                  ref={searchInputRef}
+                  className="treesite-search"
+                  placeholder="Search the website"
+                  aria-autocomplete="list"
+                  aria-controls="treesite-search-results"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                />
+
+                {searchMatches.length > 0 && (
+                  <ul
+                    id="treesite-search-results"
+                    className="treesite-search-results"
+                    role="listbox"
+                    aria-label="Matching cards"
+                  >
+                    {searchMatches.map(row => (
+                      <li key={row.slug}>
+                        <button
+                          type="button"
+                          className="treesite-search-result"
+                          role="option"
+                          onClick={() =>
+                            navigateToCard(row.slug, {
+                              animate: true,
+                              bumpGeneration: true
+                            })
+                          }
+                        >
+                          <span className="treesite-search-result-label">{row.label}</span>
+                          <span className="treesite-search-result-path">{row.sublabel}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </SidebarIconCollapsible>
 
             <div className="treesite-sidebar-footer">
               <SidebarIconCollapsible
@@ -826,8 +859,56 @@ export default function TreeSite({ siteData }) {
                 />
               </SidebarIconCollapsible>
             </div>
-          </>
-        ) : null}
+          </div>
+        ) : (
+          <div className="treesite-sidebar-collapsed-tools">
+            <button
+              type="button"
+              className="treesite-sidebar-icon-trigger"
+              aria-label="Expand sidebar and show mini map"
+              onClick={() => {
+                setSidebarExpanded(true);
+                setMinimapOpen(true);
+              }}
+            >
+              <WorldMapIcon />
+            </button>
+            <button
+              type="button"
+              className="treesite-sidebar-icon-trigger"
+              aria-label="Expand sidebar and show search"
+              onClick={() => {
+                pendingSearchFocusRef.current = true;
+                setSidebarExpanded(true);
+                setSearchOpen(true);
+              }}
+            >
+              <QuestionMarkIcon />
+            </button>
+            <button
+              type="button"
+              className="treesite-sidebar-icon-trigger"
+              aria-label="Expand sidebar and show spatial navigation help"
+              onClick={() => {
+                setSidebarExpanded(true);
+                setLivingTreemapOpen(true);
+              }}
+            >
+              <CompassIcon />
+            </button>
+            <button
+              type="button"
+              className="treesite-sidebar-icon-trigger"
+              aria-label="Expand sidebar and show settings"
+              onClick={() => {
+                setSidebarExpanded(true);
+                setSettingsOpen(true);
+              }}
+            >
+              <GearIcon />
+            </button>
+          </div>
+        )}
       </aside>
     </div>
   );
@@ -851,6 +932,61 @@ function ChevronSideIcon({ direction }) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function QuestionMarkIcon() {
+  return (
+    <svg
+      className="treesite-icon-help"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M9.8 9.2c0-1.21 1-2.2 2.2-2.2s2.2.99 2.2 2.2c0 1.05-.73 1.95-1.72 2.17-.43.1-.78.49-.78.93V13"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="16.85" r="1.05" fill="currentColor" />
+    </svg>
+  );
+}
+
+function WorldMapIcon() {
+  return (
+    <svg
+      className="treesite-icon-world"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect x="3.25" y="3.25" width="17.5" height="17.5" rx="2.5" stroke="currentColor" strokeWidth="1.75" />
+      <ellipse cx="12" cy="12" rx="5.75" ry="8.25" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M3.75 12h16.5M12 3.75v16.5"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        opacity={0.88}
+      />
+      <path
+        d="M6 8.25c2.15 1.05 4 1.58 6 1.58s3.85-.53 6-1.58M6 15.75c2.15-1.05 4-1.58 6-1.58s3.85.53 6 1.58"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        opacity={0.72}
       />
     </svg>
   );
@@ -916,7 +1052,7 @@ function SidebarIconCollapsible({
   children
 }) {
   return (
-    <div className="treesite-sidebar-footer-block">
+    <div className="treesite-sidebar-section-block">
       <button
         type="button"
         className="treesite-sidebar-icon-trigger"

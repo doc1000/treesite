@@ -66,7 +66,7 @@ body {
 
 .treesite-sidebar {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -74,9 +74,63 @@ body {
   min-height: 0;
 }
 
+.treesite-sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(154, 168, 199, 0.35) transparent;
+}
+
+.treesite-sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.treesite-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(154, 168, 199, 0.35);
+  border-radius: 999px;
+}
+
+.treesite-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .treesite-sidebar--collapsed {
   padding: 10px 6px;
   align-items: center;
+}
+
+.treesite-sidebar-collapsed-tools {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 28px 0 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(154, 168, 199, 0.35) transparent;
+}
+
+.treesite-sidebar-collapsed-tools::-webkit-scrollbar {
+  width: 6px;
+}
+
+.treesite-sidebar-collapsed-tools::-webkit-scrollbar-thumb {
+  background: rgba(154, 168, 199, 0.35);
+  border-radius: 999px;
+}
+
+.treesite-sidebar-collapsed-tools .treesite-sidebar-icon-trigger {
+  align-self: center;
 }
 
 .treesite-sidebar-rail {
@@ -137,7 +191,7 @@ body {
   margin-top: auto;
 }
 
-.treesite-sidebar-footer-block {
+.treesite-sidebar-section-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
