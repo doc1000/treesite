@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="KnowAlgo">
+  <defs>
+    <linearGradient id="navy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#243a5c"/>
+      <stop offset="100%" stop-color="#152238"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffb347"/>
+      <stop offset="50%" stop-color="#ff8a1f"/>
+      <stop offset="100%" stop-color="#ff6a00"/>
+    </linearGradient>
+    <filter id="orangeGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer quadrant arcs -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 50 7 A 43 43 0 0 0 7 50" stroke="url(#orange)" stroke-width="6.5" filter="url(#orangeGlow)"/>
+    <path d="M 50 93 A 43 43 0 0 0 93 50" stroke="url(#orange)" stroke-width="6.5" filter="url(#orangeGlow)"/>
+    <path d="M 93 50 A 43 43 0 0 0 50 7" stroke="#8a95a8" stroke-width="6.5"/>
+    <path d="M 7 50 A 43 43 0 0 0 50 93" stroke="#8a95a8" stroke-width="6.5"/>
+  </g>
+
+  <!-- Main disc -->
+  <circle cx="50" cy="50" r="36" fill="url(#navy)"/>
+
+  <!-- Inner reference ring -->
+  <circle cx="50" cy="50" r="24" fill="none" stroke="#d4dae3" stroke-width="0.9" opacity="0.9"/>
+
+  <!-- Diagonal ticks -->
+  <g stroke="#9aa3b2" stroke-width="1.1" stroke-linecap="round">
+    <line x1="61" y1="39" x2="64" y2="36"/>
+    <line x1="61" y1="61" x2="64" y2="64"/>
+    <line x1="39" y1="61" x2="36" y2="64"/>
+    <line x1="39" y1="39" x2="36" y2="36"/>
+  </g>
+
+  <!-- Crosshair glow layer -->
+  <g stroke="#ff8a1f" stroke-width="3.2" stroke-linecap="round" opacity="0.35">
+    <line x1="50" y1="12" x2="50" y2="88"/>
+    <line x1="12" y1="50" x2="88" y2="50"/>
+  </g>
+
+  <!-- Crosshair -->
+  <g stroke="url(#orange)" stroke-width="1.6" stroke-linecap="round" filter="url(#orangeGlow)">
+    <line x1="50" y1="12" x2="50" y2="88"/>
+    <line x1="12" y1="50" x2="88" y2="50"/>
+  </g>
+
+  <!-- Center reticle -->
+  <circle cx="50" cy="50" r="4.2" fill="none" stroke="#ff9a40" stroke-width="1.3"/>
+  <g stroke="#7a8494" stroke-width="0.7" stroke-linecap="round" opacity="0.85">
+    <line x1="47.2" y1="47.2" x2="52.8" y2="52.8"/>
+    <line x1="52.8" y1="47.2" x2="47.2" y2="52.8"/>
+  </g>
+</svg>
