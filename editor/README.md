@@ -72,6 +72,25 @@ python -m pytest editor/tests -v
 npm run test:all
 ```
 
+## Hosted HTTP API (Push 4)
+
+Start the FastAPI server from the repo root:
+
+```bash
+make serve:api
+# or: cd editor && uvicorn treesite_editor.api.main:app --reload --port 8000
+```
+
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health: `GET /health`
+- Artifacts are stored under `artifacts/` (override with `TREESITE_ARTIFACTS_BASE_DIR`)
+- Optional write auth: set `TREESITE_API_KEY` and send `X-API-Key` on `POST`/`PATCH`/`DELETE`
+- OpenAPI export: `make api-schema` → `docs/api-schema.json`
+
+```bash
+make test:api
+```
+
 ## Public API
 
 - `treesite_editor.tools` — one function per Node tool (typed returns)
