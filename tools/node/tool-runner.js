@@ -201,7 +201,7 @@ export async function loadArtifact(artifactPath) {
   return meta;
 }
 
-export function validateItemSchema(item, filename = "item") {
+export function itemSchemaErrors(item, filename = "item") {
   const errors = [];
   for (const field of ["id", "name", "slug", "section", "type"]) {
     if (typeof item[field] !== "string" || !item[field].trim()) {
@@ -217,6 +217,11 @@ export function validateItemSchema(item, filename = "item") {
     errors.push(`${filename}: unsupported type "${item.type}"`);
   }
 
+  return errors;
+}
+
+export function validateItemSchema(item, filename = "item") {
+  const errors = itemSchemaErrors(item, filename);
   if (errors.length) {
     fail(2, ErrorCodes.ARTIFACT_MALFORMED, "Item failed schema validation.", { errors });
   }
