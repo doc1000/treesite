@@ -1,33 +1,33 @@
 # Scaffold migration (generated sections + Home root)
 
-This document describes how navigational folders (“sections”) moved from hard-coded [`treesite-app/src/siteData.js`](treesite-app/src/siteData.js) into flat JSON under [`treesite-app/content/items/`](treesite-app/content/items), how the merged tree is built, and which CLI pathways operate on it.
+This document describes how navigational folders (“sections”) moved from hard-coded bundled site trees into flat JSON under [`handler/content/items/`](handler/content/items), how the merged tree is built, and which CLI pathways operate on it.
 
 ## Authoritative vs derivative
 
 | Layer | Role |
 |-------|------|
 | **`content/items/*.json`** | Authoritative records (cards + structural `section` rows). |
-| **`treesite-app/src/generatedContentItems.js`** | Generated bundle from JSON (do not hand-edit). |
-| **Merged tree** from [`applyContentItems`](treesite-app/src/contentItems.js) | Derivative runtime structure consumed by [`TreeSite`](treesite-app/src/TreeSite.jsx). |
+| **`handler/src/generatedContentItems.js`** | Generated bundle from JSON (do not hand-edit). |
+| **Merged tree** from [`applyContentItems`](handler/src/contentItems.js) | Derivative structure (exported as artifact `manifest.json` for the handler). |
 | **`npm run inspect:tree`** output | Derivative snapshot for debugging and validation—never edited as source of truth. |
 
-The visual root node is **`Home`** ([`minimalSiteRoot`](treesite-app/src/contentItems.js)). Items attached directly under Home use **`section: "Home"`** (the leading segment matching `Home` is stripped when resolving paths).
+The visual root node is **`Home`** ([`minimalSiteRoot`](handler/src/contentItems.js)). Items attached directly under Home use **`section: "Home"`** (the leading segment matching `Home` is stripped when resolving paths).
 
 ## Content type: `section`
 
 Structural folders use **`type: "section"`** with required **`slug`**, **`name`**, **`section`** (parent path), optional **`description`**, **`value`** (ordering + weight), **`color`**, **`hidden`**. No URL fields.
 
-Sibling order at **all depths** follows **`value`** descending, then **`name`** (see [`compareSiblingOrder`](treesite-app/src/contentItems.js) and [`TreeSite.jsx`](treesite-app/src/TreeSite.jsx) `siblingSortComparator`). There is **no** separate `rootOrder` array.
+Sibling order at **all depths** follows **`value`** descending, then **`name`** (see [`compareSiblingOrder`](handler/src/contentItems.js) and [`TreeSite.jsx`](handler/src/TreeSite.jsx) `siblingSortComparator`). There is **no** separate `rootOrder` array.
 
 ## Merge algorithm (`applyContentItems`)
 
-1. Clone [`minimalSiteRoot`](treesite-app/src/contentItems.js).
+1. Clone [`minimalSiteRoot`](handler/src/contentItems.js).
 2. Insert all **`section`** rows first, sorted by parent-path depth, then `value`, then name.
 3. Insert leaf rows (PDFs, websites, text, etc.).
 4. When placing a section on an existing stub with the same **`name`** or **`slug`**, **preserve existing `children`** so nested content is kept.
 5. Recursively sort each node’s **`children`** array by `value` then name.
 
-Folder tiles render via [`MinimalTile`](treesite-app/src/tileTemplates.jsx) when **`node.type === "section"`**.
+Folder tiles render via [`MinimalTile`](handler/src/tileTemplates.jsx) when **`node.type === "section"`**.
 
 ## CLI pathways
 
@@ -43,16 +43,16 @@ Folder tiles render via [`MinimalTile`](treesite-app/src/tileTemplates.jsx) when
 
 ## Risks
 
-- **`section`** paths are strings; subtree moves rely on boundary-safe prefix replacement (`move-subtree.js`, [`tree-path-utils.js`](treesite-app/scripts/tree-path-utils.js)).
+- **`section`** paths are strings; subtree moves rely on boundary-safe prefix replacement (`move-subtree.js`, [`tree-path-utils.js`](tools/node/tree-path-utils.js)).
 - **`value`** simultaneously affects treemap sibling sort and authored ordering—adjust deliberately.
 - If a **`section`** folder **`name`** was updated earlier **without** cascading **`section`** paths, merge **`oldMat`** follows **today’s `name`** while descendants may still use an **older path prefix**, so **`rename:card`** might not fix orphans automatically. Recover by briefly **`edit:card`** back to the **old title**, then **`rename:card`** again with the desired **`--name`**, or bulk-edit **`section`** strings under **`content/items/`**.
 
 ## Related files
 
-- [`treesite-app/src/contentItems.js`](treesite-app/src/contentItems.js) — merge + `minimalSiteRoot`
-- [`treesite-app/scripts/migrate-scaffold-from-site-data.js`](treesite-app/scripts/migrate-scaffold-from-site-data.js)
-- [`treesite-app/scripts/inspect-tree.js`](treesite-app/scripts/inspect-tree.js)
-- [`treesite-app/scripts/move-subtree.js`](treesite-app/scripts/move-subtree.js)
-- [`treesite-app/scripts/tree-path-utils.js`](treesite-app/scripts/tree-path-utils.js) — shared **`rewriteSectionPath`** / **`buildSlugMaterializedMap`**
-- [`treesite-app/scripts/rename-card.js`](treesite-app/scripts/rename-card.js)
-- [`treesite-app/scripts/content-utils.js`](treesite-app/scripts/content-utils.js) — validation (`section` type)
+- [`handler/src/contentItems.js`](handler/src/contentItems.js) — merge + `minimalSiteRoot`
+- [`tools/node/migrate-scaffold-from-site-data.js`](tools/node/migrate-scaffold-from-site-data.js)
+- [`tools/node/inspect-tree.js`](tools/node/inspect-tree.js)
+- [`tools/node/move-subtree.js`](tools/node/move-subtree.js)
+- [`tools/node/tree-path-utils.js`](tools/node/tree-path-utils.js) — shared **`rewriteSectionPath`** / **`buildSlugMaterializedMap`**
+- [`tools/node/rename-card.js`](tools/node/rename-card.js)
+- [`tools/node/content-utils.js`](tools/node/content-utils.js) — validation (`section` type)

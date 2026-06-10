@@ -7,7 +7,7 @@ import {
   collectHiddenSectionSubtreePrefixes,
   isContentItemExcludedFromSite,
   minimalSiteRoot
-} from "../src/contentItems.js";
+} from "../../handler/src/contentItems.js";
 import { readContentItems } from "./content-utils.js";
 import { buildSlugMaterializedMap } from "./tree-path-utils.js";
 

@@ -6,6 +6,19 @@ The project is not intended to behave like a traditional website menu or sitemap
 
 Users should feel like they are “moving through” a living information space rather than clicking through pages.
 
+## Repository layout (Push 1)
+
+| Path | Role |
+|------|------|
+| `handler/` | Content-agnostic React/Vite viewer (loads artifacts at runtime) |
+| `artifacts/example/` | Default generic artifact bundled in the repo |
+| `artifacts/knowalgo/` | Exported KnowAlgo site bundle |
+| `tools/node/` | Node intake/export scripts (JSON tool contract in Push 2) |
+| `schemas/` | JSON Schema for artifact bundles |
+| `docs/artifact-spec.md` | Human-readable artifact format |
+
+Run the handler: `cd handler && npm install && npm run dev` — see [`handler/README.md`](handler/README.md).
+
 Core Design Philosophy
 
 The visual style should feel:
@@ -148,16 +161,15 @@ Content should be added through repeatable intake scripts rather than one-off ag
 The intended content structure is:
 
 ```txt
-treesite-app/src/siteData.js                  // base tree plus generated item merge
-treesite-app/src/generatedContentItems.js     // generated from item JSON
-treesite-app/content/items/*.json             // one file per added item
-treesite-app/scripts/add-pdf.js
-treesite-app/scripts/add-website.js
-treesite-app/scripts/add-card.js
-treesite-app/scripts/edit-card.js
-treesite-app/scripts/move-card.js
-treesite-app/scripts/move-subtree.js
-treesite-app/scripts/inspect-tree.js
+handler/content/items/*.json              // one file per added item (legacy KnowAlgo source)
+artifacts/knowalgo/                         // exported portable site bundle
+tools/node/add-pdf.js
+tools/node/add-website.js
+tools/node/add-card.js
+tools/node/edit-card.js
+tools/node/move-card.js
+tools/node/move-subtree.js
+tools/node/inspect-tree.js
 ```
 
 Agents should help design and maintain the intake pathway, but the day-to-day process should be triggered by supplying the right inputs to scripts. This keeps adding PDFs and websites predictable, repeatable, and easy to turn into a future admin tool.
@@ -165,7 +177,7 @@ Agents should help design and maintain the intake pathway, but the day-to-day pr
 Run intake commands from the app directory:
 
 ```powershell
-cd treesite-app
+cd handler
 ```
 
 terminal commands to start service:
@@ -181,7 +193,7 @@ Deep links (`#/card/<slug>`) navigate the Living Sitemap to that card regardless
   <p>Ready to talk? Jump to <a href="#/card/schedule-a-call">Schedule a Call</a>.</p>
   ```
 
-- **Bundled HTML pages (`htmlCard` iframes)** — host them under `treesite-app/public/` and attach the bridge helper (same origin as Vite):
+- **Bundled HTML pages (`htmlCard` iframes)** — host them under `handler/public/` and attach the bridge helper (same origin as Vite):
 
   ```html
   <script src="/assets/js/treesite-card-nav.js"></script>
@@ -193,7 +205,7 @@ Deep links (`#/card/<slug>`) navigate the Living Sitemap to that card regardless
   <a href="#" data-treesite-card="schedule-a-call">Schedule</a>
   ```
 
-- **Discover slugs** — run `npm run inspect:tree -- --text`. Export `{ slug, materializedPath }` pairs for tooling: `npm run inspect:card-index`. Example HTML fragment you can paste into bodies: [`treesite-app/content/snippets/_internal_card_link_example.html`](treesite-app/content/snippets/_internal_card_link_example.html).
+- **Discover slugs** — run `npm run inspect:tree -- --text`. Export `{ slug, materializedPath }` pairs for tooling: `npm run inspect:card-index`. Example HTML fragment you can paste into bodies: [`handler/content/snippets/_internal_card_link_example.html`](handler/content/snippets/_internal_card_link_example.html).
 
 `siteData.js` should now stay mostly structural: top-level sections, colors, and durable subsection containers. Leaf cards such as services, contact actions, PDFs, websites, and text entries should live in `content/items/*.json` so they can be managed by the intake scripts.
 
@@ -275,7 +287,7 @@ Typical flow: **`npm run add:card`** for the card, then **`npm run edit:card`** 
 
 Troubleshooting add/edit cards
 
-- **Run commands from `treesite-app`** (`cd treesite-app`). Paths like `./content/snippets/foo.md` resolve from that directory.
+- **Run commands from `treesite-app`** (`cd handler`). Paths like `./content/snippets/foo.md` resolve from that directory.
 - **`slug`** comes from the title via `slugify` (e.g. “Process Pillars” → `process-pillars`). Use `npm run inspect:tree -- --text` to confirm names and slugs.
 - **Rich HTML does not show on tiny tiles**: CSS hides `.tile-html-content` when the tile is small; zoom in or use a larger cell to see Markdown/HTML bodies.
 - **`--html-file` format**: Extension **`.md`** uses Markdown + sanitization; **`.txt`** uses plain-text conversion only (`###` is literal text, not a heading). On Windows, **`notes.md.txt`** is still **`.txt`** to the OS—infer picks **`txt`** unless you pass **`--format md`**.

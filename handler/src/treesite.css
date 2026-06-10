@@ -1566,3 +1566,65 @@ body {
   line-height: 1.55;
   color: rgba(238, 244, 251, 0.86);
 }
+
+.treesite-load-state {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+  color: #eef4fb;
+  background: #0b1118;
+}
+
+.treesite-load-state--error h1 {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.treesite-load-state__base {
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+.dev-artifact-switcher {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(11, 17, 24, 0.92);
+  border-top: 1px solid rgba(238, 244, 251, 0.12);
+  font-size: 12px;
+  color: #eef4fb;
+}
+
+.dev-artifact-switcher label {
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dev-artifact-switcher input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(238, 244, 251, 0.2);
+  background: #15202c;
+  color: inherit;
+}
+
+.dev-artifact-switcher button {
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid rgba(238, 244, 251, 0.25);
+  background: #243447;
+  color: inherit;
+  cursor: pointer;
+}

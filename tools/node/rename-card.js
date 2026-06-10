@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { applyContentItems, minimalSiteRoot } from "../src/contentItems.js";
+import { applyContentItems, minimalSiteRoot } from "../../handler/src/contentItems.js";
 import {
   appRoot,
   contentItemPath,

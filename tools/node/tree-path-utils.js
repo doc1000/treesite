@@ -3,7 +3,7 @@
  * Re-exports slug map from shared app source — keep imports via this file so scripts resolve once.
  */
 
-export { buildSlugMaterializedMap } from "../src/treePaths.js";
+export { buildSlugMaterializedMap } from "../../handler/src/treePaths.js";
 
 export function rewriteSectionPath(section, oldMat, newMat) {
   if (!oldMat || oldMat === newMat) return section;

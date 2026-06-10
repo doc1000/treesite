@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { randomUUID } from "node:crypto";
-import { applyContentItems } from "../../treesite-app/src/contentItems.js";
+import { applyContentItems } from "../../handler/src/contentItems.js";
 
 const ASSET_PATH_FIELDS = ["pdf", "source", "url", "previewImage", "image", "embed", "href"];
 

@@ -1,5 +1,5 @@
 import process from "node:process";
-import { canonicalSectionSubtreePrefix, minimalSiteRoot } from "../src/contentItems.js";
+import { canonicalSectionSubtreePrefix, minimalSiteRoot } from "../../handler/src/contentItems.js";
 import {
   parseArgs,
   readContentItem,

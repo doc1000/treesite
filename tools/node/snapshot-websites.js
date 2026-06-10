@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import vm from "node:vm";
 import { chromium } from "playwright";
-import { applyContentItems, minimalSiteRoot } from "../src/contentItems.js";
+import { applyContentItems, minimalSiteRoot } from "../../handler/src/contentItems.js";
 import { readContentItems } from "./content-utils.js";
 
 const appRoot = process.cwd();
