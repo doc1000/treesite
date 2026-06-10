@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000011",
+  "name": "What Is TreeSite?",
+  "slug": "what-is-treesite",
+  "section": "About This Site",
+  "type": "text",
+  "description": "TreeSite is a spatial website: the whole site is one zoomable treemap. Sections and pages are tiles you can tap to drill in.",
+  "value": 12
+}

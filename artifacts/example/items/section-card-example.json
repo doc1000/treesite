@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000023",
+  "name": "Nested Section",
+  "slug": "section-card-example",
+  "section": "Content Types",
+  "type": "section",
+  "description": "Section tiles group related cards. Tap to zoom into their subtree.",
+  "value": 14
+}

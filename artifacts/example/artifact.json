@@ -2,6 +2,6 @@
   "name": "example",
   "schemaVersion": 1,
   "displayName": "TreeSite Example",
-  "tagline": "Placeholder artifact skeleton for Push 1.",
+  "tagline": "An interactive treemap site. Tap any tile to explore.",
   "defaultSchemeId": "content-default"
 }

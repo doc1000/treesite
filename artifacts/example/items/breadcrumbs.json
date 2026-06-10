@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000032",
+  "name": "Breadcrumbs",
+  "slug": "breadcrumbs",
+  "section": "Navigation",
+  "type": "text",
+  "description": "Use breadcrumbs or the back control to return to a parent section without losing context.",
+  "value": 9
+}

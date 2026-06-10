@@ -1,4 +1,152 @@
 {
   "name": "Home",
-  "children": []
+  "children": [
+    {
+      "type": "section",
+      "name": "About This Site",
+      "slug": "sec-about",
+      "section": "Home",
+      "description": "Learn what TreeSite is and how to navigate it.",
+      "value": 40,
+      "generated": true,
+      "title": "About This Site",
+      "color": "#6b8cae",
+      "children": [
+        {
+          "id": "a1000001-0000-4000-8000-000000000011",
+          "name": "What Is TreeSite?",
+          "slug": "what-is-treesite",
+          "section": "About This Site",
+          "type": "text",
+          "description": "TreeSite is a spatial website: the whole site is one zoomable treemap. Sections and pages are tiles you can tap to drill in.",
+          "value": 12,
+          "generated": true,
+          "title": "What Is TreeSite?"
+        },
+        {
+          "id": "a1000001-0000-4000-8000-000000000012",
+          "name": "How It Works",
+          "slug": "how-it-works",
+          "section": "About This Site",
+          "type": "text",
+          "description": "Content lives in a portable artifact bundle (JSON items + assets). The handler loads manifest.json at runtime—no rebuild required to swap sites.",
+          "value": 10,
+          "generated": true,
+          "title": "How It Works"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Content Types",
+      "slug": "sec-content-types",
+      "section": "Home",
+      "description": "Sample cards for each supported tile type.",
+      "value": 35,
+      "generated": true,
+      "title": "Content Types",
+      "color": "#8b79b8",
+      "children": [
+        {
+          "type": "section",
+          "name": "Nested Section",
+          "slug": "section-card-example",
+          "section": "Content Types",
+          "description": "Section tiles group related cards. Tap to zoom into their subtree.",
+          "value": 14,
+          "generated": true,
+          "title": "Nested Section",
+          "children": [
+            {
+              "id": "a1000001-0000-4000-8000-000000000024",
+              "name": "Nested Item",
+              "slug": "nested-item",
+              "section": "Content Types/Nested Section",
+              "type": "text",
+              "description": "Items can live under nested section paths. The section field uses slash-separated paths.",
+              "value": 8,
+              "generated": true,
+              "title": "Nested Item"
+            }
+          ]
+        },
+        {
+          "id": "a1000001-0000-4000-8000-000000000021",
+          "name": "Text Card",
+          "slug": "text-card-example",
+          "section": "Content Types",
+          "type": "text",
+          "description": "Plain text tiles show a title and description. They are the simplest content type.",
+          "value": 10,
+          "generated": true,
+          "title": "Text Card"
+        },
+        {
+          "id": "a1000001-0000-4000-8000-000000000022",
+          "name": "Website Card",
+          "slug": "website-card-example",
+          "section": "Content Types",
+          "type": "website",
+          "description": "Website tiles link to external URLs. Previews appear when a screenshot asset is bundled.",
+          "url": "https://example.com",
+          "value": 10,
+          "generated": true,
+          "title": "Website Card",
+          "kicker": "Website",
+          "links": [
+            {
+              "label": "Open site",
+              "href": "https://example.com"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Navigation",
+      "slug": "sec-navigation",
+      "section": "Home",
+      "description": "How to move around the treemap interface.",
+      "value": 30,
+      "generated": true,
+      "title": "Navigation",
+      "color": "#7a9e8e",
+      "children": [
+        {
+          "id": "a1000001-0000-4000-8000-000000000031",
+          "name": "Tap to Zoom",
+          "slug": "tap-to-zoom",
+          "section": "Navigation",
+          "type": "text",
+          "description": "Click or tap a tile to focus that section. The treemap re-layouts to show its children.",
+          "value": 10,
+          "generated": true,
+          "title": "Tap to Zoom"
+        },
+        {
+          "id": "a1000001-0000-4000-8000-000000000032",
+          "name": "Breadcrumbs",
+          "slug": "breadcrumbs",
+          "section": "Navigation",
+          "type": "text",
+          "description": "Use breadcrumbs or the back control to return to a parent section without losing context.",
+          "value": 9,
+          "generated": true,
+          "title": "Breadcrumbs"
+        },
+        {
+          "id": "a1000001-0000-4000-8000-000000000033",
+          "name": "Mini Map",
+          "slug": "minimap",
+          "section": "Navigation",
+          "type": "text",
+          "description": "The mini map shows the full site hierarchy so you can jump between top-level sections quickly.",
+          "value": 9,
+          "generated": true,
+          "title": "Mini Map"
+        }
+      ]
+    }
+  ]
 }

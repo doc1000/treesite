@@ -2,7 +2,7 @@
   "schemes": [
     {
       "id": "content-default",
-      "label": "Content defaults",
+      "label": "Default",
       "file": "content-default.json"
     }
   ],
