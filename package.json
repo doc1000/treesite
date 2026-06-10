@@ -1,0 +1,9 @@
+{
+  "name": "treesite",
+  "private": true,
+  "scripts": {
+    "test:tools": "npm run test:tools --prefix handler",
+    "test:python": "pytest editor/tests -v",
+    "test:all": "npm run test:tools && npm run test:python"
+  }
+}

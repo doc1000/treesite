@@ -14,10 +14,13 @@ Users should feel like they are “moving through” a living information space 
 | `artifacts/example/` | Default generic artifact bundled in the repo |
 | `artifacts/knowalgo/` | Exported KnowAlgo site bundle |
 | `tools/node/` | Node intake/export scripts (JSON tool contract in Push 2) |
+| `editor/` | Python SDK + LangGraph edit sessions (Push 3) |
 | `schemas/` | JSON Schema for artifact bundles |
 | `docs/artifact-spec.md` | Human-readable artifact format |
 
 Run the handler: `cd handler && npm install && npm run dev` — see [`handler/README.md`](handler/README.md).
+
+**Python SDK (Push 3):** `pip install -e "editor/[dev]"` then `python editor/examples/inspect_artifact.py`. See [`editor/README.md`](editor/README.md).
 
 Core Design Philosophy
 

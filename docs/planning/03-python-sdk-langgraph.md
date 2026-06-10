@@ -638,32 +638,41 @@ All steps pass. Edit session completes with `status == "done"`. Handler preview 
 
 ---
 
-## Course-Correction Report Template
-
-```markdown
 ## Course-Correction Report: Push 3 — Python SDK + LangGraph
 
-**Date completed:**  
-**Executing agent conversation ID:**
+**Date completed:** 2026-06-10  
+**Executing agent conversation ID:** (current session)
 
 ### What was built (vs. plan)
-- [ ] Phase 1: Python package scaffold + subprocess wrappers
-- [ ] Phase 2: Pydantic models + typed tool returns
-- [ ] Phase 3: LangGraph deterministic edit-session graph
-- [ ] Phase 4: Local artifact preview server
-- [ ] Phase 5: SDK examples + tests + docs
+- [x] Phase 1: Python package scaffold + subprocess wrappers
+- [x] Phase 2: Pydantic models + typed tool returns
+- [x] Phase 3: LangGraph deterministic edit-session graph
+- [x] Phase 4: Local artifact preview server
+- [x] Phase 5: SDK examples + tests + docs
 
 ### Deviations from plan
+- `SqliteSaver.from_conn_string()` in current langgraph-checkpoint-sqlite returns a context manager; checkpointer uses `sqlite3.connect` + `SqliteSaver(conn)` instead.
+- Structured log events use `log_event` instead of `event` (structlog reserves `event`).
+- `add_card` / mutation tools fetch full `ContentItem` via `get_node` after write (Node tools return summary fields only).
+- Preview static mode opens handler with `?artifact=http://127.0.0.1:<port>/` (handler resolves artifact base from query param).
 
 ### Smoke test results
+- inspect_artifact.py: PASS
+- pytest editor/tests: 17/17 PASS
+- npm run test:tools: 21/21 PASS
+- ArtifactPreviewServer start/stop: PASS (after handler build)
+- basic_edit.py with preview: not run interactively in agent session (browser step manual)
 
 ### Hard invariants check
-- [ ] ContentItem.id is UUID type; edit_card rejects id-change attempts Python-side
-- [ ] All tool calls go through runner.run_tool (no direct Node logic in Python)
-- [ ] LangGraph graph has no LLM nodes (deterministic)
-- [ ] Preview server stops cleanly on session.stop_preview()
+- [x] ContentItem.id is UUID type; edit_card rejects id-change attempts Python-side (and Node for nested fields)
+- [x] All tool calls go through runner.run_tool
+- [x] LangGraph graph has no LLM nodes
+- [x] Preview server stops cleanly on session.stop_preview() / atexit
 
 ### Issues / blockers encountered
+- Python 3.14 emits langchain_core Pydantic v1 compatibility warning (non-failing).
 
 ### Recommendations for Push 4
-```
+- Wire FastAPI endpoints as thin wrappers over `treesite_editor.tools` and `EditSession`.
+- Consider copying missing handler sources from `treesite-app` if dev preview (`mode="dev"`) is required on all machines.
+
