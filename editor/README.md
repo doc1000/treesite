@@ -91,6 +91,23 @@ make serve:api
 make test:api
 ```
 
+## MCP server (Push 5)
+
+Expose editor tools to MCP clients (stdio or SSE):
+
+```bash
+make serve:mcp
+# SSE: python -m treesite_editor.mcp.server --transport sse --port 8001
+```
+
+See [`treesite_editor/mcp/README.md`](treesite_editor/mcp/README.md). Tests: `make test:mcp`, `make test:integration`.
+
+Optional LLM demo (requires `ANTHROPIC_API_KEY` and `pip install -e "editor/[llm]"`):
+
+```bash
+python editor/examples/llm_agent_demo.py
+```
+
 ## Public API
 
 - `treesite_editor.tools` — one function per Node tool (typed returns)

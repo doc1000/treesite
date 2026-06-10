@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "test:tools": "npm run test:tools --prefix handler",
-    "test:python": "pytest editor/tests -v",
+    "test:python": "python -m pytest editor/tests -v",
+    "test:mcp": "cd editor && pytest tests/test_mcp.py -v",
+    "test:integration": "cd editor && pytest tests/test_integration.py -v",
     "test:all": "npm run test:tools && npm run test:python"
   }
 }

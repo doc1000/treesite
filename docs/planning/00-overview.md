@@ -26,7 +26,7 @@ Each push has its own detailed planning document under `docs/planning/`. Do not 
 | Node targeting | All mutations addressed by immutable UUID `id` (not slug/path) | Slugs change; IDs never do |
 | LLM in the loop | Not by default; deterministic LangGraph; LLM pluggable later | Reproducibility and testability |
 | API framework | FastAPI | Standard, OpenAPI-native |
-| MCP | Deferred to Push 5; adapter layer only | Build proven tools first |
+| MCP | Adapter over SDK tools (Push 5); stdio/SSE transport |
 | Push order | Separation → Tool contract → Python SDK → Hosted API → MCP | Manual editor/viewer workflow prioritized |
 
 ---

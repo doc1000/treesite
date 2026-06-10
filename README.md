@@ -22,7 +22,9 @@ Run the handler: `cd handler && npm install && npm run dev` — see [`handler/RE
 
 **Python SDK (Push 3):** `pip install -e "editor/[dev]"` then `python editor/examples/inspect_artifact.py`. See [`editor/README.md`](editor/README.md).
 
-Core Design Philosophy
+**Hosted API (Push 4):** `make serve:api` — OpenAPI at `http://localhost:8000/docs`.
+
+**MCP adapter (Push 5):** `make serve:mcp` for stdio MCP tools over the SDK. Tool reference: [`docs/tool-catalog.md`](docs/tool-catalog.md).
 
 The visual style should feel:
 
