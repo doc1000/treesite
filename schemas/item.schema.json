@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContentItem",
+  "type": "object",
+  "required": ["id", "name", "slug", "section", "type"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Immutable UUID, never changes"
+    },
+    "name": { "type": "string" },
+    "slug": { "type": "string" },
+    "section": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": ["text", "link", "href", "contact", "pdf", "website", "htmlCard", "section"]
+    },
+    "description": { "type": "string" },
+    "value": { "type": "number" },
+    "hidden": { "type": "boolean" },
+    "html": { "type": "string" },
+    "url": { "type": "string" },
+    "source": { "type": "string" },
+    "pdf": { "type": "string" },
+    "previewImage": { "type": "string" },
+    "image": { "type": "string" },
+    "embed": { "type": "string" },
+    "color": { "type": "string" },
+    "kicker": { "type": "string" },
+    "template": { "type": "string" },
+    "email": { "type": "string" },
+    "href": { "type": "string" }
+  },
+  "additionalProperties": true
+}

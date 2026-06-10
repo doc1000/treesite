@@ -1,0 +1,7 @@
+{
+  "name": "example",
+  "schemaVersion": 1,
+  "displayName": "TreeSite Example",
+  "tagline": "Placeholder artifact skeleton for Push 1.",
+  "defaultSchemeId": "content-default"
+}

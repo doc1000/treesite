@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArtifactMeta",
+  "type": "object",
+  "required": ["name", "schemaVersion", "displayName", "tagline", "defaultSchemeId"],
+  "properties": {
+    "name": { "type": "string" },
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "displayName": { "type": "string" },
+    "tagline": { "type": "string" },
+    "defaultSchemeId": { "type": "string" }
+  },
+  "additionalProperties": false
+}

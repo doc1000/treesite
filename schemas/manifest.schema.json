@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TreeSiteManifest",
+  "description": "Generated hierarchical tree for the handler. Produced by rebuild_manifest from items/ — do not edit by hand.",
+  "type": "object",
+  "required": ["name", "children"],
+  "properties": {
+    "name": { "type": "string" },
+    "displayName": { "type": "string" },
+    "description": { "type": "string" },
+    "abstract": { "type": "string" },
+    "value": { "type": "number" },
+    "children": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/treeNode" }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "treeNode": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "abstract": { "type": "string" },
+        "value": { "type": "number" },
+        "generated": { "type": "boolean" },
+        "hidden": { "type": "boolean" },
+        "color": { "type": "string" },
+        "kicker": { "type": "string" },
+        "template": { "type": "string" },
+        "section": { "type": "string" },
+        "pdf": { "type": "string" },
+        "url": { "type": "string" },
+        "source": { "type": "string" },
+        "previewImage": { "type": "string" },
+        "image": { "type": "string" },
+        "embed": { "type": "string" },
+        "html": { "type": "string" },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "href": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/treeNode" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
