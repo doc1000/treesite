@@ -25,12 +25,28 @@ const ITEM_TYPE_ENUM = [
   "section"
 ];
 
-async function readStdin() {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk);
+/** Read piped stdin without blocking interactive shells that leave stdin open. */
+async function readStdinOptional() {
+  if (process.stdin.isTTY) {
+    return "";
   }
-  return Buffer.concat(chunks).toString("utf8");
+
+  const chunks = [];
+  return await new Promise(resolve => {
+    const finish = () => {
+      clearTimeout(timer);
+      process.stdin.removeAllListeners("data");
+      process.stdin.removeAllListeners("end");
+      process.stdin.pause();
+      resolve(Buffer.concat(chunks).toString("utf8"));
+    };
+
+    const timer = setTimeout(finish, 50);
+
+    process.stdin.on("data", chunk => chunks.push(chunk));
+    process.stdin.on("end", finish);
+    process.stdin.resume();
+  });
 }
 
 /**
@@ -84,8 +100,8 @@ export async function parseToolArgs(argv = process.argv.slice(2)) {
     } catch (err) {
       fail(1, ErrorCodes.INVALID_INPUT, "Invalid JSON in --input.", { parseError: String(err) });
     }
-  } else if (!process.stdin.isTTY) {
-    const stdin = (await readStdin()).trim();
+  } else {
+    const stdin = (await readStdinOptional()).trim();
     if (stdin) {
       try {
         input = JSON.parse(stdin);

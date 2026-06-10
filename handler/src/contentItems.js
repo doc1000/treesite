@@ -93,6 +93,7 @@ function sectionParentDepth(section, rootName) {
 function normalizeSectionItem(item) {
   const title = item.title || item.name;
   return {
+    ...(item.id ? { id: item.id } : {}),
     type: "section",
     name: item.name,
     slug: item.slug,

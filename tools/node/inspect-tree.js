@@ -1,63 +1,50 @@
 /**
- * Derivative tree snapshot: merges flat JSON items into minimal Home root (same as app).
+ * Tree inspection: JSON contract on stdout; human-readable tree on stderr with --human.
  */
-import process from "node:process";
 import {
   applyContentItems,
   collectHiddenSectionSubtreePrefixes,
   isContentItemExcludedFromSite,
   minimalSiteRoot
 } from "../../handler/src/contentItems.js";
-import { readContentItems } from "./content-utils.js";
+import { ErrorCodes } from "./error-codes.js";
+import {
+  buildSiteRootFromArtifact,
+  fail,
+  loadArtifact,
+  loadItems,
+  parseToolArgs,
+  success
+} from "./tool-runner.js";
 import { buildSlugMaterializedMap } from "./tree-path-utils.js";
 
-function emitCardIndexFlat(tree) {
-  /** @type {Array<{ slug: string, materializedPath: string, name: string, type: string | null }>} */
+function emitCompactLines(tree) {
+  /** @type {Array<{ depth: number, id: string | null, slug: string | null, name: string, type: string | null }>} */
   const out = [];
-  function walk(node, trailParts) {
-    const parts = [...trailParts];
-    if (node.slug) {
+  function walk(node, depth) {
+    if (node.slug || node.id) {
       out.push({
-        slug: node.slug,
-        materializedPath: parts.join("/"),
+        depth,
+        id: node.id ?? null,
+        slug: node.slug ?? null,
         name: node.name,
         type: node.type ?? null
       });
     }
     for (const child of node.children || []) {
-      walk(child, [...parts, child.name]);
+      walk(child, depth + 1);
     }
   }
-  walk(tree, []);
-  out.sort((a, b) => String(a.slug).localeCompare(String(b.slug)));
+  walk(tree, 0);
   return out;
-}
-
-function summarize(node, trailParts) {
-  const parts = [...trailParts];
-  const materializedPath = parts.join("/");
-  const summary = {
-    slug: node.slug ?? null,
-    type: node.type ?? null,
-    name: node.name,
-    materializedPath,
-    value: node.value ?? null,
-    children: []
-  };
-
-  for (const child of node.children || []) {
-    summary.children.push(summarize(child, [...parts, child.name]));
-  }
-
-  return summary;
 }
 
 function printText(node, indent = 0) {
   const pad = "  ".repeat(indent);
   const tag = node.slug
-    ? `${node.name} (${node.slug}) [${node.type || "node"}] v=${node.value}`
+    ? `${node.name} (${node.slug}) [${node.type || "node"}]`
     : `${node.name}`;
-  console.log(`${pad}${tag}`);
+  process.stderr.write(`${pad}${tag}\n`);
   for (const child of node.children || []) {
     printText(child, indent + 1);
   }
@@ -82,49 +69,43 @@ function checkFlat(items, slugMap, hiddenSubtreePrefixes) {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const textMode = args.includes("--text") || args.includes("--human");
-  const checkMode = args.includes("--check");
-  const cardIndexMode = args.includes("--card-index");
-
-  const items = await readContentItems();
-  const rootName = minimalSiteRoot.name;
+  const { artifactPath, input, flags } = await parseToolArgs();
+  const meta = await loadArtifact(artifactPath);
+  const items = await loadItems(artifactPath);
+  const siteRoot = buildSiteRootFromArtifact(meta);
+  const rootName = siteRoot.name;
   const hiddenSubtreePrefixes = collectHiddenSectionSubtreePrefixes(items, rootName);
-  const tree = applyContentItems(minimalSiteRoot, items);
+  const tree = applyContentItems(siteRoot, items);
   const slugMap = {};
   buildSlugMaterializedMap(tree, [], slugMap);
 
-  const summary = summarize(tree, []);
-
-  if (cardIndexMode) {
-    const flat = emitCardIndexFlat(tree);
-    console.log(JSON.stringify(flat, null, 2));
-    return;
-  }
-
-  if (checkMode) {
+  if (flags.has("check")) {
     const errs = checkFlat(items, slugMap, hiddenSubtreePrefixes);
     if (errs.length) {
-      console.error(errs.join("\n"));
-      process.exitCode = 1;
-      return;
+      fail(3, ErrorCodes.INVALID_INPUT, "inspect-tree --check failed.", { errors: errs });
     }
-    console.log("inspect-tree --check: OK");
+    success({ check: "OK", lines: [] });
     return;
   }
 
-  if (textMode) {
-    console.log(`${tree.name}`);
+  if (flags.has("card-index")) {
+    const lines = emitCompactLines(tree).filter(line => line.slug);
+    success({ lines });
+    return;
+  }
+
+  const lines = emitCompactLines(tree);
+
+  if (flags.has("human")) {
+    process.stderr.write(`${tree.name}\n`);
     for (const child of tree.children || []) {
       printText(child, 1);
     }
-    return;
   }
 
-  console.log(JSON.stringify(summary, null, 2));
+  success({ lines });
 }
 
 main().catch(err => {
-  console.error(err.message || err);
-  process.exitCode = 1;
+  fail(4, ErrorCodes.FILESYSTEM_ERROR, err?.message || String(err));
 });

@@ -1,7 +1,10 @@
 {
   "name": "Home",
+  "displayName": "TreeSite Example",
+  "description": "An interactive treemap site. Tap any tile to explore.",
   "children": [
     {
+      "id": "a1000001-0000-4000-8000-000000000001",
       "type": "section",
       "name": "About This Site",
       "slug": "sec-about",
@@ -37,6 +40,7 @@
       ]
     },
     {
+      "id": "a1000001-0000-4000-8000-000000000002",
       "type": "section",
       "name": "Content Types",
       "slug": "sec-content-types",
@@ -48,6 +52,7 @@
       "color": "#8b79b8",
       "children": [
         {
+          "id": "a1000001-0000-4000-8000-000000000023",
           "type": "section",
           "name": "Nested Section",
           "slug": "section-card-example",
@@ -103,6 +108,7 @@
       ]
     },
     {
+      "id": "a1000001-0000-4000-8000-000000000003",
       "type": "section",
       "name": "Navigation",
       "slug": "sec-navigation",
