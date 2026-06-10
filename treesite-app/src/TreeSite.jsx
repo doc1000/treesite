@@ -16,8 +16,7 @@ import {
   loadTreemapSchemeFile,
   sectionColorFromContent
 } from "./treemapColorScheme";
-
-const COLOR_SCHEMES_BASE = "/color-schemes";
+import { resolveArtifactUrl } from "./artifactUrls.js";
 const COLOR_SCHEME_STORAGE_ID = "treesite.colorSchemeId";
 const COLOR_SCHEME_STORAGE_MINIMAP = "treesite.applySchemeToMinimap";
 
@@ -233,7 +232,7 @@ function getTextContent(item) {
 }
 
 /** URL usable as iframe `src` — never HTML markup. */
-function getIframeSrc(item) {
+function getIframeSrc(item, artifactBase) {
   if (!item || typeof item !== "object") return null;
 
   let candidate;
@@ -249,7 +248,7 @@ function getIframeSrc(item) {
   const t = candidate.trim();
   if (t.startsWith("<")) return null;
   if (isExternalUrl(t)) return null;
-  return t || null;
+  return resolveArtifactUrl(artifactBase, t) || null;
 }
 
 function isEmbeddableInternalItem(item) {
@@ -276,7 +275,12 @@ function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
   return plainTextBody.trim().length > 0;
 }
 
-export default function TreeSite({ siteData }) {
+export default function TreeSite({
+  siteData,
+  artifactBase = "/artifact",
+  defaultSchemeId = null
+}) {
+  const schemesBase = `${String(artifactBase).replace(/\/$/, "")}/schemes`;
   const treesiteRef = useRef(null);
   const chartWrapRef = useRef(null);
   const highlightClearTimerRef = useRef(null);
@@ -345,7 +349,7 @@ export default function TreeSite({ siteData }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadSchemeManifest(COLOR_SCHEMES_BASE)
+    loadSchemeManifest(schemesBase)
       .then(manifest => {
         if (cancelled) return;
         setSchemeManifest(manifest);
@@ -355,6 +359,7 @@ export default function TreeSite({ siteData }) {
           if (prev && ids.has(prev)) return prev;
           const stored = readStoredSchemeId();
           if (stored && ids.has(stored)) return stored;
+          if (defaultSchemeId && ids.has(defaultSchemeId)) return defaultSchemeId;
           return manifest.defaultSchemeId;
         });
       })
@@ -367,7 +372,7 @@ export default function TreeSite({ siteData }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [schemesBase, defaultSchemeId]);
 
   useEffect(() => {
     if (!activeSchemeId) return;
@@ -399,7 +404,7 @@ export default function TreeSite({ siteData }) {
     }
     let cancelled = false;
     setSchemeLoadError(null);
-    loadTreemapSchemeFile(COLOR_SCHEMES_BASE, entry.file)
+    loadTreemapSchemeFile(schemesBase, entry.file)
       .then(scheme => {
         if (!cancelled) {
           setResolvedSchemeDoc(scheme);
@@ -415,7 +420,7 @@ export default function TreeSite({ siteData }) {
     return () => {
       cancelled = true;
     };
-  }, [schemeManifest, activeSchemeId]);
+  }, [schemeManifest, activeSchemeId, schemesBase]);
 
   const isMobile =
     dims.width > 0 && dims.width < MOBILE_LAYOUT_MAX_WIDTH;
@@ -549,8 +554,8 @@ export default function TreeSite({ siteData }) {
   );
 
   const focusIframeSrc = useMemo(
-    () => (soleFocusCard ? getIframeSrc(focus.data) : null),
-    [soleFocusCard, focus.data]
+    () => (soleFocusCard ? getIframeSrc(focus.data, artifactBase) : null),
+    [soleFocusCard, focus.data, artifactBase]
   );
 
   const useFocusedViewer = useMemo(
@@ -976,6 +981,7 @@ export default function TreeSite({ siteData }) {
                       isMobile={isMobile}
                       suppressTileLabels={isChildPreview}
                       headerInMapOverlay={headerInMapOverlay}
+                      artifactBase={artifactBase}
                     />
                   )}
                 </foreignObject>

@@ -1,4 +1,10 @@
 {
-  "schemes": [],
+  "schemes": [
+    {
+      "id": "content-default",
+      "label": "Content defaults",
+      "file": "content-default.json"
+    }
+  ],
   "defaultSchemeId": "content-default"
 }

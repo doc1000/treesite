@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isArtifactRelativePath, resolveArtifactLink, resolveArtifactUrl } from "./artifactUrls.js";
 
 function deckTypeLabel(node) {
   if (!node || typeof node !== "object") return "Card";
@@ -52,7 +53,8 @@ export function TileTemplate({
   labelPlacement = "top",
   suppressTileLabels = false,
   headerInMapOverlay = false,
-  isMobile = false
+  isMobile = false,
+  artifactBase = "/artifact"
 }) {
   if (isMobile) {
     return <MobileTileContent node={node} box={box} />;
@@ -61,7 +63,8 @@ export function TileTemplate({
   const labelsAtBottom = labelPlacement === "bottom";
   const small = box.w < 170 || box.h < 110;
   const hasChildren = Boolean(node.children?.length);
-  const links = hasChildren ? [] : node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
+  const rawLinks = hasChildren ? [] : node.links || (node.url ? [{ label: "Open", href: node.url }] : []);
+  const links = rawLinks.map(link => resolveArtifactLink(artifactBase, link));
   const kicker = node.kicker || node.source || node.publication;
   const title = node.title || node.name;
   const description = node.abstract || node.description;
@@ -119,6 +122,7 @@ export function TileTemplate({
         labelsAtBottom={labelsAtBottom}
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
+        artifactBase={artifactBase}
       />
     );
   }
@@ -134,6 +138,7 @@ export function TileTemplate({
         suppressTileLabels={suppressTileLabels}
         headerInMapOverlay={headerInMapOverlay}
         variant={node.type === "htmlCard" ? "htmlCard" : "website"}
+        artifactBase={artifactBase}
       />
     );
   }
@@ -162,13 +167,13 @@ export function TileTemplate({
   const mediaBlocks = (
     <>
       {node.image && (
-        <img className="tile-image" src={node.image} alt="" />
+        <img className="tile-image" src={resolveArtifactUrl(artifactBase, node.image)} alt="" />
       )}
 
       {node.embed && (
         <iframe
           className="tile-embed"
-          src={node.embed}
+          src={resolveArtifactUrl(artifactBase, node.embed)}
           title={title}
           loading="lazy"
         />
@@ -271,18 +276,24 @@ function PdfTile({
   small,
   labelsAtBottom,
   suppressTileLabels,
-  headerInMapOverlay
+  headerInMapOverlay,
+  artifactBase = "/artifact"
 }) {
   const canvasRef = useRef(null);
   const tileRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
-  const pdfUrl = node.pdf || node.url;
-  const links = node.links || (pdfUrl ? [{ label: "Open PDF", href: pdfUrl }] : []);
+  const pdfUrl = resolveArtifactUrl(artifactBase, node.pdf || node.url);
+  const previewSrc = node.previewImage
+    ? resolveArtifactUrl(artifactBase, node.previewImage)
+    : null;
+  const links = (node.links || (pdfUrl ? [{ label: "Open PDF", href: node.pdf || node.url }] : [])).map(
+    link => resolveArtifactLink(artifactBase, link)
+  );
 
   useEffect(() => {
     const tile = tileRef.current;
-    if (!tile || node.previewImage) return;
+    if (!tile || previewSrc) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -296,10 +307,10 @@ function PdfTile({
 
     observer.observe(tile);
     return () => observer.disconnect();
-  }, [node.previewImage]);
+  }, [previewSrc]);
 
   useEffect(() => {
-    if (!isVisible || node.previewImage || !pdfUrl || !canvasRef.current) return;
+    if (!isVisible || previewSrc || !pdfUrl || !canvasRef.current) return;
 
     let cancelled = false;
     let renderTask;
@@ -343,7 +354,7 @@ function PdfTile({
       cancelled = true;
       renderTask?.cancel();
     };
-  }, [isVisible, node.previewImage, pdfUrl]);
+  }, [isVisible, previewSrc, pdfUrl]);
 
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
@@ -367,8 +378,8 @@ function PdfTile({
         )
       ) : (
         <>
-          {node.previewImage ? (
-            <img className="pdf-preview" src={node.previewImage} alt="" loading="lazy" />
+          {previewSrc ? (
+            <img className="pdf-preview" src={previewSrc} alt="" loading="lazy" />
           ) : (
             <canvas ref={canvasRef} className="pdf-preview" aria-hidden="true" />
           )}
@@ -404,15 +415,23 @@ function WebsiteTile({
   labelsAtBottom,
   suppressTileLabels,
   headerInMapOverlay,
-  variant = "website"
+  variant = "website",
+  artifactBase = "/artifact"
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const openHref = node.url || node.source;
   const defaultLinkLabel = variant === "htmlCard" ? "Open page" : "Open site";
-  const links =
-    node.links ||
-    (openHref ? [{ label: defaultLinkLabel, href: openHref }] : []);
-  const hasLocalPreview = node.previewImage?.startsWith("/");
+  const links = (node.links || (openHref ? [{ label: defaultLinkLabel, href: openHref }] : [])).map(
+    link => resolveArtifactLink(artifactBase, link)
+  );
+  const previewSrc = node.previewImage
+    ? resolveArtifactUrl(artifactBase, node.previewImage)
+    : null;
+  const hasLocalPreview =
+    previewSrc &&
+    (previewSrc.startsWith("/") ||
+      previewSrc.startsWith("http") ||
+      isArtifactRelativePath(node.previewImage));
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
   const fallbackKicker =
@@ -439,7 +458,7 @@ function WebsiteTile({
     >
       <img
         className="site-preview"
-        src={node.previewImage}
+        src={previewSrc}
         alt=""
         loading="lazy"
         onError={() => setImageFailed(true)}

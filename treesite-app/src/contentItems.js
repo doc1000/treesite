@@ -1,8 +1,6 @@
-/** Minimal tree root merged with flat JSON items from content/items. */
+/** Tree root merged with flat JSON items from content/items (no site branding). */
 export const minimalSiteRoot = {
   name: "Home",
-  displayName: "Knowledge Algorithms",
-  description: "Unify data.  Evaluate models.  Visualize results.",
   children: []
 };
 
