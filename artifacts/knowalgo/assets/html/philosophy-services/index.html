@@ -1,0 +1,288 @@
+<section class="philosophy-section" aria-labelledby="philosophy-title">
+  <style>
+    .philosophy-section {
+      --bg: #0d1117;
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel-strong: rgba(255, 255, 255, 0.1);
+      --text: #edf2f7;
+      --muted: #a9b4c2;
+      --line: rgba(255, 255, 255, 0.14);
+      --gold: #f2c14e;
+      --blue: #5cc8ff;
+      --green: #57d68d;
+      --red: #ff6b6b;
+      --purple: #b794f4;
+      background:
+        radial-gradient(circle at top left, rgba(92, 200, 255, 0.18), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(242, 193, 78, 0.14), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      padding: clamp(4rem, 8vw, 7rem) 1.25rem;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .philosophy-wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .philosophy-header {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+      gap: clamp(2rem, 5vw, 4rem);
+      align-items: end;
+      margin-bottom: clamp(2.5rem, 5vw, 4rem);
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+    }
+
+    .philosophy-header h2 {
+      font-size: clamp(2.4rem, 6vw, 5rem);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .philosophy-lede {
+      color: var(--muted);
+      font-size: clamp(1rem, 1.6vw, 1.2rem);
+      line-height: 1.65;
+      margin: 0;
+      border-left: 1px solid var(--line);
+      padding-left: 1.25rem;
+    }
+
+    .philosophy-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+    }
+
+    .philosophy-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 260px;
+      padding: clamp(1.25rem, 2vw, 1.7rem);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(145deg, var(--panel), rgba(255, 255, 255, 0.025));
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+    }
+
+    .philosophy-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, var(--accent-glow), transparent 16rem);
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    .philosophy-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-large { grid-column: span 7; }
+    .card-tall { grid-column: span 5; min-height: 360px; }
+    .card-mid { grid-column: span 4; }
+    .card-wide { grid-column: span 8; }
+
+    .card-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-kicker::before {
+      content: "";
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 24px var(--accent);
+    }
+
+    .philosophy-card h3 {
+      font-size: clamp(1.45rem, 2.4vw, 2.25rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin: 0 0 1rem;
+    }
+
+    .philosophy-card p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.62;
+      margin: 0;
+      max-width: 64ch;
+    }
+
+    .visual-stack {
+      display: grid;
+      gap: 0.65rem;
+      margin-top: 1.6rem;
+      max-width: 420px;
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.8rem 0.95rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.065);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .signal-dot {
+      width: 0.8rem;
+      height: 0.8rem;
+      border-radius: 999px;
+      background: var(--dot);
+      box-shadow: 0 0 20px var(--dot);
+    }
+
+    .data-orbit {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin-top: 1.7rem;
+    }
+
+    .data-pill {
+      padding: 0.7rem 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    .quote-mark {
+      position: absolute;
+      right: 1.25rem;
+      bottom: -1.5rem;
+      font-size: 10rem;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.06);
+      font-family: Georgia, serif;
+    }
+
+    @media (max-width: 880px) {
+      .philosophy-header {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .philosophy-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-large,
+      .card-tall,
+      .card-mid,
+      .card-wide {
+        grid-column: auto;
+        min-height: auto;
+      }
+
+      .data-orbit {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+
+  <div class="philosophy-wrap">
+    <div class="philosophy-header">
+      <div>
+        <div class="eyebrow">Operating Philosophy</div>
+        <h2 id="philosophy-title">Data-driven productivity, grounded in real work.</h2>
+      </div>
+      <p class="philosophy-lede">
+        I build with the people doing the work, not around them. The goal is simple: clearer decisions, faster feedback, better tools, and systems that keep adapting as the business changes.
+      </p>
+    </div>
+
+    <div class="philosophy-grid">
+      <article class="philosophy-card card-large" style="--accent: #f2c14e; --accent-glow: rgba(242, 193, 78, 0.18);">
+        <div class="card-kicker">01 / Embedded</div>
+        <h3>Feet on the ground</h3>
+        <p>
+          Robert Heinlein introduced the idea: everybody drops, everybody fights. When it is crunch time, everyone should understand the core work of the company. Feel the risk. Serve the customer. Meet the deadline. That is why I like to embed with the actual process a company follows to make decisions or serve customers. You cannot get that from a presentation.
+        </p>
+        <span class="quote-mark">”</span>
+      </article>
+
+      <article class="philosophy-card card-tall" style="--accent: #5cc8ff; --accent-glow: rgba(92, 200, 255, 0.18);">
+        <div class="card-kicker">02 / Connected</div>
+        <h3>Bridge silos</h3>
+        <p>
+          The last tech boom was platform-specific. AI makes it possible to unify those structures. The data you need should be at your fingertips, not scattered across logins. Databases, images, websites, emails, Slack, documents—the big picture is where insight starts.
+        </p>
+        <div class="data-orbit" aria-label="Example connected systems">
+          <span class="data-pill">Database</span>
+          <span class="data-pill">Email</span>
+          <span class="data-pill">Slack</span>
+          <span class="data-pill">Websites</span>
+          <span class="data-pill">Images</span>
+          <span class="data-pill">Docs</span>
+        </div>
+      </article>
+
+      <article class="philosophy-card card-mid" style="--accent: #57d68d; --accent-glow: rgba(87, 214, 141, 0.16);">
+        <div class="card-kicker">03 / Adaptive</div>
+        <h3>Iterate, iterate, iterate</h3>
+        <p>
+          Markets change. Customers change. Competitors change. The environment changes. We need to adapt while staying true to the core. AI-coded solutions can erase an advantage quickly, but they can open new doors just as fast. Build a solid base of people, tech, and process that is ready to adapt again and again.
+        </p>
+      </article>
+
+      <article class="philosophy-card card-mid" style="--accent: #b794f4; --accent-glow: rgba(183, 148, 244, 0.17);">
+        <div class="card-kicker">04 / Visual</div>
+        <h3>The visual unlock</h3>
+        <p>
+          I am a visual processing person. There is a cognitive unlock in well-structured interfaces built on spatial reasoning, color, and form. Standard reports blur together, especially at crunch time. Visual clustering, calendars, and scorecards create speed and focus.
+        </p>
+        <div class="visual-stack" aria-label="Visual scorecard example">
+          <div class="signal-row"><span>Customer response queue</span><span class="signal-dot" style="--dot:#57d68d"></span></div>
+          <div class="signal-row"><span>Decision bottleneck</span><span class="signal-dot" style="--dot:#f2c14e"></span></div>
+          <div class="signal-row"><span>Deadline risk</span><span class="signal-dot" style="--dot:#ff6b6b"></span></div>
+        </div>
+      </article>
+
+      <article class="philosophy-card card-mid" style="--accent: #ff6b6b; --accent-glow: rgba(255, 107, 107, 0.16);">
+        <div class="card-kicker">05 / Principled</div>
+        <h3>Do good to do well</h3>
+        <p>
+          I went to a Quaker college, where this was both principle and historical fact. Be honest. Do work that does not harm. Help people live with better understanding, health, and vigor. Success follows.
+        </p>
+      </article>
+
+      <article class="philosophy-card card-wide" style="--accent: #5cc8ff; --accent-glow: rgba(92, 200, 255, 0.12);">
+        <div class="card-kicker">How this shows up</div>
+        <h3>Practical systems for real decisions.</h3>
+        <p>
+          The work is not about adding another dashboard or another tool for its own sake. It is about getting closer to the work, connecting the scattered pieces, and turning information into interfaces that people can actually use when the pressure is on.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>

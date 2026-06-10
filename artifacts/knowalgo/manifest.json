@@ -1,0 +1,498 @@
+{
+  "name": "Home",
+  "displayName": "Knowledge Algorithms",
+  "description": "Unify data. Evaluate models. Visualize results.",
+  "children": [
+    {
+      "type": "section",
+      "name": "About KnowAlgo",
+      "slug": "sec-about-knowalgo",
+      "section": "Home",
+      "description": "Perspective and history",
+      "value": 60,
+      "generated": true,
+      "title": "About KnowAlgo",
+      "color": "#5d8fb3",
+      "children": [
+        {
+          "name": "Doster Esh",
+          "slug": "doster-esh",
+          "section": "About KnowAlgo",
+          "type": "htmlCard",
+          "description": "",
+          "source": "assets/html/doster-esh/index.html",
+          "url": "assets/html/doster-esh/index.html",
+          "previewImage": "assets/html/doster-esh/preview.png",
+          "value": 60,
+          "id": "bb61177f-6dbb-4c23-9d06-11a807b5f90d",
+          "generated": true,
+          "title": "Doster Esh",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/doster-esh/index.html"
+            }
+          ]
+        },
+        {
+          "name": "Backstory",
+          "slug": "backstory",
+          "section": "About KnowAlgo",
+          "type": "text",
+          "description": " ",
+          "value": 12,
+          "html": "<p>Knowledge Algorithms grew out of Energy Algorithms, which focused on energy trading related tools and data analytics.  I realized that <strong>the same approach I successfully used in the most volatile market in the world</strong> can be applied to <strong>decision making and knowlege building</strong> across multiple industries.  </p>\n<h3></h3>\n<p>This is frankly what I love to do in my free time - think about different ways to organize data, extract meaning from it, and present it visually.  </p>\n<h3></h3>\n<p>The outcome I aim for: <strong>confidence of knowing that you can get insight from all parts of your data stack, whatever the world throws at you.</strong></p>\n",
+          "id": "8412eb00-6ad1-4711-9954-a11a1c014273",
+          "generated": true,
+          "title": "Backstory"
+        },
+        {
+          "name": "Doster CV",
+          "slug": "doster-cv",
+          "section": "About KnowAlgo",
+          "type": "pdf",
+          "description": "",
+          "source": "assets/pdfs/doster-cv.pdf",
+          "pdf": "assets/pdfs/doster-cv.pdf",
+          "previewImage": "assets/previews/doster-cv.png",
+          "value": 8,
+          "id": "23adf570-dcb1-40f7-b323-dde0d1002e5b",
+          "generated": true,
+          "title": "Doster CV",
+          "url": "assets/pdfs/doster-cv.pdf",
+          "kicker": "PDF",
+          "links": [
+            {
+              "label": "Open PDF",
+              "href": "assets/pdfs/doster-cv.pdf"
+            }
+          ]
+        },
+        {
+          "name": "My Perspective",
+          "slug": "my-perspective",
+          "section": "About KnowAlgo",
+          "type": "text",
+          "description": "",
+          "value": 8,
+          "html": "<p>I bring a background in institutional investment management and electricity trading to AI driven data analytics.  \r<br>\r<br>Quickly assess risks, grab opportunities, iterate.  Your infrastructure has to be ready to pivot, to identify the new thing and stay robust under deadline.  \r<br>\r<br>You data needs to be labeled, modelled and structured correctly.\r<br>\r<br>You need visual observability to know where you are… without distraction… right now.\r<br>\r<br>You can be creative and dynamic in the moment when you have a solid core.</p>",
+          "id": "81499ee0-d510-4e2a-be29-ba743bed67d4",
+          "generated": true,
+          "title": "My Perspective"
+        },
+        {
+          "name": "Vocation",
+          "slug": "vocation",
+          "section": "About KnowAlgo",
+          "type": "text",
+          "description": " ",
+          "value": 8,
+          "html": "<p>But yield who will to their separation,<br>My object in living is to unite<br>My avocation and my vocation<br>As my two eyes make one in sight.<br>Only where love and need are one,<br>And the work is play for mortal stakes,<br>Is the deed ever really done<br> - Robert Frost<br>    Two Tramps in Mud Time</p>",
+          "id": "237c6f44-aaf4-4df5-809e-202d6cd5c756",
+          "generated": true,
+          "title": "Vocation"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Articles",
+      "slug": "sec-articles",
+      "section": "Home",
+      "description": "Research, Articles, Substack",
+      "value": 58,
+      "generated": true,
+      "title": "Articles",
+      "color": "#6fa892",
+      "children": [
+        {
+          "type": "section",
+          "name": "Research",
+          "slug": "sec-articles-research",
+          "section": "Articles",
+          "description": "Technical research notes and papers.",
+          "value": 18,
+          "generated": true,
+          "title": "Research",
+          "children": [
+            {
+              "name": "Divariance: Connecting Fréchet and KL Divergence",
+              "slug": "divariance-connecting-frechet-and-kl-divergence",
+              "section": "Articles/Research",
+              "type": "pdf",
+              "description": "A novel metric connecting distributional difference measures for improved feature selection in embedding classification.",
+              "source": "assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf",
+              "pdf": "assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf",
+              "previewImage": "assets/previews/divariance-connecting-frechet-and-kl-divergence.png",
+              "value": 10,
+              "kicker": "Research Paper",
+              "id": "1a8f59ea-41e8-4e89-a220-61f2838b0764",
+              "generated": true,
+              "title": "Divariance: Connecting Fréchet and KL Divergence",
+              "url": "assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf",
+              "links": [
+                {
+                  "label": "Open PDF",
+                  "href": "assets/pdfs/divariance-connecting-frechet-and-kl-divergence.pdf"
+                }
+              ]
+            },
+            {
+              "name": "Volatility Mitigation Toolkit",
+              "slug": "volatility-mitigation-toolkit",
+              "section": "Articles/Research",
+              "type": "pdf",
+              "description": "Strategies and tools for managing and mitigating volatility in data-driven systems.",
+              "source": "assets/pdfs/volatility-mitigation-toolkit.pdf",
+              "pdf": "assets/pdfs/volatility-mitigation-toolkit.pdf",
+              "previewImage": "assets/previews/volatility-mitigation-toolkit.png",
+              "value": 10,
+              "kicker": "Toolkit",
+              "id": "87298ad9-29e0-424f-aa40-8ea27f985e44",
+              "generated": true,
+              "title": "Volatility Mitigation Toolkit",
+              "url": "assets/pdfs/volatility-mitigation-toolkit.pdf",
+              "links": [
+                {
+                  "label": "Open PDF",
+                  "href": "assets/pdfs/volatility-mitigation-toolkit.pdf"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "name": "Publications",
+          "slug": "sec-articles-publications",
+          "section": "Articles",
+          "description": "External articles, essays, and publication-ready writing.",
+          "value": 16,
+          "generated": true,
+          "title": "Publications",
+          "children": [
+            {
+              "name": "Pairwise Cross-Variance Classification",
+              "slug": "pairwise-cross-variance-classification",
+              "section": "Articles/Publications",
+              "type": "website",
+              "description": "Multi-class zero-shot embedding classification using a novel dimensionality reduction technique. Improved text/image agreement from 61% to 89%.",
+              "value": 10,
+              "kicker": "Towards Data Science",
+              "previewImage": "assets/site-previews/pairwise-cross-variance-classification.png",
+              "linkLabel": "Read article",
+              "source": "https://towardsdatascience.com/pairwise-cross-variance-classification/",
+              "url": "https://towardsdatascience.com/pairwise-cross-variance-classification/",
+              "id": "d9ad5f2d-30cc-49cc-a72a-10a22a2461b9",
+              "generated": true,
+              "title": "Pairwise Cross-Variance Classification",
+              "links": [
+                {
+                  "label": "Read article",
+                  "href": "https://towardsdatascience.com/pairwise-cross-variance-classification/"
+                }
+              ]
+            },
+            {
+              "name": "Orthogonal Wonder Substack",
+              "slug": "orthogonal-wonder-substack",
+              "section": "Articles/Publications",
+              "type": "website",
+              "description": "Point-of-view writing and founder perspective.",
+              "value": 3,
+              "kicker": "Substack",
+              "previewImage": "assets/site-previews/orthogonal-wonder-substack.png",
+              "linkLabel": "Read articles",
+              "source": "https://orthogonalwonder.substack.com/",
+              "url": "https://orthogonalwonder.substack.com/",
+              "id": "e1337c1e-a609-442c-8739-a18ac8905ed8",
+              "generated": true,
+              "title": "Orthogonal Wonder Substack",
+              "links": [
+                {
+                  "label": "Read articles",
+                  "href": "https://orthogonalwonder.substack.com/"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "name": "Systems & Tooling",
+          "slug": "sec-articles-systems-tooling",
+          "section": "Articles",
+          "description": "Practical build notes, teardown posts, and toolkits.",
+          "value": 16,
+          "generated": true,
+          "title": "Systems & Tooling",
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Services",
+      "slug": "sec-services",
+      "section": "Home",
+      "description": "See your edge.\n\nMulti-modal analytics and AI-native data flows.  Unlocked in weeks, not months.  For founders, traders, product managers.",
+      "value": 52,
+      "generated": true,
+      "title": "Services",
+      "color": "#8b79b8",
+      "children": [
+        {
+          "name": "Tactical Sessions",
+          "slug": "tactical-sessions",
+          "section": "Services",
+          "type": "htmlCard",
+          "description": "Schedule a session focused on practical next steps and direct technical advice",
+          "source": "assets/html/tactical-sessions/index.html",
+          "url": "assets/html/tactical-sessions/index.html",
+          "previewImage": "assets/html/tactical-sessions/preview.png",
+          "value": 17,
+          "id": "76e31567-d2ca-418b-9151-cb59a0809fe2",
+          "generated": true,
+          "title": "Tactical Sessions",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/tactical-sessions/index.html"
+            }
+          ]
+        },
+        {
+          "name": "Build Decision Making Tools",
+          "slug": "service-capabilities",
+          "section": "Services",
+          "type": "htmlCard",
+          "description": "",
+          "source": "assets/html/service-capabilities/index.html",
+          "url": "assets/html/service-capabilities/index.html",
+          "previewImage": "assets/html/service-capabilities/preview.png",
+          "value": 16,
+          "id": "ed146191-21d8-40af-ba31-a1d0ae9ab8ce",
+          "generated": true,
+          "title": "Build Decision Making Tools",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/service-capabilities/index.html"
+            }
+          ]
+        },
+        {
+          "name": "Philosophy",
+          "slug": "philosophy-services",
+          "section": "Services",
+          "type": "htmlCard",
+          "description": "",
+          "source": "assets/html/philosophy-services/index.html",
+          "url": "assets/html/philosophy-services/index.html",
+          "previewImage": "assets/html/philosophy-services/preview.png",
+          "value": 8,
+          "id": "05e8567f-3b32-4649-b039-508c1d33ec39",
+          "generated": true,
+          "title": "Philosophy",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/philosophy-services/index.html"
+            }
+          ]
+        },
+        {
+          "name": "Process Pillars",
+          "slug": "process-pillars",
+          "section": "Services",
+          "type": "htmlCard",
+          "description": "Unify, Evaluate, Visualize",
+          "source": "assets/html/process-pillars/index.html",
+          "url": "assets/html/process-pillars/index.html",
+          "previewImage": "assets/html/process-pillars/preview.png",
+          "value": 8,
+          "id": "35150f5e-50db-4d00-9961-22c80d923436",
+          "generated": true,
+          "title": "Process Pillars",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/process-pillars/index.html"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Projects",
+      "slug": "sec-projects",
+      "section": "Home",
+      "description": "Cool productivity tools",
+      "value": 42,
+      "generated": true,
+      "title": "Projects",
+      "color": "#c58b78",
+      "children": [
+        {
+          "name": "Circular Calendar Interface",
+          "slug": "time-burner",
+          "section": "Projects",
+          "type": "htmlCard",
+          "description": "Visual extension of Google Calendar showing rings representing hours, day, weeks, months, years all in a single moving interface.  Fully functional event add/edit.",
+          "source": "assets/html/time-burner/index.html",
+          "url": "assets/html/time-burner/index.html",
+          "previewImage": "assets/html/time-burner/preview.png",
+          "value": 8,
+          "id": "af27ace9-22ff-46d2-b5ae-c89ed1af08ae",
+          "generated": true,
+          "title": "Circular Calendar Interface",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/time-burner/index.html"
+            }
+          ]
+        },
+        {
+          "name": "Speech to Storyboard",
+          "slug": "speak-storyboard",
+          "section": "Projects",
+          "type": "htmlCard",
+          "description": "Visual communication and planning board so caretakers can communicate with those with hearing loss and auditory processing difficulties.",
+          "source": "assets/html/speak-storyboard/index.html",
+          "url": "assets/html/speak-storyboard/index.html",
+          "previewImage": "assets/html/speak-storyboard/preview.png",
+          "value": 8,
+          "id": "1bb672e0-e296-4c43-8a6d-9fd34060c6cf",
+          "generated": true,
+          "title": "Speech to Storyboard",
+          "kicker": "HTML",
+          "links": [
+            {
+              "label": "Open page",
+              "href": "assets/html/speak-storyboard/index.html"
+            }
+          ]
+        },
+        {
+          "name": "URL capture and visual organization",
+          "slug": "url-capture-and-visual-organization",
+          "section": "Projects",
+          "type": "website",
+          "description": "",
+          "source": "https://www.vaultbubbles.com/",
+          "url": "https://www.vaultbubbles.com/",
+          "previewImage": "assets/previews/url-capture-and-visual-organization.png",
+          "value": 8,
+          "id": "a7f89127-1b9a-4375-94d2-847f15129465",
+          "generated": true,
+          "title": "URL capture and visual organization",
+          "kicker": "Website",
+          "links": [
+            {
+              "label": "Open site",
+              "href": "https://www.vaultbubbles.com/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Contact Me",
+      "slug": "sec-contact-me",
+      "section": "Home",
+      "description": "Need AI knowledge tools now? Reach out or schedule a call.",
+      "value": 30,
+      "generated": true,
+      "title": "Contact Me",
+      "color": "#c7ad72",
+      "children": [
+        {
+          "name": "Schedule a Call",
+          "slug": "schedule-a-call",
+          "section": "Contact Me",
+          "type": "text",
+          "description": "Suggest three times and describe what you need help with.",
+          "value": 9,
+          "email": "info@knowledgealgorithms.com",
+          "template": "schedule",
+          "id": "783f1789-c73d-4c4b-acd0-ec8640f61f02",
+          "generated": true,
+          "title": "Schedule a Call"
+        },
+        {
+          "name": "Email",
+          "slug": "email",
+          "section": "Contact Me",
+          "type": "contact",
+          "description": "Reach out directly by email.",
+          "value": 8,
+          "kicker": "Primary channel",
+          "linkLabel": "info@knowledgealgorithms.com",
+          "source": "mailto:info@knowledgealgorithms.com",
+          "href": "mailto:info@knowledgealgorithms.com",
+          "template": "contact",
+          "id": "74c53727-01c2-47f7-9fad-ffc82344c75b",
+          "generated": true,
+          "title": "Email",
+          "links": [
+            {
+              "label": "info@knowledgealgorithms.com",
+              "href": "mailto:info@knowledgealgorithms.com"
+            }
+          ]
+        },
+        {
+          "name": "Github",
+          "slug": "github",
+          "section": "Contact Me",
+          "type": "website",
+          "description": "Explore public work, experiments and technical artifacts",
+          "source": "https://github.com/doc1000",
+          "url": "https://github.com/doc1000",
+          "previewImage": "assets/previews/github.png",
+          "value": 8,
+          "id": "977aea08-fe9b-469e-b442-64012cc011b0",
+          "generated": true,
+          "title": "Github",
+          "kicker": "Website",
+          "links": [
+            {
+              "label": "Open site",
+              "href": "https://github.com/doc1000"
+            }
+          ]
+        },
+        {
+          "name": "MyLinkedIn",
+          "slug": "mylinkedin",
+          "section": "Contact Me",
+          "type": "website",
+          "description": "Connect professionally and see current background, work, and updates.",
+          "source": "https://www.linkedin.com/in/dosteresh/",
+          "url": "https://www.linkedin.com/in/dosteresh/",
+          "previewImage": "assets/previews/mylinkedin.png",
+          "value": 8,
+          "id": "bc609cb3-b763-4d62-bac2-5ead68fe3596",
+          "generated": true,
+          "title": "MyLinkedIn",
+          "kicker": "Website",
+          "links": [
+            {
+              "label": "Open site",
+              "href": "https://www.linkedin.com/in/dosteresh/"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

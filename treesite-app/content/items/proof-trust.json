@@ -5,5 +5,6 @@
   "type": "text",
   "description": "Logos, testimonials, credentials, awards, or outcomes.",
   "value": 8,
-  "hidden": true
+  "hidden": true,
+  "id": "56906fe5-ed2f-48e5-a147-430e7ae139da"
 }

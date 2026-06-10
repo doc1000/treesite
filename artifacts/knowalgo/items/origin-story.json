@@ -1,0 +1,10 @@
+{
+  "name": "Origin Story",
+  "slug": "origin-story",
+  "section": "About KnowAlgo",
+  "type": "text",
+  "description": "A short founder story that makes the work feel human.",
+  "value": 10,
+  "hidden": true,
+  "id": "93667e4f-5d3d-464d-834e-7321a2fdc148"
+}

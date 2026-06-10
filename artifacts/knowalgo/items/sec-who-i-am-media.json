@@ -1,0 +1,10 @@
+{
+  "name": "Media",
+  "slug": "sec-who-i-am-media",
+  "section": "About KnowAlgo",
+  "type": "section",
+  "description": "Portraits, short intro video, downloadable bio.",
+  "value": 10,
+  "hidden": true,
+  "id": "0c3b89c6-9dd4-4320-9cd5-47af463ae992"
+}

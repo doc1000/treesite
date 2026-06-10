@@ -1,0 +1,12 @@
+{
+  "name": "Speech to Storyboard",
+  "slug": "speak-storyboard",
+  "section": "Projects",
+  "type": "htmlCard",
+  "description": "Visual communication and planning board so caretakers can communicate with those with hearing loss and auditory processing difficulties.",
+  "source": "assets/html/speak-storyboard/index.html",
+  "url": "assets/html/speak-storyboard/index.html",
+  "previewImage": "assets/html/speak-storyboard/preview.png",
+  "value": 8,
+  "id": "1bb672e0-e296-4c43-8a6d-9fd34060c6cf"
+}

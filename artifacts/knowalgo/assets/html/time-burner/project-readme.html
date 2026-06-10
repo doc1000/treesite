@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="TimeBurner — a visual year-at-a-glance calendar layer on Google Calendar. Built for people who think in pictures, not search boxes." />
+  <title>TimeBurner — Visual calendar on Google Calendar</title>
+  <style>
+    :root {
+      --bg: #0b1e3b;
+      --bg-mid: #12305e;
+      --panel: rgba(7, 18, 36, 0.82);
+      --text: rgba(255, 255, 255, 0.94);
+      --muted: rgba(255, 255, 255, 0.62);
+      --faint: rgba(255, 255, 255, 0.14);
+      --accent: #9ed7c3;
+      --accent-soft: rgba(158, 215, 195, 0.18);
+      --radius: 20px;
+      --max: 720px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 17px;
+      line-height: 1.55;
+      background: radial-gradient(circle at 50% 20%, var(--bg-mid) 0%, var(--bg) 55%);
+    }
+    main {
+      max-width: calc(var(--max) + 48px);
+      margin: 0 auto;
+      padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 28px) clamp(48px, 8vw, 80px);
+    }
+    header {
+      text-align: center;
+      margin-bottom: clamp(32px, 6vw, 48px);
+    }
+    h1 {
+      font-size: clamp(1.75rem, 4.5vw, 2.35rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+      line-height: 1.15;
+    }
+    .tagline {
+      color: var(--muted);
+      font-size: clamp(1rem, 2.2vw, 1.125rem);
+      max-width: 36em;
+      margin: 0 auto;
+    }
+    .tagline strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    figure {
+      margin: 0 0 clamp(40px, 7vw, 56px);
+      background: var(--panel);
+      border: 1px solid var(--faint);
+      border-radius: var(--radius);
+      padding: clamp(14px, 3vw, 20px);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(12px);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: calc(var(--radius) - 6px);
+    }
+    figcaption {
+      margin-top: 14px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+    }
+    section {
+      margin-bottom: clamp(28px, 5vw, 36px);
+    }
+    section:last-of-type { margin-bottom: 0; }
+    h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin: 0 0 14px;
+      font-weight: 650;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--faint);
+      border-radius: var(--radius);
+      padding: clamp(20px, 4vw, 26px) clamp(22px, 4vw, 28px);
+      backdrop-filter: blur(10px);
+    }
+    ul {
+      margin: 0;
+      padding-left: 1.15em;
+      color: var(--muted);
+    }
+    ul li { margin-bottom: 0.65em; }
+    ul li:last-child { margin-bottom: 0; }
+    ul strong { color: var(--text); font-weight: 600; }
+    .closing {
+      text-align: center;
+      font-size: clamp(1.15rem, 2.8vw, 1.4rem);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: var(--accent);
+      margin-top: clamp(36px, 6vw, 48px);
+      padding-top: clamp(28px, 5vw, 40px);
+      border-top: 1px solid var(--faint);
+    }
+    footer {
+      text-align: center;
+      margin-top: 28px;
+      font-size: 0.8125rem;
+      color: rgba(255, 255, 255, 0.38);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>TimeBurner</h1>
+      <p class="tagline">
+        A visual layer on <strong>Google Calendar</strong> that shows your year as concentric time rings—so you see what matters coming, not buried in lists and search results.
+      </p>
+    </header>
+
+    <figure>
+      <img src="usage_screenshot.png" width="1154" height="586" alt="TimeBurner interface: concentric year, month, week, and day rings with calendar events plotted visually beside a detail panel." loading="lazy" decoding="async" />
+      <figcaption>Year-at-a-glance view with events mapped to rings—distance and arc show how soon something arrives.</figcaption>
+    </figure>
+
+    <section class="card" aria-labelledby="capabilities-heading">
+      <h2 id="capabilities-heading">Capabilities</h2>
+      <ul>
+        <li><strong>Full-year visual context</strong> — Scan months of commitments on one canvas instead of paging week by week.</li>
+        <li><strong>Time-until clarity</strong> — See how many <strong>hours</strong>, <strong>days</strong>, and <strong>months</strong> stand between now and each event.</li>
+        <li><strong>Create and edit in place</strong> — Add new items or adjust existing ones while staying in the ring view.</li>
+        <li><strong>Google Calendar underneath</strong> — Your source of truth stays where it already lives; this tool is how you <em>see</em> it.</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="benefits-heading">
+      <h2 id="benefits-heading">Benefits</h2>
+      <ul>
+        <li><strong>Less cognitive load</strong> — Spatial layout maps time to shape and position, which many brains parse faster than text-heavy grids.</li>
+        <li><strong>Fewer dead-end searches</strong> — Important dates surface by proximity on the rings instead of requiring queries and filters.</li>
+        <li><strong>Big-picture planning</strong> — Spot clusters, gaps, and collisions across the whole year before they become problems.</li>
+        <li><strong>A calmer relationship with the calendar</strong> — One coherent picture replaces hunting through panels and menus.</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="audience-heading">
+      <h2 id="audience-heading">Who it is for</h2>
+      <ul>
+        <li><strong>Visual processing people (VPP)</strong> — Anyone who thinks in diagrams, maps, and spatial relationships rather than scrolling lists.</li>
+        <li><strong>Professionals and creatives</strong> — Consultants, founders, designers, and operators who juggle long horizons and need clients or collaborators to grasp their availability at a glance.</li>
+        <li><strong>Anyone allergic to “search the calendar”</strong> — If finding a date feels like friction, this interface is built for you.</li>
+      </ul>
+    </section>
+
+    <p class="closing">The future is visual.</p>
+
+    <footer>
+      TimeBurner · Works with Google Calendar
+    </footer>
+  </main>
+</body>
+</html>

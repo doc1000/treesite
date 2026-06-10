@@ -6,5 +6,6 @@
   "description": "Suggest three times and describe what you need help with.",
   "value": 9,
   "email": "info@knowledgealgorithms.com",
-  "template": "schedule"
+  "template": "schedule",
+  "id": "783f1789-c73d-4c4b-acd0-ec8640f61f02"
 }

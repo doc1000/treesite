@@ -1,0 +1,69 @@
+/**
+ * KnowAlgo / TreeSite — monochromatic slate-blue design tokens.
+ *
+ * Inspired by Nord’s calm, low-chroma approach, but tuned to a custom blue-gray
+ * (less cyan than Frost, muted luminance steps) for hierarchy without hue noise.
+ */
+
+:root {
+  /* Canvas */
+  --brand-bg-deep: #070a10;
+  --brand-bg: #0d1219;
+  --brand-panel: rgba(20, 27, 38, 0.92);
+  --brand-panel-soft: rgba(255, 255, 255, 0.06);
+  --brand-panel-strong: rgba(255, 255, 255, 0.105);
+
+  /* Typography */
+  --brand-text: #e8edf3;
+  --brand-muted: #94a3b8;
+  --brand-line: rgba(255, 255, 255, 0.12);
+
+  /* Accent ladder (same hue family ↑ luminance) */
+  --brand-accent-1: #5c6d82;
+  --brand-accent-2: #6f8196;
+  --brand-accent-3: #8699ae;
+  --brand-accent-4: #a3b4c8;
+  --brand-accent-5: #b3c5df;
+
+  /* Soft glows for cards / radials */
+  --brand-glow-1: rgba(92, 109, 130, 0.16);
+  --brand-glow-2: rgba(111, 129, 150, 0.15);
+  --brand-glow-3: rgba(134, 153, 174, 0.15);
+  --brand-glow-4: rgba(163, 180, 200, 0.14);
+  --brand-glow-5: rgba(179, 197, 223, 0.12);
+
+  /* Strong glow (numbered pills, pillar badges) */
+  --brand-glow-strong-1: rgba(92, 109, 130, 0.45);
+  --brand-glow-strong-2: rgba(111, 129, 150, 0.42);
+  --brand-glow-strong-3: rgba(134, 153, 174, 0.4);
+
+  /* CTA / button halos */
+  --brand-button-glow-1: rgba(92, 109, 130, 0.26);
+  --brand-button-glow-2: rgba(111, 129, 150, 0.25);
+  --brand-button-glow-3: rgba(134, 153, 174, 0.24);
+  --brand-button-glow-4: rgba(163, 180, 200, 0.22);
+  --brand-button-glow-5: rgba(179, 197, 223, 0.2);
+
+  /* Ambient page backdrop (single-hue, low alpha) */
+  --brand-ambient-1: rgba(100, 118, 142, 0.14);
+  --brand-ambient-2: rgba(120, 138, 162, 0.1);
+  --brand-ambient-3: rgba(90, 108, 132, 0.11);
+
+  /* Text on filled accent buttons (dark, not pure black) */
+  --brand-cta-ink: #0a0f14;
+
+  /* Top-level treemap section fills (luminance steps, shared hue) */
+  --brand-section-1: #252f3d;
+  --brand-section-2: #2f3c4d;
+  --brand-section-3: #3a4a5d;
+  --brand-section-4: #46586f;
+  --brand-section-5: #546a82;
+
+  /* Focus rings / chrome (slate, replaces bright cyan in app shell) */
+  --brand-focus-rgb: 163, 180, 200;
+
+  /* Minimap trail: muted slate (replaces gold) */
+  --brand-trail: #9eb0c4;
+  --brand-trail-soft: #c5d2e0;
+  --brand-trail-glow: rgba(158, 176, 196, 0.75);
+}

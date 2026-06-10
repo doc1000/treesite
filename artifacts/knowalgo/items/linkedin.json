@@ -1,0 +1,15 @@
+{
+  "name": "LinkedIn",
+  "slug": "linkedin",
+  "section": "Contact Me",
+  "type": "contact",
+  "description": "Connect professionally and see current background, work, and updates.",
+  "value": 7,
+  "kicker": "Professional profile",
+  "linkLabel": "linkedin.com/in/dosteresh",
+  "source": "https://www.linkedin.com/in/dosteresh/",
+  "href": "https://www.linkedin.com/in/dosteresh/",
+  "template": "contact",
+  "hidden": true,
+  "id": "e8a8925c-a80b-404f-896a-6232ecbe55e4"
+}
