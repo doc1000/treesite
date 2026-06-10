@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "add-card output",
+  "required": [
+    "ok",
+    "data"
+  ],
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "manifestRebuilt": {
+          "const": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

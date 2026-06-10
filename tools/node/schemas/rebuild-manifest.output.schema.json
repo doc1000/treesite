@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "rebuild-manifest output",
+  "required": [
+    "ok",
+    "data"
+  ],
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "manifestRebuilt": {
+          "const": true
+        },
+        "itemCount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

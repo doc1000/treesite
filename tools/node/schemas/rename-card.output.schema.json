@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "rename-card output",
+  "required": [
+    "ok",
+    "data"
+  ],
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "manifestRebuilt": {
+          "const": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "title": "inspect-subtree input",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "maxDepth": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "id"
+  ]
+}
