@@ -1,29 +1,31 @@
-import process from "node:process";
+import { ErrorCodes } from "./error-codes.js";
 import {
-  parseArgs,
-  readContentItem,
-  rebuildGeneratedContent,
-  requireArg,
-  writeContentItem
-} from "./content-utils.js";
+  fail,
+  loadItems,
+  parseToolArgs,
+  rebuildManifest,
+  resolveItemTarget,
+  success,
+  writeItem
+} from "./tool-runner.js";
 
 async function main() {
-  const args = parseArgs();
-  const slug = requireArg(args, "slug");
-  const section = requireArg(args, "section");
-  const item = await readContentItem(slug);
+  const { artifactPath, input } = await parseToolArgs();
+  const section = typeof input.section === "string" ? input.section.trim() : "";
+  if (!section) {
+    fail(1, ErrorCodes.INVALID_INPUT, 'Input must include non-empty "section".');
+  }
 
-  item.section = section;
+  const items = await loadItems(artifactPath);
+  const existing = await resolveItemTarget(items, input);
+  const item = { ...existing, section, id: existing.id };
 
-  await writeContentItem(slug, item);
-  const count = await rebuildGeneratedContent();
+  await writeItem(artifactPath, item);
+  await rebuildManifest(artifactPath);
 
-  console.log(`Moved card: ${slug}`);
-  console.log(`  section: ${section}`);
-  console.log(`Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`);
+  success({ id: item.id, section: item.section, manifestRebuilt: true });
 }
 
-main().catch(error => {
-  console.error(error.message || error);
-  process.exitCode = 1;
+main().catch(err => {
+  fail(4, ErrorCodes.FILESYSTEM_ERROR, err?.message || String(err));
 });

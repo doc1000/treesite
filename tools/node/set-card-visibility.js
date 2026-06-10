@@ -1,45 +1,30 @@
 import process from "node:process";
-import { canonicalSectionSubtreePrefix, minimalSiteRoot } from "../../handler/src/contentItems.js";
-import {
-  parseArgs,
-  readContentItem,
-  rebuildGeneratedContent,
-  requireArg,
-  writeContentItem
-} from "./content-utils.js";
-
-function parseHidden(value) {
-  if (value === true || value === "true") return true;
-  if (value === false || value === "false") return false;
-  throw new Error("--hidden must be true or false.");
-}
+import { ErrorCodes } from "./error-codes.js";
+import { runVisibilityCli } from "./set-card-visibility-core.js";
+import { fail, parseToolArgs } from "./tool-runner.js";
 
 async function main() {
-  const args = parseArgs();
-  const slug = requireArg(args, "slug");
-  const hidden = parseHidden(args.hidden);
-  const item = await readContentItem(slug);
+  const { input, flags } = await parseToolArgs();
 
-  item.hidden = hidden;
-
-  await writeContentItem(slug, item);
-  const count = await rebuildGeneratedContent();
-
-  console.log(`${hidden ? "Hid" : "Unhid"} card: ${slug}`);
-  if (item.type === "section") {
-    const path = canonicalSectionSubtreePrefix(item, minimalSiteRoot.name);
-    if (path) {
-      console.log(
-        hidden
-          ? `Subtree paths under "${path}" are omitted from the site until this section is visible again (cascade; descendant JSON unchanged).`
-          : `Subtree paths under "${path}" can appear again. Cards still marked hidden stay hidden.`
-      );
+  let hidden = input.hidden;
+  if (hidden === undefined) {
+    const argv = process.argv.slice(2);
+    if (argv.includes("--hidden")) {
+      const idx = argv.indexOf("--hidden");
+      const val = argv[idx + 1];
+      hidden = val === "true";
     }
   }
-  console.log(`Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`);
+
+  if (hidden !== true && hidden !== false) {
+    fail(
+      1,
+      ErrorCodes.INVALID_INPUT,
+      'Set hidden via JSON {"id":"…","hidden":true} or legacy --hidden true|false with --artifact.'
+    );
+  }
+
+  await runVisibilityCli(hidden);
 }
 
-main().catch(error => {
-  console.error(error.message || error);
-  process.exitCode = 1;
-});
+main();

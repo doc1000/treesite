@@ -1,109 +1,67 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import process from "node:process";
 import { applyContentItems, minimalSiteRoot } from "../../handler/src/contentItems.js";
-import {
-  appRoot,
-  contentItemPath,
-  parseArgs,
-  readContentItem,
-  readContentItems,
-  rebuildGeneratedContent,
-  requireArg,
-  slugify,
-  writeContentItem
-} from "./content-utils.js";
 import { applyCardFields } from "./card-fields.js";
-import { mergeDescriptionArgs } from "./merge-description-arg.js";
+import { slugify } from "./content-utils.js";
+import { ErrorCodes } from "./error-codes.js";
+import {
+  fail,
+  itemFilePath,
+  loadItems,
+  parseToolArgs,
+  rebuildManifest,
+  resolveItemTarget,
+  success,
+  writeItem
+} from "./tool-runner.js";
 import {
   buildSlugMaterializedMap,
   replaceLastSegment,
   rewriteSectionPath
 } from "./tree-path-utils.js";
 
-/** Rewrite slug segments in /assets/ paths so previews and PDF paths stay consistent after re-slugging. */
 function rewriteAssetPathsForSlug(item, oldSlug, newSlug) {
   if (oldSlug === newSlug) return;
   const keys = ["previewImage", "pdf", "image", "source", "url"];
   for (const key of keys) {
     const v = item[key];
     if (typeof v !== "string" || !v.includes(oldSlug)) continue;
-    if (!v.includes("/assets/") && !v.startsWith("/assets/")) continue;
+    if (!v.includes("assets/")) continue;
     item[key] = v.split(oldSlug).join(newSlug);
   }
 }
 
-async function renameLeafCard(args, fromSlug, toSlug, skipRewrite) {
-  const item = await readContentItem(fromSlug);
-
-  const cardArgs = { ...args };
-  delete cardArgs.from;
-  delete cardArgs.to;
-  delete cardArgs["new-slug"];
-  delete cardArgs["rewrite-paths"];
-  delete cardArgs.slug;
-
-  applyCardFields(item, cardArgs, { allowIdentity: true });
+async function renameLeafCard(artifactPath, args, fromSlug, toSlug, skipRewrite, existing) {
+  const item = { ...existing };
+  applyCardFields(item, args, { allowIdentity: true });
   item.slug = toSlug;
+  item.id = existing.id;
 
   if (!skipRewrite) {
     rewriteAssetPathsForSlug(item, fromSlug, toSlug);
   }
 
-  await writeContentItem(toSlug, item);
-
+  await writeItem(artifactPath, item);
   if (toSlug !== fromSlug) {
-    await fs.unlink(contentItemPath(fromSlug));
-  }
-
-  const count = await rebuildGeneratedContent();
-
-  if (toSlug === fromSlug) {
-    console.log(`Updated card: ${toSlug}`);
-  } else {
-    console.log(`Renamed card: ${fromSlug} → ${toSlug}`);
-  }
-  console.log(`  item: ${path.relative(appRoot, contentItemPath(toSlug))}`);
-  if (item.name) console.log(`  name: ${item.name}`);
-  console.log(
-    `Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`
-  );
-  if (toSlug !== fromSlug && !skipRewrite) {
-    console.log(
-      "Tip: If filenames still use the old slug, rename files under public/assets/ to match."
-    );
+    await fs.unlink(itemFilePath(artifactPath, fromSlug));
   }
 }
 
-async function renameSectionFolder(args, fromSlug, toSlug, skipRewrite) {
-  const items = await readContentItems();
-  const idx = items.findIndex(i => i.slug === fromSlug);
-  if (idx < 0) {
-    throw new Error(`No item with slug "${fromSlug}".`);
-  }
-
+async function renameSectionFolder(artifactPath, args, fromSlug, toSlug, skipRewrite, existing) {
+  const items = await loadItems(artifactPath);
   const tree = applyContentItems(minimalSiteRoot, items);
   const slugMap = {};
   buildSlugMaterializedMap(tree, [], slugMap);
 
   const oldMat = slugMap[fromSlug];
   if (oldMat === undefined) {
-    throw new Error(
-      `Slug "${fromSlug}" not found in merged tree (cannot resolve materialized path).`
-    );
+    fail(3, ErrorCodes.ITEM_NOT_FOUND, `Slug "${fromSlug}" not found in merged tree.`);
   }
 
-  const item = structuredClone(items[idx]);
-
-  const cardArgs = { ...args };
-  delete cardArgs.from;
-  delete cardArgs.to;
-  delete cardArgs["new-slug"];
-  delete cardArgs["rewrite-paths"];
-  delete cardArgs.slug;
-
-  applyCardFields(item, cardArgs, { allowIdentity: true });
+  const item = structuredClone(existing);
+  applyCardFields(item, args, { allowIdentity: true });
   item.slug = toSlug;
+  item.id = existing.id;
 
   if (!skipRewrite) {
     rewriteAssetPathsForSlug(item, fromSlug, toSlug);
@@ -113,8 +71,7 @@ async function renameSectionFolder(args, fromSlug, toSlug, skipRewrite) {
   const cascadePaths = oldMat !== newMat;
 
   const nextItems = items.map(row => {
-    const base =
-      row.slug === fromSlug ? structuredClone(item) : structuredClone(row);
+    const base = row.id === existing.id ? structuredClone(item) : structuredClone(row);
     if (cascadePaths) {
       base.section = rewriteSectionPath(base.section, oldMat, newMat);
     }
@@ -122,75 +79,56 @@ async function renameSectionFolder(args, fromSlug, toSlug, skipRewrite) {
   });
 
   for (const row of nextItems) {
-    await writeContentItem(row.slug, row);
+    await writeItem(artifactPath, row);
   }
 
   if (toSlug !== fromSlug) {
-    await fs.unlink(contentItemPath(fromSlug));
-  }
-
-  const count = await rebuildGeneratedContent();
-
-  if (toSlug === fromSlug) {
-    console.log(`Updated section folder: ${toSlug}`);
-  } else {
-    console.log(`Renamed section folder: ${fromSlug} → ${toSlug}`);
-  }
-  console.log(`  item: ${path.relative(appRoot, contentItemPath(toSlug))}`);
-  if (item.name) console.log(`  name: ${item.name}`);
-  if (cascadePaths) {
-    console.log(`  cascaded section paths: "${oldMat}" → "${newMat}"`);
-  }
-  console.log(
-    `Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`
-  );
-  if (toSlug !== fromSlug && !skipRewrite) {
-    console.log(
-      "Tip: If filenames still use the old slug, rename files under public/assets/ to match."
-    );
+    await fs.unlink(itemFilePath(artifactPath, fromSlug));
   }
 }
 
 async function main() {
-  const args = parseArgs();
-  await mergeDescriptionArgs(args);
-  const fromSlug = requireArg(args, "from");
+  const { artifactPath, input } = await parseToolArgs();
+  const items = await loadItems(artifactPath);
+  const existing = await resolveItemTarget(items, input);
 
-  const toSlugRaw = args.to ?? args["new-slug"];
-  const toSlug =
-    toSlugRaw !== undefined && String(toSlugRaw).trim() !== ""
-      ? slugify(String(toSlugRaw).trim())
-      : fromSlug;
-
+  const name =
+    typeof input.name === "string" && input.name.trim()
+      ? input.name.trim()
+      : existing.name;
+  const toSlug = slugify(
+    typeof input.slug === "string" && input.slug.trim() ? input.slug : name
+  );
   if (!toSlug) {
-    throw new Error("Invalid target slug after slugify.");
+    fail(1, ErrorCodes.INVALID_INPUT, "Invalid target slug after slugify.");
   }
 
+  const fromSlug = existing.slug;
+  const skipRewrite = input.rewritePaths === false;
+
   if (toSlug !== fromSlug) {
-    const targetPath = contentItemPath(toSlug);
     try {
-      await fs.access(targetPath);
-      throw new Error(
-        `Refusing to overwrite: ${path.relative(appRoot, targetPath)} already exists. Pick another --to slug.`
-      );
+      await fs.access(itemFilePath(artifactPath, toSlug));
+      fail(3, ErrorCodes.INVALID_INPUT, `Refusing to overwrite existing slug "${toSlug}".`);
     } catch (err) {
-      if (err.code !== "ENOENT") throw err;
+      if (!(err && typeof err === "object" && "code" in err && err.code === "ENOENT")) {
+        fail(4, ErrorCodes.FILESYSTEM_ERROR, String(err));
+      }
     }
   }
 
-  const skipRewrite =
-    args["rewrite-paths"] === "false" || args["rewrite-paths"] === false;
+  const cardArgs = { ...input, name, slug: toSlug };
 
-  const sourceItem = await readContentItem(fromSlug);
-
-  if (sourceItem.type === "section") {
-    await renameSectionFolder(args, fromSlug, toSlug, skipRewrite);
+  if (existing.type === "section") {
+    await renameSectionFolder(artifactPath, cardArgs, fromSlug, toSlug, skipRewrite, existing);
   } else {
-    await renameLeafCard(args, fromSlug, toSlug, skipRewrite);
+    await renameLeafCard(artifactPath, cardArgs, fromSlug, toSlug, skipRewrite, existing);
   }
+
+  await rebuildManifest(artifactPath);
+  success({ id: existing.id, slug: toSlug, manifestRebuilt: true });
 }
 
-main().catch(error => {
-  console.error(error.message || error);
-  process.exitCode = 1;
+main().catch(err => {
+  fail(4, ErrorCodes.FILESYSTEM_ERROR, err?.message || String(err));
 });

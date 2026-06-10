@@ -1,47 +1,58 @@
-import path from "node:path";
-import process from "node:process";
-import {
-  appRoot,
-  parseArgs,
-  rebuildGeneratedContent,
-  requireArg,
-  slugify,
-  writeContentItem
-} from "./content-utils.js";
+import { randomUUID } from "node:crypto";
 import { applyCardFields, normalizeCardType } from "./card-fields.js";
-import { mergeDescriptionArgs } from "./merge-description-arg.js";
+import { ErrorCodes } from "./error-codes.js";
+import { slugify } from "./content-utils.js";
+import {
+  fail,
+  parseToolArgs,
+  rebuildManifest,
+  success,
+  writeItem
+} from "./tool-runner.js";
 
 async function main() {
-  const args = parseArgs();
-  await mergeDescriptionArgs(args);
-  const name = requireArg({ name: args.name || args.title }, "name");
-  const section = requireArg(args, "section");
-  const type = normalizeCardType(args.type || "text");
-  const slug = slugify(args.slug || name);
+  const { artifactPath, input } = await parseToolArgs();
 
+  const name = typeof input.name === "string" ? input.name.trim() : "";
+  const section = typeof input.section === "string" ? input.section.trim() : "";
+  const type = normalizeCardType(
+    typeof input.type === "string" ? input.type : "text"
+  );
+
+  if (!name) fail(1, ErrorCodes.INVALID_INPUT, 'Input must include non-empty "name".');
+  if (!section) fail(1, ErrorCodes.INVALID_INPUT, 'Input must include non-empty "section".');
+
+  const slug = slugify(
+    typeof input.slug === "string" && input.slug.trim() ? input.slug : name
+  );
   if (!slug) {
-    throw new Error("Could not create a slug from the supplied name.");
+    fail(1, ErrorCodes.INVALID_INPUT, "Could not create a slug from the supplied name.");
   }
 
-  const item = applyCardFields({
-    name,
-    slug,
-    section,
-    type,
-    description: args.description || "",
-    value: 8
-  }, args);
+  const item = applyCardFields(
+    {
+      id: randomUUID(),
+      name,
+      slug,
+      section,
+      type,
+      description:
+        typeof input.description === "string" ? input.description : "",
+      value: 8
+    },
+    input
+  );
 
-  const itemPath = await writeContentItem(slug, item);
-  const count = await rebuildGeneratedContent();
+  const written = await writeItem(artifactPath, item);
+  await rebuildManifest(artifactPath);
 
-  console.log(`Added ${type} card: ${name}`);
-  console.log(`  item: ${path.relative(appRoot, itemPath)}`);
-  console.log(`  section: ${item.section}`);
-  console.log(`Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`);
+  success({
+    id: written.id,
+    slug: written.slug,
+    manifestRebuilt: true
+  });
 }
 
-main().catch(error => {
-  console.error(error.message || error);
-  process.exitCode = 1;
+main().catch(err => {
+  fail(4, ErrorCodes.FILESYSTEM_ERROR, err?.message || String(err));
 });

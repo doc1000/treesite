@@ -1,78 +1,82 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import process from "node:process";
-import {
-  appRoot,
-  parseArgs,
-  parseValue,
-  publicPath,
-  rebuildGeneratedContent,
-  requireArg,
-  slugify,
-  writeContentItem
-} from "./content-utils.js";
+import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import { artifactAssetRel } from "./artifact-assets.js";
+import { parseValue, slugify } from "./content-utils.js";
+import { ErrorCodes } from "./error-codes.js";
 import { mergeDescriptionArgs } from "./merge-description-arg.js";
 import { renderPdfPreview } from "./pdf-preview.js";
+import { fail, parseToolArgs, rebuildManifest, success, writeItem } from "./tool-runner.js";
+
+const handlerRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "handler");
 
 async function main() {
-  const args = parseArgs();
+  const { artifactPath, input } = await parseToolArgs();
+  const args = { ...input };
   await mergeDescriptionArgs(args);
-  const file = path.resolve(requireArg(args, "file"));
-  const section = requireArg(args, "section");
-  const title = requireArg(args, "title");
-  const slug = slugify(args.slug || title);
 
-  if (!slug) {
-    throw new Error("Could not create a slug from the supplied title.");
+  const name = typeof args.name === "string" ? args.name.trim() : "";
+  const section = typeof args.section === "string" ? args.section.trim() : "";
+  const filePath = path.resolve(
+    typeof args.sourcePath === "string"
+      ? args.sourcePath
+      : typeof args.file === "string"
+        ? args.file
+        : ""
+  );
+
+  if (!name) fail(1, ErrorCodes.INVALID_INPUT, 'Input must include "name".');
+  if (!section) fail(1, ErrorCodes.INVALID_INPUT, 'Input must include "section".');
+  if (!filePath) fail(1, ErrorCodes.INVALID_INPUT, 'Input must include "sourcePath" (or legacy "file").');
+
+  const slug = slugify(
+    typeof args.slug === "string" && args.slug.trim() ? args.slug : name
+  );
+  if (!slug) fail(1, ErrorCodes.INVALID_INPUT, "Could not create a slug.");
+
+  if (path.extname(filePath).toLowerCase() !== ".pdf") {
+    fail(1, ErrorCodes.INVALID_INPUT, "sourcePath must point to a .pdf file.");
   }
 
-  const extension = path.extname(file).toLowerCase();
-  if (extension !== ".pdf") {
-    throw new Error("--file must point to a .pdf file.");
-  }
-
-  await fs.access(file);
+  await fs.access(filePath);
 
   const pdfFilename = `${slug}.pdf`;
   const previewFilename = `${slug}.png`;
-  const pdfOutputPath = path.join(appRoot, "public", "assets", "pdfs", pdfFilename);
-  const previewOutputPath = path.join(appRoot, "public", "assets", "previews", previewFilename);
-  const pdfPublicPath = publicPath("pdfs", pdfFilename);
-  const previewPublicPath = publicPath("previews", previewFilename);
+  const pdfOutputPath = path.join(artifactPath, "assets", "pdfs", pdfFilename);
+  const previewOutputPath = path.join(artifactPath, "assets", "previews", previewFilename);
+  const pdfRel = artifactAssetRel("pdfs", pdfFilename);
+  const previewRel = artifactAssetRel("previews", previewFilename);
 
   await fs.mkdir(path.dirname(pdfOutputPath), { recursive: true });
-  await fs.copyFile(file, pdfOutputPath);
+  await fs.copyFile(filePath, pdfOutputPath);
   await renderPdfPreview({
     pdfPath: pdfOutputPath,
     outputPath: previewOutputPath,
-    appRoot
+    appRoot: handlerRoot
   });
 
   const item = {
-    name: title,
+    id: randomUUID(),
+    name,
     slug,
     section,
     type: "pdf",
-    description: args.description || "",
-    source: pdfPublicPath,
-    pdf: pdfPublicPath,
-    previewImage: previewPublicPath,
+    description: typeof args.description === "string" ? args.description : "",
+    source: pdfRel,
+    pdf: pdfRel,
+    previewImage: previewRel,
     value: parseValue(args.value)
   };
 
   if (args.kicker) item.kicker = String(args.kicker);
 
-  const itemPath = await writeContentItem(slug, item);
-  const count = await rebuildGeneratedContent();
+  const written = await writeItem(artifactPath, item);
+  await rebuildManifest(artifactPath);
 
-  console.log(`Added PDF item: ${title}`);
-  console.log(`  item: ${path.relative(appRoot, itemPath)}`);
-  console.log(`  pdf: ${pdfPublicPath}`);
-  console.log(`  preview: ${previewPublicPath}`);
-  console.log(`Rebuilt generated content with ${count} item${count === 1 ? "" : "s"}.`);
+  success({ id: written.id, slug: written.slug, manifestRebuilt: true });
 }
 
-main().catch(error => {
-  console.error(error.message || error);
-  process.exitCode = 1;
+main().catch(err => {
+  fail(4, ErrorCodes.FILESYSTEM_ERROR, err?.message || String(err));
 });
