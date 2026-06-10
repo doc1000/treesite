@@ -126,6 +126,22 @@ class MutationSummary(BaseModel):
     manifest_rebuilt: bool = Field(alias="manifestRebuilt")
 
 
+class ZipExportResult(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    zip_path: str = Field(alias="zipPath")
+    size_bytes: int = Field(alias="sizeBytes")
+    sha256: str
+
+
+class ImportResult(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    artifact_path: str = Field(alias="artifactPath")
+    item_count: int = Field(alias="itemCount")
+    schema_version: int = Field(alias="schemaVersion")
+
+
 def validate_item(item: dict[str, Any]) -> ContentItem:
     return ContentItem.model_validate(item)
 

@@ -229,3 +229,37 @@ test("validate fails DUPLICATE_ID after manual duplicate", async () => {
     result.json.data.errors.some(e => e.code === "DUPLICATE_ID")
   );
 });
+
+test("export_zip creates zip with sha256", async () => {
+  const tmp = await copyArtifactToTemp();
+  const destZip = path.join(path.dirname(tmp), `${path.basename(tmp)}.zip`);
+  const { json, status } = runTool("export-zip", tmp, { destZip });
+  assert.equal(status, 0);
+  assert.equal(json.ok, true);
+  assert.ok(json.data.sizeBytes > 0);
+  assert.match(json.data.sha256, /^[a-f0-9]{64}$/);
+  await fs.access(destZip);
+});
+
+test("import_zip round-trip preserves item count", async () => {
+  const tmp = await copyArtifactToTemp();
+  const destZip = path.join(path.dirname(tmp), `${path.basename(tmp)}.zip`);
+  runTool("export-zip", tmp, { destZip });
+  const imported = `${tmp}-imported`;
+  const { json, status } = runTool("import-zip", imported, {
+    srcZip: destZip,
+    overwrite: false
+  });
+  assert.equal(status, 0);
+  assert.equal(json.data.itemCount, 12);
+  assert.equal(json.data.schemaVersion, 1);
+});
+
+test("export_zip is deterministic", async () => {
+  const tmp = await copyArtifactToTemp();
+  const zipA = path.join(path.dirname(tmp), `${path.basename(tmp)}-a.zip`);
+  const zipB = path.join(path.dirname(tmp), `${path.basename(tmp)}-b.zip`);
+  const a = runTool("export-zip", tmp, { destZip: zipA });
+  const b = runTool("export-zip", tmp, { destZip: zipB });
+  assert.equal(a.json.data.sha256, b.json.data.sha256);
+});

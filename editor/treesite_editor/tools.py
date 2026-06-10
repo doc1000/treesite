@@ -7,11 +7,13 @@ from treesite_editor import runner
 from treesite_editor.models import (
     ArtifactStats,
     ContentItem,
+    ImportResult,
     MutationSummary,
     SearchResult,
     SubtreeNode,
     TreeLine,
     ValidationResult,
+    ZipExportResult,
     validate_item,
 )
 
@@ -143,6 +145,20 @@ def migrate(artifact: str, target_version: int | None = None) -> dict[str, Any]:
     if target_version is not None:
         payload["targetVersion"] = target_version
     return runner.run_tool("migrate", artifact, payload)
+
+
+def export_zip(artifact: str, dest_zip: str) -> ZipExportResult:
+    data = runner.run_tool("export-zip", artifact, {"destZip": dest_zip})
+    return ZipExportResult.model_validate(data)
+
+
+def import_zip(src_zip: str, dest_dir: str, overwrite: bool = False) -> ImportResult:
+    data = runner.run_tool(
+        "import-zip",
+        dest_dir,
+        {"srcZip": src_zip, "overwrite": overwrite},
+    )
+    return ImportResult.model_validate(data)
 
 
 __all__ = ["validate_item"]
