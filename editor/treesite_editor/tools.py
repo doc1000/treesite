@@ -98,7 +98,7 @@ def edit_card(artifact: str, *, id: str, **fields: Any) -> ContentItem:
 
 
 def delete_card(artifact: str, *, id: str) -> MutationSummary:
-    data = runner.run_tool("delete-card", artifact, {"id": id})
+    data = runner.run_tool("delete-card", artifact, {"id": id, "confirm": True})
     return MutationSummary.model_validate(data)
 
 

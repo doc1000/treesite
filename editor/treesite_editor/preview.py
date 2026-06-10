@@ -51,10 +51,12 @@ class ArtifactPreviewServer:
         *,
         mode: Literal["static", "dev"] = "static",
         config: TreeSiteConfig | None = None,
+        artifact_base_url: str | None = None,
     ) -> None:
         self.config = config or get_config()
         repo_root = find_repo_root()
         self.artifact_path = self.config.resolve_artifact(artifact_path, repo_root)
+        self.artifact_base_url = artifact_base_url.rstrip("/") + "/" if artifact_base_url else None
         handler_path = Path(handler_dir)
         if not handler_path.is_absolute():
             handler_path = (repo_root / handler_path).resolve()
@@ -81,22 +83,25 @@ class ArtifactPreviewServer:
                 f"Handler build not found at {dist}. Run `npm run build` in handler/ first."
             )
 
-        self._artifact_port = _pick_free_port()
-        serve_script = find_repo_root() / "tools" / "node" / "serve-artifact.js"
-        self._artifact_proc = subprocess.Popen(
-            [
-                self.config.node_bin,
-                str(serve_script),
-                "--dir",
-                str(self.artifact_path),
-                "--port",
-                str(self._artifact_port),
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        artifact_base = f"http://127.0.0.1:{self._artifact_port}/"
-        _wait_for_url(f"{artifact_base}artifact.json")
+        if self.artifact_base_url:
+            artifact_base = self.artifact_base_url
+        else:
+            self._artifact_port = _pick_free_port()
+            serve_script = find_repo_root() / "tools" / "node" / "serve-artifact.js"
+            self._artifact_proc = subprocess.Popen(
+                [
+                    self.config.node_bin,
+                    str(serve_script),
+                    "--dir",
+                    str(self.artifact_path),
+                    "--port",
+                    str(self._artifact_port),
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            artifact_base = f"http://127.0.0.1:{self._artifact_port}/"
+            _wait_for_url(f"{artifact_base}artifact.json")
 
         self._handler_port = self.port if self.port else _pick_free_port()
         handler = _QuietHandler
@@ -168,10 +173,20 @@ class ArtifactPreviewServer:
         self.stop()
 
 
-def start_preview_for_session(artifact_path: str) -> str:
+def start_preview_for_session(
+    artifact_path: str,
+    *,
+    artifact_base_url: str | None = None,
+) -> str:
     global _active_server
     stop_active_preview()
-    server = ArtifactPreviewServer(artifact_path, "handler", port=8002, mode="static")
+    server = ArtifactPreviewServer(
+        artifact_path,
+        "handler",
+        port=8002,
+        mode="static",
+        artifact_base_url=artifact_base_url,
+    )
     url = server.start()
     _active_server = server
     return url

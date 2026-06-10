@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import tempfile
 import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -23,6 +22,7 @@ from treesite_editor.api.deps import (
     resolve_upload_temp,
 )
 from treesite_editor.errors import ArtifactNotFoundError, FilesystemError, InvalidInputError
+from treesite_editor.preview import start_preview_for_session, stop_active_preview
 
 router = APIRouter(prefix="/artifacts", tags=["Artifacts"], dependencies=[Depends(require_write_auth)])
 
@@ -52,7 +52,7 @@ class ArtifactSummary(BaseModel):
 async def import_artifact(
     settings: Annotated[ApiConfig, Depends(get_settings)],
     file: UploadFile = File(...),
-    name: str | None = None,
+    name: str | None = Form(None),
 ) -> dict[str, Any]:
     if not file.filename or not file.filename.lower().endswith(".zip"):
         raise InvalidInputError("Upload must be a .zip file.")
@@ -68,7 +68,7 @@ async def import_artifact(
                 raise InvalidInputError("Upload exceeds max artifact size.")
             out.write(chunk)
 
-    staging = tempfile.mkdtemp(prefix="treesite-import-", dir=temp_root)
+    staging = str(temp_root / f"staging-{uuid.uuid4().hex}")
     try:
         result = tools.import_zip(str(zip_path), staging, overwrite=False)
         meta = read_artifact_meta(result.artifact_path)
@@ -184,3 +184,43 @@ def delete_artifact(
         raise ArtifactNotFoundError(f"Artifact '{name}' not found.")
     shutil.rmtree(path)
     return ok({"deleted": True})
+
+
+@router.get(
+    "/{name}/static/{file_path:path}",
+    summary="Artifact static files",
+    description="Serve artifact bundle files for handler runtime loading.",
+)
+def artifact_static(
+    name: str,
+    file_path: str,
+    settings: Annotated[ApiConfig, Depends(get_settings)],
+) -> FileResponse:
+    base = settings.artifact_dir(name)
+    if not base.is_dir():
+        raise ArtifactNotFoundError(f"Artifact '{name}' not found.")
+    target = (base / file_path).resolve()
+    if not str(target).startswith(str(base.resolve())):
+        raise InvalidInputError("Invalid static path.")
+    if not target.is_file():
+        raise ArtifactNotFoundError(f"File not found: {file_path}")
+    return FileResponse(path=str(target))
+
+
+@router.get(
+    "/{name}/preview",
+    summary="Preview URL",
+    description="Return a handler preview URL that loads this artifact from the API.",
+)
+def artifact_preview(
+    name: str,
+    settings: Annotated[ApiConfig, Depends(get_settings)],
+) -> dict[str, Any]:
+    path = settings.artifact_dir(name)
+    if not path.is_dir():
+        raise ArtifactNotFoundError(f"Artifact '{name}' not found.")
+    base = settings.public_base_url.rstrip("/")
+    artifact_url = f"{base}/artifacts/{name}/static/"
+    stop_active_preview()
+    preview_url = start_preview_for_session(str(path), artifact_base_url=artifact_url)
+    return ok({"previewUrl": preview_url})
