@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from treesite_editor.api.config import get_api_config
 from treesite_editor.api.errors import treesite_error_handler
 from treesite_editor.api.middleware import RequestLoggingMiddleware
-from treesite_editor.api.routers import health
+from treesite_editor.api.routers import artifacts, health, nodes
 from treesite_editor.errors import TreeSiteError
 
 
