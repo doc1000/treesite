@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { applyCardFields } from "./card-fields.js";
-import { bodyToSafeHtml, inferFormatFromExtension, normalizeTxtMode } from "./html-body.js";
 import { ErrorCodes } from "./error-codes.js";
 import {
   fail,
@@ -14,6 +13,17 @@ import {
 } from "./tool-runner.js";
 
 async function mergeConvertedHtml(fields) {
+  const needsHtml =
+    fields.html !== undefined ||
+    fields["html-file"] !== undefined ||
+    fields["html-text"] !== undefined;
+  if (!needsHtml) {
+    return { ...fields };
+  }
+
+  const { bodyToSafeHtml, inferFormatFromExtension, normalizeTxtMode } = await import(
+    "./html-body.js"
+  );
   const args = { ...fields };
   const htmlRaw = args.html;
   const hasVerbatimHtml =

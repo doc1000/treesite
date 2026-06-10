@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:tools": "node --test ../tools/node/tests/**/*.test.js",
     "preview": "vite preview",
     "serve:artifact": "node ../tools/node/serve-artifact.js",
     "add:card": "node ../tools/node/add-card.js --artifact ../artifacts/example",

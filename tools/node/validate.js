@@ -123,23 +123,25 @@ async function main() {
     }
   }
 
-  let manifest;
-  try {
-    manifest = await loadManifest(artifactPath);
-  } catch {
-    return;
-  }
-
-  const siteRoot = buildSiteRootFromArtifact(meta);
-  const expected = applyContentItems(siteRoot, items);
-
-  if (stableStringify(expected) !== stableStringify(manifest)) {
-    fail(2, ErrorCodes.MANIFEST_DRIFT, "manifest.json does not match rebuild_manifest on current items/.", {
-      diffSummary: "manifest tree differs from derived tree"
-    });
-  }
-
   const valid = errors.length === 0;
+
+  if (valid) {
+    let manifest;
+    try {
+      manifest = await loadManifest(artifactPath);
+    } catch {
+      return;
+    }
+
+    const siteRoot = buildSiteRootFromArtifact(meta);
+    const expected = applyContentItems(siteRoot, items);
+
+    if (stableStringify(expected) !== stableStringify(manifest)) {
+      fail(2, ErrorCodes.MANIFEST_DRIFT, "manifest.json does not match rebuild_manifest on current items/.", {
+        diffSummary: "manifest tree differs from derived tree"
+      });
+    }
+  }
 
   success({
     valid,
