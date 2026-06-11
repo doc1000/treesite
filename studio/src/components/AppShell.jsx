@@ -19,19 +19,56 @@ export default function AppShell({
   manifest,
   selectedNodeId,
   selectedNode,
+  nodeItem,
   onSelectNode,
   expandedNodeIds,
   onToggleExpanded,
   explorerView,
   onExplorerViewChange,
+  artifacts,
+  selectedArtifact,
+  onSelectArtifact,
+  stats,
+  files,
+  loading,
+  focusNodeId,
+  onSetFocus,
 }) {
   const artifactLabel = manifest.displayName || manifest.name || "Artifact";
+
+  const validationLabel = stats
+    ? `${stats.itemCount} items · ${stats.sectionCount} sections · ${stats.leafCount} leaves`
+    : "Not validated (no artifact loaded)";
 
   return (
     <div className="app-shell">
       <aside className="shell-panel brand">
         <h1>TreeSite Studio</h1>
         <p>{artifactLabel} — artifact deployer + editor</p>
+        {artifacts?.length > 0 && (
+          <select
+            value={selectedArtifact || ""}
+            onChange={(e) => onSelectArtifact(e.target.value)}
+            style={{
+              marginTop: 8,
+              width: "100%",
+              background: "var(--bg2)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "3px 6px",
+            }}
+          >
+            {artifacts.map((a) => (
+              <option key={a.name} value={a.name}>
+                {a.displayName || a.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {loading && (
+          <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>Loading…</p>
+        )}
       </aside>
 
       <TopCommandBar className="shell-panel topbar" />
@@ -55,8 +92,18 @@ export default function AppShell({
           onSelectNode={onSelectNode}
           expandedNodeIds={expandedNodeIds}
           onToggleExpanded={onToggleExpanded}
+          artifacts={artifacts}
+          selectedArtifact={selectedArtifact}
+          onSelectArtifact={onSelectArtifact}
+          files={files}
         />
-        <MiniMap manifest={manifest} sections={manifest.children ?? []} />
+        <MiniMap
+          manifest={manifest}
+          focusNodeId={focusNodeId}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={onSelectNode}
+          onSetFocus={onSetFocus}
+        />
       </aside>
 
       <main className="shell-panel center-column">
@@ -77,12 +124,14 @@ export default function AppShell({
           manifest={manifest}
           selectedNodeId={selectedNodeId}
           onSelectNode={onSelectNode}
+          focusNodeId={focusNodeId}
+          onSetFocus={onSetFocus}
         />
-        <StatusBar deployStatus="idle" validationStatus="Not validated (sample data)" />
+        <StatusBar deployStatus="idle" validationStatus={validationLabel} />
       </main>
 
       <aside className="shell-panel right-panel">
-        <RightToolPanel selectedNode={selectedNode} />
+        <RightToolPanel selectedNode={selectedNode} nodeItem={nodeItem} />
       </aside>
     </div>
   );

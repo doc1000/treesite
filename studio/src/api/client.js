@@ -1,0 +1,41 @@
+const BASE = "/api";
+
+export async function listArtifacts() {
+  const res = await fetch(`${BASE}/artifacts`);
+  if (!res.ok) throw new Error(`listArtifacts: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function listFiles(name) {
+  const res = await fetch(`${BASE}/artifacts/${encodeURIComponent(name)}/files`);
+  if (!res.ok) throw new Error(`listFiles: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function runTool(artifactName, tool, input = {}) {
+  const res = await fetch(`${BASE}/tool/${encodeURIComponent(tool)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ artifactName, input }),
+  });
+  if (!res.ok) throw new Error(`runTool(${tool}): HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getManifest(artifactName) {
+  const result = await runTool(artifactName, "get-manifest", {});
+  if (!result.ok) throw new Error(result.error?.message || "get-manifest failed");
+  return result.data.manifest;
+}
+
+export async function getNode(artifactName, id) {
+  const result = await runTool(artifactName, "get-node", { id });
+  if (!result.ok) throw new Error(result.error?.message || "get-node failed");
+  return result.data.item;
+}
+
+export async function getStats(artifactName) {
+  const result = await runTool(artifactName, "artifact-stats", {});
+  if (!result.ok) throw new Error(result.error?.message || "artifact-stats failed");
+  return result.data;
+}

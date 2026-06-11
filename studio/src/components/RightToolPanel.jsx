@@ -1,10 +1,13 @@
-export default function RightToolPanel({ selectedNode }) {
+export default function RightToolPanel({ selectedNode, nodeItem }) {
+  // Prefer the richer nodeItem (from get-node) over the manifest-derived selectedNode
   const node = selectedNode ?? {};
-  const displayName = node.name || node.title || "—";
-  const nodeType = node.type || "—";
-  const description = node.description ?? "";
+  const item = nodeItem ?? node;
+  const displayName = item.name || item.title || "—";
+  const nodeType = item.type || "—";
+  const description = item.description ?? "";
   const valueField = node.value != null ? String(node.value) : "";
-  const slug = node.slug ?? "";
+  const slug = item.slug ?? "";
+  const nodeId = item.id ?? "";
 
   return (
     <>
@@ -46,6 +49,12 @@ export default function RightToolPanel({ selectedNode }) {
           <label htmlFor="field-slug">Slug</label>
           <input id="field-slug" value={slug} readOnly />
         </div>
+        {nodeId && (
+          <div className="field">
+            <label htmlFor="field-id">ID</label>
+            <input id="field-id" value={nodeId} readOnly style={{ fontSize: 10 }} />
+          </div>
+        )}
         <div className="action-list">
           <button type="button" onClick={() => {}}>Rename</button>
           <button type="button" onClick={() => {}}>Move</button>
@@ -53,6 +62,37 @@ export default function RightToolPanel({ selectedNode }) {
           <button type="button" className="danger" onClick={() => {}}>Delete</button>
         </div>
       </form>
+
+      {nodeItem && (
+        <details style={{ margin: "8px 0 0" }}>
+          <summary
+            style={{
+              cursor: "pointer",
+              color: "var(--muted)",
+              fontSize: 11,
+              padding: "4px 0",
+              userSelect: "none",
+            }}
+          >
+            items/{nodeItem.slug}.json (raw)
+          </summary>
+          <pre
+            style={{
+              background: "var(--bg3, #141414)",
+              padding: 8,
+              borderRadius: 4,
+              overflow: "auto",
+              maxHeight: 180,
+              fontSize: 10,
+              color: "var(--text)",
+              margin: 0,
+              lineHeight: 1.4,
+            }}
+          >
+            {JSON.stringify(nodeItem, null, 2)}
+          </pre>
+        </details>
+      )}
     </>
   );
 }
