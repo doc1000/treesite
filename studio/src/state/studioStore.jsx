@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useEffect } from "react";
 
 const LS_ARTIFACT = "ts-studio-artifact";
 const LS_EXPANDED = "ts-studio-expanded";
+const LS_INPUT_MODE = "ts-studio-input-mode";
 
 function readLS(key, fallback) {
   try {
@@ -23,6 +24,8 @@ const initialState = {
   showValidationPanel: false,
   dirty: false,
   editError: null,
+  activeZone: null,
+  inputMode: readLS(LS_INPUT_MODE, "keyboard"),
 };
 
 function reducer(state, action) {
@@ -58,6 +61,10 @@ function reducer(state, action) {
       return { ...state, dirty: action.payload };
     case "SET_EDIT_ERROR":
       return { ...state, editError: action.payload };
+    case "SET_ACTIVE_ZONE":
+      return { ...state, activeZone: action.payload };
+    case "SET_INPUT_MODE":
+      return { ...state, inputMode: action.payload };
     default:
       return state;
   }
@@ -82,6 +89,12 @@ export function StoreProvider({ children }) {
       localStorage.setItem(LS_EXPANDED, JSON.stringify([...state.expandedNodeIds]));
     } catch { /* ignore */ }
   }, [state.expandedNodeIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_INPUT_MODE, JSON.stringify(state.inputMode));
+    } catch { /* ignore */ }
+  }, [state.inputMode]);
 
   return (
     <StoreContext.Provider value={state}>

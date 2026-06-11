@@ -1,3 +1,18 @@
+export function findParentId(root, targetId) {
+  if (!root || !targetId) return null;
+  function walk(node, parentId) {
+    if (node.id === targetId) return parentId;
+    const nextParent = node.id ?? parentId;
+    for (const child of node.children ?? []) {
+      const found = walk(child, nextParent);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  const result = walk(root, null);
+  return result === undefined ? null : result;
+}
+
 export function findNodeById(node, id) {
   if (!node || !id) return null;
   if (node.id === id) return node;

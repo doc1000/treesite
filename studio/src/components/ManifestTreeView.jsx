@@ -1,4 +1,43 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { INTENTS } from "../nav/intents.js";
 import { typeBadgeClass } from "../lib/manifestTree.js";
+
+function nodeKey(node, depth) {
+  return node.id ?? `depth-${depth}-${node.name}`;
+}
+
+function collectVisibleRows(manifest, expandedNodeIds) {
+  const rows = [];
+  const walkChildren = (children, parentKey, depth) => {
+    for (const child of children ?? []) {
+      const key = nodeKey(child, depth);
+      const hasChildren = (child.children?.length ?? 0) > 0;
+      const expanded = expandedNodeIds.has(key);
+      rows.push({
+        key,
+        nodeId: child.id ?? null,
+        parentKey,
+        hasChildren,
+        expanded,
+      });
+      if (hasChildren && expanded) {
+        walkChildren(child.children, key, depth + 1);
+      }
+    }
+  };
+
+  rows.push({
+    key: "root",
+    nodeId: null,
+    parentKey: null,
+    hasChildren: (manifest.children?.length ?? 0) > 0,
+    expanded: expandedNodeIds.has("root"),
+  });
+  if (expandedNodeIds.has("root")) {
+    walkChildren(manifest.children, "root", 0);
+  }
+  return rows;
+}
 
 function TreeNode({
   node,
@@ -7,19 +46,22 @@ function TreeNode({
   onSelectNode,
   expandedNodeIds,
   onToggleExpanded,
+  focusedKey,
+  rowKey,
 }) {
-  const nodeKey = node.id ?? `depth-${depth}-${node.name}`;
   const hasChildren = (node.children?.length ?? 0) > 0;
-  const expanded = expandedNodeIds.has(nodeKey);
+  const expanded = expandedNodeIds.has(rowKey);
   const selected = node.id && node.id === selectedNodeId;
+  const navFocus = focusedKey === rowKey;
 
   return (
     <li>
       <div
-        className={`tree-node${selected ? " selected" : ""}`}
+        className={`tree-node${selected ? " selected" : ""}${navFocus ? " nav-focus" : ""}`}
+        data-tree-key={rowKey}
         onClick={() => node.id && onSelectNode(node.id)}
         role="button"
-        tabIndex={0}
+        tabIndex={navFocus ? 0 : -1}
       >
         {hasChildren ? (
           <button
@@ -28,7 +70,7 @@ function TreeNode({
             aria-expanded={expanded}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleExpanded(nodeKey);
+              onToggleExpanded(rowKey);
             }}
           >
             {expanded ? "▾" : "▸"}
@@ -46,13 +88,15 @@ function TreeNode({
         <ul>
           {node.children.map((child) => (
             <TreeNode
-              key={child.id ?? `${nodeKey}-${child.slug}`}
+              key={child.id ?? `${rowKey}-${child.slug}`}
               node={child}
               depth={depth + 1}
+              rowKey={nodeKey(child, depth + 1)}
               selectedNodeId={selectedNodeId}
               onSelectNode={onSelectNode}
               expandedNodeIds={expandedNodeIds}
               onToggleExpanded={onToggleExpanded}
+              focusedKey={focusedKey}
             />
           ))}
         </ul>
@@ -67,19 +111,90 @@ export default function ManifestTreeView({
   onSelectNode,
   expandedNodeIds,
   onToggleExpanded,
+  navigation,
 }) {
   const rootLabel = manifest.displayName || manifest.name || "root";
   const rootExpanded = expandedNodeIds.has("root");
+  const zoneRef = useRef(null);
+  const [focusedKey, setFocusedKey] = useState("root");
+
+  const rowsForNav = useCallback(
+    () => collectVisibleRows(manifest, expandedNodeIds),
+    [manifest, expandedNodeIds],
+  );
+
+  const focusRow = useCallback((key) => {
+    setFocusedKey(key);
+    requestAnimationFrame(() => {
+      const el = zoneRef.current?.querySelector(`[data-tree-key="${key}"]`);
+      el?.focus?.({ preventScroll: true });
+    });
+  }, []);
+
+  const handleIntent = useCallback(
+    (intent) => {
+      const rows = rowsForNav();
+      const idx = rows.findIndex((r) => r.key === focusedKey);
+      const row = idx >= 0 ? rows[idx] : rows[0];
+      if (!row) return;
+
+      if (intent === INTENTS.UP) {
+        if (idx > 0) focusRow(rows[idx - 1].key);
+        return;
+      }
+      if (intent === INTENTS.DOWN) {
+        if (idx >= 0 && idx < rows.length - 1) focusRow(rows[idx + 1].key);
+        return;
+      }
+      if (intent === INTENTS.SELECT) {
+        onSelectNode(row.nodeId);
+        return;
+      }
+      if (intent === INTENTS.BACK) {
+        if (row.parentKey) focusRow(row.parentKey);
+        return;
+      }
+      if (intent === INTENTS.RIGHT) {
+        if (row.hasChildren) {
+          if (!row.expanded) {
+            onToggleExpanded(row.key);
+          } else {
+            const childRow = rows.slice(idx + 1).find((r) => r.parentKey === row.key);
+            if (childRow) focusRow(childRow.key);
+          }
+        }
+        return;
+      }
+      if (intent === INTENTS.LEFT) {
+        if (row.hasChildren && row.expanded) {
+          onToggleExpanded(row.key);
+        } else if (row.parentKey) {
+          focusRow(row.parentKey);
+        }
+      }
+    },
+    [focusedKey, focusRow, onSelectNode, onToggleExpanded, rowsForNav],
+  );
+
+  useEffect(() => {
+    if (!navigation) return undefined;
+    navigation.registerZone("explorer", {
+      onIntent: handleIntent,
+      focus: () => focusRow(focusedKey || "root"),
+    });
+    return () => navigation.unregisterZone("explorer");
+  }, [navigation, handleIntent, focusRow, focusedKey]);
 
   return (
-    <div className="tree">
+    <div className="tree" ref={zoneRef}>
       <ul>
         <li>
           <div
-            className={`tree-node${!selectedNodeId ? " selected" : ""}`}
+            className={`tree-node${!selectedNodeId ? " selected" : ""}${focusedKey === "root" ? " nav-focus" : ""}`}
+            data-tree-key="root"
             onClick={() => onSelectNode(null)}
             role="button"
-            tabIndex={0}
+            tabIndex={focusedKey === "root" ? 0 : -1}
           >
             <button
               type="button"
@@ -102,10 +217,12 @@ export default function ManifestTreeView({
                   key={child.id}
                   node={child}
                   depth={0}
+                  rowKey={nodeKey(child, 0)}
                   selectedNodeId={selectedNodeId}
                   onSelectNode={onSelectNode}
                   expandedNodeIds={expandedNodeIds}
                   onToggleExpanded={onToggleExpanded}
+                  focusedKey={focusedKey}
                 />
               ))}
             </ul>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { INTENTS } from "../nav/intents.js";
 import {
   editCard,
   addCard,
@@ -68,15 +69,28 @@ const ADD_TYPES = [
   { value: "section", label: "Section" },
 ];
 
+const FOCUSABLE_SELECTOR =
+  'input:not([type="hidden"]), textarea, select, button, summary, [tabindex="0"]';
+
+function listFocusables(root) {
+  if (!root) return [];
+  return [...root.querySelectorAll(FOCUSABLE_SELECTOR)].filter(
+    (el) => !el.disabled && el.tabIndex !== -1 && !el.hidden,
+  );
+}
+
 export default function RightToolPanel({
   selectedArtifact,
   selectedNodeId,
   nodeItem,
   manifest,
   refreshArtifact,
+  navigation,
+  zoneActive,
 }) {
   const { dirty, editError } = useStore();
   const dispatch = useDispatch();
+  const zoneRef = useRef(null);
 
   const [form, setForm] = useState(() => itemToForm(nodeItem ?? {}));
   const [busy, setBusy] = useState(false);
@@ -199,8 +213,66 @@ export default function RightToolPanel({
   const rootSelected = !selectedNodeId;
   const rootMeta = manifest ?? {};
 
+  const focusAt = useCallback((index) => {
+    const items = listFocusables(zoneRef.current);
+    if (!items.length) return;
+    const i = ((index % items.length) + items.length) % items.length;
+    items[i]?.focus?.({ preventScroll: true });
+  }, []);
+
+  const handleIntent = useCallback(
+    (intent) => {
+      const items = listFocusables(zoneRef.current);
+      if (!items.length) {
+        if (intent === INTENTS.BACK) {
+          dispatch({ type: "SET_PANEL", payload: "treemap" });
+          navigation?.focusZone?.("treemap");
+        }
+        return;
+      }
+      const active = document.activeElement;
+      let idx = items.indexOf(active);
+      if (idx < 0) idx = 0;
+
+      if (intent === INTENTS.UP) {
+        focusAt(idx - 1);
+        return;
+      }
+      if (intent === INTENTS.DOWN) {
+        focusAt(idx + 1);
+        return;
+      }
+      if (intent === INTENTS.SELECT) {
+        if (active instanceof HTMLElement) {
+          if (active.tagName === "BUTTON" || active.tagName === "SUMMARY") {
+            active.click();
+          } else if (active.tagName === "INPUT" || active.tagName === "TEXTAREA") {
+            active.focus();
+          }
+        }
+        return;
+      }
+      if (intent === INTENTS.BACK) {
+        dispatch({ type: "SET_PANEL", payload: "treemap" });
+        navigation?.focusZone?.("treemap");
+      }
+    },
+    [dispatch, focusAt, navigation],
+  );
+
+  useEffect(() => {
+    if (!navigation) return undefined;
+    navigation.registerZone("toolpanel", {
+      onIntent: handleIntent,
+      focus: () => focusAt(0),
+    });
+    return () => navigation.unregisterZone("toolpanel");
+  }, [navigation, handleIntent, focusAt, nodeItem?.id, editable, showAddChild]);
+
+  const zoneClass = zoneActive ? "toolpanel-zone zone-active" : "toolpanel-zone";
+
   return (
-    <>
+    <div className={zoneClass} ref={zoneRef}>
       <div className="panel-header">
         <h2>Edit Tools</h2>
         <span aria-hidden="true">↔</span>
@@ -536,6 +608,6 @@ export default function RightToolPanel({
         defaultSection={nodeItem ? addCardSectionPath(nodeItem) : ""}
         onSuccess={() => refreshArtifact()}
       />
-    </>
+    </div>
   );
 }

@@ -1,6 +1,8 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { INTENTS } from "../nav/intents.js";
 import ManifestTreeView from "./ManifestTreeView.jsx";
 
-function FileTree({ files }) {
+function FileTree({ files, focusIndex, onFocusIndex }) {
   if (!files?.length) {
     return (
       <p style={{ color: "var(--muted)", padding: "8px 4px", fontSize: 12 }}>
@@ -10,9 +12,13 @@ function FileTree({ files }) {
   }
   return (
     <ul className="file-list">
-      {files.map((entry) => (
+      {files.map((entry, index) => (
         <li
           key={entry.path}
+          role="button"
+          tabIndex={index === focusIndex ? 0 : -1}
+          className={index === focusIndex ? "nav-focus" : ""}
+          onFocus={() => onFocusIndex?.(index)}
           style={{ paddingLeft: entry.type === "dir" ? 0 : 12, fontSize: 12 }}
         >
           {entry.type === "dir" ? `📁 ${entry.path}` : `📄 ${entry.path}`}
@@ -34,7 +40,42 @@ export default function ArtifactExplorer({
   selectedArtifact,
   onSelectArtifact,
   files,
+  navigation,
 }) {
+  const explorerBodyRef = useRef(null);
+  const [fileFocusIndex, setFileFocusIndex] = useState(0);
+
+  const focusFileRow = useCallback(
+    (index) => {
+      const items = explorerBodyRef.current?.querySelectorAll(".file-list li[tabindex]");
+      if (!items?.length) return;
+      const i = ((index % items.length) + items.length) % items.length;
+      setFileFocusIndex(i);
+      items[i]?.focus?.({ preventScroll: true });
+    },
+    [],
+  );
+
+  const handleFilesystemIntent = useCallback(
+    (intent) => {
+      const items = explorerBodyRef.current?.querySelectorAll(".file-list li[tabindex]");
+      const count = items?.length ?? 0;
+      if (!count) return;
+      if (intent === INTENTS.UP) focusFileRow(fileFocusIndex - 1);
+      if (intent === INTENTS.DOWN) focusFileRow(fileFocusIndex + 1);
+    },
+    [fileFocusIndex, focusFileRow],
+  );
+
+  useEffect(() => {
+    if (!navigation || explorerView !== "filesystem") return undefined;
+    navigation.registerZone("explorer", {
+      onIntent: handleFilesystemIntent,
+      focus: () => focusFileRow(fileFocusIndex),
+    });
+    return () => navigation.unregisterZone("explorer");
+  }, [navigation, explorerView, handleFilesystemIntent, focusFileRow, fileFocusIndex]);
+
   return (
     <>
       <div className="panel-header">
@@ -85,9 +126,9 @@ export default function ArtifactExplorer({
 
       <input className="search" placeholder="Search artifacts or manifest..." readOnly />
 
-      <div className="explorer-body">
+      <div className="explorer-body" ref={explorerBodyRef}>
         {explorerView === "filesystem" ? (
-          <FileTree files={files} />
+          <FileTree files={files} focusIndex={fileFocusIndex} onFocusIndex={setFileFocusIndex} />
         ) : (
           <ManifestTreeView
             manifest={manifest}
@@ -95,6 +136,7 @@ export default function ArtifactExplorer({
             onSelectNode={onSelectNode}
             expandedNodeIds={expandedNodeIds}
             onToggleExpanded={onToggleExpanded}
+            navigation={navigation}
           />
         )}
       </div>

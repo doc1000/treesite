@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
-import { buildBreadcrumb, findNodeById } from "../lib/manifestTree.js";
+import { INTENTS } from "../nav/intents.js";
+import { buildBreadcrumb, findNodeById, findParentId } from "../lib/manifestTree.js";
 
 const TYPE_COLORS = {
   section: "#8b79b8",
@@ -23,16 +24,66 @@ function truncate(str, maxChars) {
   return str.length > maxChars ? str.slice(0, maxChars - 1) + "…" : str;
 }
 
+function nearestCellId(cells, currentId, direction) {
+  if (!cells.length) return null;
+  const current = cells.find((c) => c.id === currentId) ?? cells[0];
+  const cx = (current.x0 + current.x1) / 2;
+  const cy = (current.y0 + current.y1) / 2;
+  let best = null;
+  let bestScore = Infinity;
+
+  for (const cell of cells) {
+    if (!cell.id || cell.id === current.id) continue;
+    const nx = (cell.x0 + cell.x1) / 2;
+    const ny = (cell.y0 + cell.y1) / 2;
+    let ok = false;
+    let primary = 0;
+    let secondary = 0;
+
+    if (direction === INTENTS.UP && ny < cy - 2) {
+      ok = true;
+      primary = cy - ny;
+      secondary = Math.abs(nx - cx);
+    } else if (direction === INTENTS.DOWN && ny > cy + 2) {
+      ok = true;
+      primary = ny - cy;
+      secondary = Math.abs(nx - cx);
+    } else if (direction === INTENTS.LEFT && nx < cx - 2) {
+      ok = true;
+      primary = cx - nx;
+      secondary = Math.abs(ny - cy);
+    } else if (direction === INTENTS.RIGHT && nx > cx + 2) {
+      ok = true;
+      primary = nx - cx;
+      secondary = Math.abs(ny - cy);
+    }
+
+    if (ok) {
+      const score = primary * 1000 + secondary;
+      if (score < bestScore) {
+        bestScore = score;
+        best = cell;
+      }
+    }
+  }
+
+  return best?.id ?? current.id;
+}
+
 export default function TreemapWorkspace({
   manifest,
   selectedNodeId,
   onSelectNode,
   focusNodeId,
   onSetFocus,
+  navigation,
 }) {
   const containerRef = useRef(null);
+  const cellFocusRefs = useRef(new Map());
+  const lastSelectRef = useRef({ at: 0, id: null });
   const [cells, setCells] = useState([]);
   const [dims, setDims] = useState({ w: 800, h: 500 });
+  const [navFocusCellId, setNavFocusCellId] = useState(null);
 
   const focusRoot = focusNodeId
     ? (findNodeById(manifest, focusNodeId) ?? manifest)
@@ -87,6 +138,79 @@ export default function TreemapWorkspace({
 
     setCells(newCells);
   }, [focusRoot, dims]);
+
+  useEffect(() => {
+    if (!cells.length) {
+      setNavFocusCellId(null);
+      return;
+    }
+    setNavFocusCellId((prev) => {
+      if (prev && cells.some((c) => c.id === prev)) return prev;
+      return cells.find((c) => c.id)?.id ?? null;
+    });
+  }, [cells]);
+
+  const focusCell = useCallback((cellId) => {
+    if (!cellId) return;
+    setNavFocusCellId(cellId);
+    requestAnimationFrame(() => {
+      cellFocusRefs.current.get(cellId)?.focus?.({ preventScroll: true });
+    });
+  }, []);
+
+  const handleIntent = useCallback(
+    (intent) => {
+      if (!cells.length) return;
+      const currentId = navFocusCellId ?? cells.find((c) => c.id)?.id;
+      const current = cells.find((c) => c.id === currentId);
+
+      if (
+        intent === INTENTS.UP ||
+        intent === INTENTS.DOWN ||
+        intent === INTENTS.LEFT ||
+        intent === INTENTS.RIGHT
+      ) {
+        const nextId = nearestCellId(cells, currentId, intent);
+        if (nextId) focusCell(nextId);
+        return;
+      }
+
+      if (intent === INTENTS.SELECT && current?.id) {
+        const now = Date.now();
+        const last = lastSelectRef.current;
+        if (last.id === current.id && now - last.at < 450 && current.hasChildren) {
+          onSetFocus(current.id);
+          lastSelectRef.current = { at: 0, id: null };
+        } else {
+          onSelectNode(current.id);
+          lastSelectRef.current = { at: now, id: current.id };
+        }
+        return;
+      }
+
+      if (intent === INTENTS.BACK) {
+        if (focusNodeId) {
+          const parent = findParentId(manifest, focusNodeId);
+          onSetFocus(parent);
+        } else {
+          onSetFocus(null);
+        }
+      }
+    },
+    [cells, navFocusCellId, focusCell, onSelectNode, onSetFocus, focusNodeId, manifest],
+  );
+
+  useEffect(() => {
+    if (!navigation) return undefined;
+    navigation.registerZone("treemap", {
+      onIntent: handleIntent,
+      focus: () => {
+        const id = navFocusCellId ?? cells.find((c) => c.id)?.id;
+        if (id) focusCell(id);
+      },
+    });
+    return () => navigation.unregisterZone("treemap");
+  }, [navigation, handleIntent, focusCell, navFocusCellId, cells]);
 
   const handleClick = useCallback(
     (cell) => { if (cell.id) onSelectNode(cell.id); },
@@ -152,21 +276,31 @@ export default function TreemapWorkspace({
             const cw = cell.x1 - cell.x0;
             const ch = cell.y1 - cell.y0;
             const selected = Boolean(cell.id && cell.id === selectedNodeId);
+            const navFocus = Boolean(cell.id && cell.id === navFocusCellId);
             const labelSize = Math.min(13, Math.max(9, cw / 12));
             const maxChars = Math.floor(cw / (labelSize * 0.6));
 
             return (
               <g
                 key={cell.id || cell.slug}
+                ref={(el) => {
+                  if (cell.id) {
+                    if (el) cellFocusRefs.current.set(cell.id, el);
+                    else cellFocusRefs.current.delete(cell.id);
+                  }
+                }}
                 transform={`translate(${cell.x0},${cell.y0})`}
                 onClick={() => handleClick(cell)}
                 onDoubleClick={() => handleDoubleClick(cell)}
+                onFocus={() => cell.id && setNavFocusCellId(cell.id)}
                 style={{ cursor: cell.hasChildren ? "zoom-in" : "pointer" }}
                 data-node-id={cell.id}
                 data-node-slug={cell.slug}
                 role="button"
+                tabIndex={cell.id && navFocus ? 0 : -1}
                 aria-label={cell.name}
                 aria-pressed={selected}
+                className={navFocus ? "nav-focus" : undefined}
               >
                 <rect
                   width={cw}
@@ -175,9 +309,9 @@ export default function TreemapWorkspace({
                   ry={8}
                   fill={cell.color}
                   fillOpacity={selected ? 0.88 : 0.52}
-                  stroke={selected ? "#ffffff" : cell.color}
-                  strokeWidth={selected ? 2.5 : 0.8}
-                  strokeOpacity={selected ? 1 : 0.5}
+                  stroke={navFocus ? "var(--blue, #3578ff)" : selected ? "#ffffff" : cell.color}
+                  strokeWidth={navFocus ? 3 : selected ? 2.5 : 0.8}
+                  strokeOpacity={navFocus || selected ? 1 : 0.5}
                 />
                 {cw > 36 && ch > 22 && (
                   <text

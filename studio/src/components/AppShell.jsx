@@ -1,3 +1,4 @@
+import { useCallback, useEffect } from "react";
 import TopCommandBar from "./TopCommandBar.jsx";
 import ArtifactExplorer from "./ArtifactExplorer.jsx";
 import MiniMap from "./MiniMap.jsx";
@@ -6,6 +7,9 @@ import RightToolPanel from "./RightToolPanel.jsx";
 import StatusBar from "./StatusBar.jsx";
 import DeployTab from "./DeployTab.jsx";
 import ValidationPanel from "./ValidationPanel.jsx";
+import { useNavigation } from "../nav/useNavigation.js";
+import { useGamepad } from "../nav/gamepad.js";
+import { useDispatch, useStore } from "../state/studioStore.jsx";
 
 const RAIL_ITEMS = [
   { icon: "🛠", label: "Tools", active: true },
@@ -47,8 +51,30 @@ export default function AppShell({
   onStopDeploy,
   refreshArtifact,
 }) {
+  const dispatch = useDispatch();
+  const { inputMode } = useStore();
+
+  const onActiveZoneChange = useCallback(
+    (id) => dispatch({ type: "SET_ACTIVE_ZONE", payload: id }),
+    [dispatch],
+  );
+
+  const navigation = useNavigation({ onActiveZoneChange });
+
+  useGamepad({
+    enabled: inputMode === "controller",
+    onIntent: navigation.dispatchIntent,
+  });
+
   const artifactLabel = manifest.displayName || manifest.name || "Artifact";
   const selectedMeta = artifacts?.find((a) => a.name === selectedArtifact);
+  const activeZoneId = navigation.activeZoneId;
+
+  useEffect(() => {
+    if (activeZoneId === "treemap" && centerView !== "treemap") {
+      onCenterViewChange("treemap");
+    }
+  }, [activeZoneId, centerView, onCenterViewChange]);
 
   return (
     <div className="app-shell">
@@ -82,7 +108,12 @@ export default function AppShell({
         )}
       </aside>
 
-      <TopCommandBar className="shell-panel topbar" {...commandBarProps} />
+      <TopCommandBar
+        className="shell-panel topbar"
+        {...commandBarProps}
+        navigation={navigation}
+        zoneActive={activeZoneId === "topbar"}
+      />
 
       <nav className="shell-panel rail" aria-label="Right ribbon tools">
         <div className="triangle" title="Joydrive focus marker" />
@@ -94,7 +125,9 @@ export default function AppShell({
         ))}
       </nav>
 
-      <aside className="shell-panel left-panel">
+      <aside
+        className={`shell-panel left-panel${activeZoneId === "explorer" ? " zone-active" : ""}`}
+      >
         <ArtifactExplorer
           manifest={manifest}
           explorerView={explorerView}
@@ -107,6 +140,7 @@ export default function AppShell({
           selectedArtifact={selectedArtifact}
           onSelectArtifact={onSelectArtifact}
           files={files}
+          navigation={navigation}
         />
         <MiniMap
           manifest={manifest}
@@ -117,7 +151,9 @@ export default function AppShell({
         />
       </aside>
 
-      <main className="shell-panel center-column">
+      <main
+        className={`shell-panel center-column${activeZoneId === "treemap" ? " zone-active" : ""}`}
+      >
         <div className="tabs">
           <button
             type="button"
@@ -153,6 +189,7 @@ export default function AppShell({
               onSelectNode={onSelectNode}
               focusNodeId={focusNodeId}
               onSetFocus={onSetFocus}
+              navigation={navigation}
             />
           )}
           {showValidationPanel && validationResult && (
@@ -175,6 +212,8 @@ export default function AppShell({
           nodeItem={nodeItem}
           manifest={manifest}
           refreshArtifact={refreshArtifact}
+          navigation={navigation}
+          zoneActive={activeZoneId === "toolpanel"}
         />
       </aside>
     </div>
