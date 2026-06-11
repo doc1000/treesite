@@ -45,6 +45,7 @@ export default function AppShell({
   commandBarProps,
   onDeploy,
   onStopDeploy,
+  refreshArtifact,
 }) {
   const artifactLabel = manifest.displayName || manifest.name || "Artifact";
   const selectedMeta = artifacts?.find((a) => a.name === selectedArtifact);
@@ -168,7 +169,13 @@ export default function AppShell({
       </main>
 
       <aside className="shell-panel right-panel">
-        <RightToolPanel selectedNode={selectedNode} nodeItem={nodeItem} />
+        <RightToolPanel
+          selectedArtifact={selectedArtifact}
+          selectedNodeId={selectedNodeId}
+          nodeItem={nodeItem}
+          manifest={manifest}
+          refreshArtifact={refreshArtifact}
+        />
       </aside>
     </div>
   );

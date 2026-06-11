@@ -1,13 +1,201 @@
-export default function RightToolPanel({ selectedNode, nodeItem }) {
-  // Prefer the richer nodeItem (from get-node) over the manifest-derived selectedNode
-  const node = selectedNode ?? {};
-  const item = nodeItem ?? node;
-  const displayName = item.name || item.title || "—";
-  const nodeType = item.type || "—";
-  const description = item.description ?? "";
-  const valueField = node.value != null ? String(node.value) : "";
-  const slug = item.slug ?? "";
-  const nodeId = item.id ?? "";
+import { useState, useEffect, useCallback } from "react";
+import {
+  editCard,
+  addCard,
+  renameCard,
+  moveCard,
+  moveSubtree,
+  hideCard,
+  unhideCard,
+  deleteCard,
+} from "../api/client.js";
+import { useStore, useDispatch } from "../state/studioStore.jsx";
+
+function slugify(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function addCardSectionPath(item) {
+  if (!item) return "";
+  if (item.type === "section") {
+    if (item.section === "Home") return item.name;
+    return `${item.section}/${item.name}`;
+  }
+  return item.section ?? "";
+}
+
+function itemToForm(item) {
+  return {
+    name: item.name ?? "",
+    description: item.description ?? "",
+    value: item.value != null ? String(item.value) : "",
+    url: item.url ?? "",
+    href: item.href ?? "",
+    email: item.email ?? "",
+    source: item.source ?? "",
+    previewImage: item.previewImage ?? "",
+    embed: item.embed ?? "",
+  };
+}
+
+function buildEditFields(form, type) {
+  const fields = {
+    name: form.name.trim(),
+    description: form.description,
+  };
+  if (form.value !== "") {
+    const n = Number(form.value);
+    if (!Number.isNaN(n)) fields.value = n;
+  }
+  if (type === "link" || type === "website") fields.url = form.url;
+  if (type === "href" || type === "contact") {
+    fields.href = form.href;
+    if (type === "contact") fields.email = form.email;
+  }
+  if (type === "htmlCard") fields.embed = form.embed;
+  return fields;
+}
+
+const ADD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "link", label: "Link" },
+  { value: "href", label: "Href" },
+  { value: "contact", label: "Contact" },
+  { value: "section", label: "Section" },
+];
+
+export default function RightToolPanel({
+  selectedArtifact,
+  selectedNodeId,
+  nodeItem,
+  manifest,
+  refreshArtifact,
+}) {
+  const { dirty, editError } = useStore();
+  const dispatch = useDispatch();
+
+  const [form, setForm] = useState(() => itemToForm(nodeItem ?? {}));
+  const [busy, setBusy] = useState(false);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: "",
+    type: "text",
+    description: "",
+  });
+
+  const editable = Boolean(selectedNodeId && nodeItem?.id);
+
+  useEffect(() => {
+    if (nodeItem?.id) {
+      setForm(itemToForm(nodeItem));
+      dispatch({ type: "SET_DIRTY", payload: false });
+      dispatch({ type: "SET_EDIT_ERROR", payload: null });
+    }
+  }, [nodeItem?.id, nodeItem, dispatch]);
+
+  const markDirty = useCallback(
+    (nextForm) => {
+      setForm(nextForm);
+      dispatch({ type: "SET_DIRTY", payload: true });
+    },
+    [dispatch],
+  );
+
+  const runMutation = useCallback(
+    async (fn, refreshOpts) => {
+      if (!selectedArtifact) return;
+      setBusy(true);
+      dispatch({ type: "SET_EDIT_ERROR", payload: null });
+      try {
+        await fn();
+        await refreshArtifact(refreshOpts);
+      } catch (err) {
+        dispatch({
+          type: "SET_EDIT_ERROR",
+          payload: err.message || "Operation failed",
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [selectedArtifact, refreshArtifact, dispatch],
+  );
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (!editable || !dirty) return;
+    runMutation(() =>
+      editCard(selectedArtifact, nodeItem.id, buildEditFields(form, nodeItem.type)),
+    );
+  };
+
+  const handleAddChild = (e) => {
+    e.preventDefault();
+    const section = addCardSectionPath(nodeItem);
+    if (!addForm.name.trim() || !section) return;
+    runMutation(async () => {
+      await addCard(selectedArtifact, {
+        name: addForm.name.trim(),
+        section,
+        type: addForm.type,
+        description: addForm.description,
+      });
+      setAddForm({ name: "", type: "text", description: "" });
+      setShowAddChild(false);
+    });
+  };
+
+  const handleRename = () => {
+    const nextName = window.prompt("New name:", nodeItem.name);
+    if (!nextName?.trim() || nextName.trim() === nodeItem.name) return;
+    const name = nextName.trim();
+    const slug = slugify(name);
+    if (!slug) {
+      window.alert("Could not derive a slug from that name.");
+      return;
+    }
+    runMutation(() => renameCard(selectedArtifact, { id: nodeItem.id, name, slug }));
+  };
+
+  const handleMove = () => {
+    const hint =
+      nodeItem.type === "section"
+        ? "Parent section path (e.g. Home or Content Types):"
+        : "New section path:";
+    const section = window.prompt(hint, nodeItem.section ?? "");
+    if (!section?.trim()) return;
+    const target = section.trim();
+    runMutation(() =>
+      nodeItem.type === "section"
+        ? moveSubtree(selectedArtifact, { id: nodeItem.id, newSection: target })
+        : moveCard(selectedArtifact, { id: nodeItem.id, section: target }),
+    );
+  };
+
+  const handleHideToggle = () => {
+    runMutation(() =>
+      nodeItem.hidden
+        ? unhideCard(selectedArtifact, nodeItem.id)
+        : hideCard(selectedArtifact, nodeItem.id),
+    );
+  };
+
+  const handleDelete = () => {
+    const ok = window.confirm(
+      `Delete ${nodeItem.name}? This cannot be undone.`,
+    );
+    if (!ok) return;
+    runMutation(
+      () => deleteCard(selectedArtifact, nodeItem.id),
+      { afterDelete: true },
+    );
+  };
+
+  const rootSelected = !selectedNodeId;
+  const rootMeta = manifest ?? {};
 
   return (
     <>
@@ -15,83 +203,299 @@ export default function RightToolPanel({ selectedNode, nodeItem }) {
         <h2>Edit Tools</h2>
         <span aria-hidden="true">↔</span>
       </div>
-      <div className="selected-title">
-        <b>▰</b>
-        <b>Selected: {displayName}</b>
-        <span style={{ marginLeft: "auto", color: "var(--muted)" }}>×</span>
-      </div>
-      <div className="tabs-small">
-        <button type="button" className="active">Content</button>
-        <button type="button">Style</button>
-        <button type="button">Behavior</button>
-        <button type="button">Advanced</button>
-      </div>
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <div className="field">
-          <label htmlFor="field-name">Name</label>
-          <input id="field-name" value={displayName} readOnly />
-        </div>
-        <div className="field">
-          <label htmlFor="field-description">Description</label>
-          <textarea id="field-description" value={description} readOnly />
-        </div>
-        <div className="field">
-          <label htmlFor="field-type">Type</label>
-          <select id="field-type" value={nodeType} readOnly>
-            <option value={nodeType}>{nodeType}</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="field-value">Value</label>
-          <input id="field-value" value={valueField} readOnly />
-        </div>
-        <div className="field">
-          <label htmlFor="field-slug">Slug</label>
-          <input id="field-slug" value={slug} readOnly />
-        </div>
-        {nodeId && (
-          <div className="field">
-            <label htmlFor="field-id">ID</label>
-            <input id="field-id" value={nodeId} readOnly style={{ fontSize: 10 }} />
-          </div>
-        )}
-        <div className="action-list">
-          <button type="button" onClick={() => {}}>Rename</button>
-          <button type="button" onClick={() => {}}>Move</button>
-          <button type="button" onClick={() => {}}>Hide</button>
-          <button type="button" className="danger" onClick={() => {}}>Delete</button>
-        </div>
-      </form>
 
-      {nodeItem && (
-        <details style={{ margin: "8px 0 0" }}>
-          <summary
+      {!editable && (
+        <>
+          {rootSelected ? (
+            <>
+              <div className="selected-title">
+                <b>▰</b>
+                <b>Artifact root</b>
+              </div>
+              <div className="form" style={{ paddingTop: 0 }}>
+                <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 12px" }}>
+                  Select a node to edit its content and structure.
+                </p>
+                <div className="field">
+                  <label>Display name</label>
+                  <input readOnly value={rootMeta.displayName || rootMeta.name || "—"} />
+                </div>
+                <div className="field">
+                  <label>Tagline</label>
+                  <textarea
+                    readOnly
+                    value={rootMeta.tagline ?? rootMeta.description ?? ""}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p style={{ color: "var(--muted)", fontSize: 12, padding: "12px 16px" }}>
+              Select a node to edit
+            </p>
+          )}
+        </>
+      )}
+
+      {editable && (
+        <>
+          <div className="selected-title">
+            <b>▰</b>
+            <b>Selected: {nodeItem.name}</b>
+          </div>
+
+          <div
+            className="form-meta"
             style={{
-              cursor: "pointer",
-              color: "var(--muted)",
+              padding: "0 16px 8px",
               fontSize: 11,
-              padding: "4px 0",
-              userSelect: "none",
+              color: "var(--muted)",
+              display: "grid",
+              gap: 4,
             }}
           >
-            items/{nodeItem.slug}.json (raw)
-          </summary>
-          <pre
-            style={{
-              background: "var(--bg3, #141414)",
-              padding: 8,
-              borderRadius: 4,
-              overflow: "auto",
-              maxHeight: 180,
-              fontSize: 10,
-              color: "var(--text)",
-              margin: 0,
-              lineHeight: 1.4,
-            }}
-          >
-            {JSON.stringify(nodeItem, null, 2)}
-          </pre>
-        </details>
+            <div>
+              <span>Type </span>
+              <b style={{ color: "var(--text)" }}>{nodeItem.type}</b>
+            </div>
+            <div>
+              <span>Section </span>
+              <b style={{ color: "var(--text)" }}>{nodeItem.section ?? "—"}</b>
+            </div>
+            <div>
+              <span>Slug </span>
+              <b style={{ color: "var(--text)" }}>{nodeItem.slug}</b>
+            </div>
+            <div style={{ wordBreak: "break-all" }}>
+              <span>ID </span>
+              <b style={{ color: "var(--text)", fontSize: 10 }}>{nodeItem.id}</b>
+            </div>
+            {nodeItem.hidden && (
+              <div style={{ color: "var(--orange)" }}>Hidden from site</div>
+            )}
+          </div>
+
+          {editError && (
+            <p
+              style={{
+                color: "var(--red)",
+                fontSize: 12,
+                margin: "0 16px 8px",
+              }}
+            >
+              {editError}
+            </p>
+          )}
+
+          <form className="form" onSubmit={handleSave}>
+            <div className="field">
+              <label htmlFor="field-name">Name</label>
+              <input
+                id="field-name"
+                value={form.name}
+                disabled={busy}
+                onChange={(e) => markDirty({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="field-description">Description</label>
+              <textarea
+                id="field-description"
+                value={form.description}
+                disabled={busy}
+                onChange={(e) => markDirty({ ...form, description: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="field-value">Value</label>
+              <input
+                id="field-value"
+                type="number"
+                step="any"
+                value={form.value}
+                disabled={busy}
+                onChange={(e) => markDirty({ ...form, value: e.target.value })}
+              />
+            </div>
+
+            {(nodeItem.type === "link" || nodeItem.type === "website") && (
+              <div className="field">
+                <label htmlFor="field-url">URL</label>
+                <input
+                  id="field-url"
+                  value={form.url}
+                  disabled={busy}
+                  onChange={(e) => markDirty({ ...form, url: e.target.value })}
+                />
+              </div>
+            )}
+
+            {(nodeItem.type === "href" || nodeItem.type === "contact") && (
+              <>
+                <div className="field">
+                  <label htmlFor="field-href">Href</label>
+                  <input
+                    id="field-href"
+                    value={form.href}
+                    disabled={busy}
+                    onChange={(e) => markDirty({ ...form, href: e.target.value })}
+                  />
+                </div>
+                {nodeItem.type === "contact" && (
+                  <div className="field">
+                    <label htmlFor="field-email">Email</label>
+                    <input
+                      id="field-email"
+                      value={form.email}
+                      disabled={busy}
+                      onChange={(e) => markDirty({ ...form, email: e.target.value })}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {nodeItem.type === "pdf" && (
+              <>
+                <div className="field">
+                  <label htmlFor="field-source">Source</label>
+                  <input id="field-source" value={form.source} readOnly />
+                </div>
+                <div className="field">
+                  <label htmlFor="field-preview">Preview image</label>
+                  <input id="field-preview" value={form.previewImage} readOnly />
+                </div>
+              </>
+            )}
+
+            {nodeItem.type === "htmlCard" && (
+              <div className="field">
+                <label htmlFor="field-embed">Embed</label>
+                <input
+                  id="field-embed"
+                  value={form.embed}
+                  disabled={busy}
+                  onChange={(e) => markDirty({ ...form, embed: e.target.value })}
+                />
+              </div>
+            )}
+
+            {dirty && (
+              <button type="submit" className="primary" disabled={busy}>
+                {busy ? "Saving…" : "Save Changes"}
+              </button>
+            )}
+
+            <div className="action-list">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setShowAddChild((v) => !v)}
+              >
+                Add Child Card
+              </button>
+              <button type="button" disabled={busy} onClick={handleRename}>
+                Rename
+              </button>
+              <button type="button" disabled={busy} onClick={handleMove}>
+                Move
+              </button>
+              <button type="button" disabled={busy} onClick={handleHideToggle}>
+                {nodeItem.hidden ? "Unhide" : "Hide"}
+              </button>
+              <button
+                type="button"
+                className="danger"
+                disabled={busy}
+                onClick={handleDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </form>
+
+          {showAddChild && (
+            <form
+              className="form"
+              style={{ borderTop: "1px solid var(--line-soft)", marginTop: 8 }}
+              onSubmit={handleAddChild}
+            >
+              <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>
+                New card under{" "}
+                <b style={{ color: "var(--text)" }}>{addCardSectionPath(nodeItem)}</b>
+              </p>
+              <div className="field">
+                <label htmlFor="add-name">Name</label>
+                <input
+                  id="add-name"
+                  value={addForm.name}
+                  disabled={busy}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="add-type">Type</label>
+                <select
+                  id="add-type"
+                  value={addForm.type}
+                  disabled={busy}
+                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
+                >
+                  {ADD_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="add-desc">Description</label>
+                <textarea
+                  id="add-desc"
+                  value={addForm.description}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, description: e.target.value })
+                  }
+                />
+              </div>
+              <button type="submit" disabled={busy || !addForm.name.trim()}>
+                Create card
+              </button>
+            </form>
+          )}
+
+          <details style={{ margin: "8px 16px 0" }}>
+            <summary
+              style={{
+                cursor: "pointer",
+                color: "var(--muted)",
+                fontSize: 11,
+                padding: "4px 0",
+                userSelect: "none",
+              }}
+            >
+              items/{nodeItem.slug}.json (raw)
+            </summary>
+            <pre
+              style={{
+                background: "var(--bg3, #141414)",
+                padding: 8,
+                borderRadius: 4,
+                overflow: "auto",
+                maxHeight: 180,
+                fontSize: 10,
+                color: "var(--text)",
+                margin: 0,
+                lineHeight: 1.4,
+              }}
+            >
+              {JSON.stringify(nodeItem, null, 2)}
+            </pre>
+          </details>
+        </>
       )}
     </>
   );

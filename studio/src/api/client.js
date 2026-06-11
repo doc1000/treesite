@@ -93,3 +93,44 @@ export async function uploadFile(file) {
   if (!data.ok) throw new Error(data.error?.message || `upload: HTTP ${res.status}`);
   return data.data;
 }
+
+async function runMutatingTool(artifactName, tool, input) {
+  const result = await runTool(artifactName, tool, input);
+  if (!result.ok) throw new Error(result.error?.message || `${tool} failed`);
+  return result.data;
+}
+
+export function editCard(artifactName, id, fields) {
+  return runMutatingTool(artifactName, "edit-card", { id, fields });
+}
+
+export function addCard(artifactName, payload) {
+  return runMutatingTool(artifactName, "add-card", payload);
+}
+
+export function renameCard(artifactName, payload) {
+  return runMutatingTool(artifactName, "rename-card", payload);
+}
+
+export function moveCard(artifactName, { id, section }) {
+  return runMutatingTool(artifactName, "move-card", { id, section });
+}
+
+export function moveSubtree(artifactName, { id, newSection }) {
+  return runMutatingTool(artifactName, "move-subtree", {
+    id,
+    section: newSection,
+  });
+}
+
+export function hideCard(artifactName, id) {
+  return runMutatingTool(artifactName, "hide-card", { id });
+}
+
+export function unhideCard(artifactName, id) {
+  return runMutatingTool(artifactName, "unhide-card", { id });
+}
+
+export function deleteCard(artifactName, id) {
+  return runMutatingTool(artifactName, "delete-card", { id, confirm: true });
+}

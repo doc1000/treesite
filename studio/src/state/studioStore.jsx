@@ -21,6 +21,8 @@ const initialState = {
   validationResult: null,
   deployState: null,
   showValidationPanel: false,
+  dirty: false,
+  editError: null,
 };
 
 function reducer(state, action) {
@@ -52,6 +54,10 @@ function reducer(state, action) {
       return { ...state, deployState: action.payload };
     case "SET_SHOW_VALIDATION":
       return { ...state, showValidationPanel: action.payload };
+    case "SET_DIRTY":
+      return { ...state, dirty: action.payload };
+    case "SET_EDIT_ERROR":
+      return { ...state, editError: action.payload };
     default:
       return state;
   }

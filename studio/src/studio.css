@@ -806,6 +806,21 @@ textarea {
   border-color: rgba(255, 59, 48, 0.3);
 }
 
+.form button.primary {
+  width: 100%;
+  margin-bottom: 8px;
+  background: var(--blue);
+  border: 1px solid rgba(53, 120, 255, 0.6);
+  border-radius: 7px;
+  padding: 11px 12px;
+  font-weight: 600;
+}
+
+.form button.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1200px) {
   .app-shell {
     grid-template-columns: 280px 1fr 310px 62px;

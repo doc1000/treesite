@@ -55,6 +55,43 @@ export default function App() {
   const [centerView, setCenterView] = useState("treemap");
   const [commandBusy, setCommandBusy] = useState(false);
 
+  const refreshArtifact = useCallback(
+    async ({ afterDelete = false } = {}) => {
+      if (!selectedArtifact) return;
+      const [m, s, f] = await Promise.all([
+        getManifest(selectedArtifact),
+        getStats(selectedArtifact),
+        listFiles(selectedArtifact),
+      ]);
+      setManifest(m);
+      setStats(s);
+      setFiles(f);
+
+      if (afterDelete) {
+        dispatch({ type: "SELECT_NODE", payload: null });
+        setNodeItem(null);
+        dispatch({ type: "SET_DIRTY", payload: false });
+        dispatch({ type: "SET_EDIT_ERROR", payload: null });
+        return;
+      }
+
+      const id = selectedNodeId;
+      if (id) {
+        const inTree = findNodeById(m, id);
+        if (!inTree) {
+          dispatch({ type: "SELECT_NODE", payload: null });
+          setNodeItem(null);
+        } else {
+          const item = await getNode(selectedArtifact, id);
+          setNodeItem(item);
+        }
+      }
+      dispatch({ type: "SET_DIRTY", payload: false });
+      dispatch({ type: "SET_EDIT_ERROR", payload: null });
+    },
+    [selectedArtifact, selectedNodeId, dispatch],
+  );
+
   const refreshArtifacts = useCallback(async () => {
     const list = await listArtifacts();
     setArtifacts(list);
@@ -279,6 +316,7 @@ export default function App() {
         onDeployEdit: () => runDeploy("edit"),
         onExport: handleExport,
       }}
+      refreshArtifact={refreshArtifact}
     />
   );
 }
