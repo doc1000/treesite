@@ -16,6 +16,9 @@ const HANDLER_DIR = path.resolve(REPO_ROOT, "handler");
 const HANDLER_DIST = path.join(HANDLER_DIR, "dist");
 const SERVE_ARTIFACT_SCRIPT = path.join(TOOLS_DIR, "serve-artifact.js");
 const TOOL_TIMEOUT_MS = 30_000;
+const INTAKE_TOOL_TIMEOUT_MS = 90_000;
+const INTAKE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_INTAKE_TOOLS = new Set(["add-pdf", "add-website", "add-html"]);
 const NPM_BIN = process.platform === "win32" ? "npm.cmd" : "npm";
 
 const STATIC_MIME = {
@@ -115,6 +118,72 @@ function createDistStaticServer(distDir) {
   });
 }
 
+/** Parse ALL parts of a multipart/form-data request.
+ * Returns { fields: Record<string,string>, fileData: Buffer|null, fileName: string|null }
+ * The binary file part must use field name "file".
+ */
+async function parseMultipartAll(req, maxSizeBytes = INTAKE_MAX_BYTES) {
+  const contentType = req.headers["content-type"] || "";
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
+  if (!boundaryMatch) throw new Error("Expected multipart/form-data");
+  const boundary = boundaryMatch[1] || boundaryMatch[2];
+
+  let totalSize = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    totalSize += chunk.length;
+    if (totalSize > maxSizeBytes) {
+      throw new Error(`Upload exceeds ${Math.round(maxSizeBytes / 1024 / 1024)} MB limit`);
+    }
+    chunks.push(chunk);
+  }
+  const body = Buffer.concat(chunks);
+
+  const fields = {};
+  let fileData = null;
+  let fileName = null;
+
+  const delim = Buffer.from(`--${boundary}`);
+  let pos = body.indexOf(delim);
+  if (pos < 0) throw new Error("Invalid multipart body");
+  pos += delim.length;
+  if (body[pos] === 0x0d && body[pos + 1] === 0x0a) pos += 2;
+
+  while (pos < body.length) {
+    const next = body.indexOf(delim, pos);
+    const partEnd = next > 0 ? next : body.length;
+    const part = body.subarray(pos, partEnd);
+    const headerEnd = part.indexOf("\r\n\r\n");
+    if (headerEnd < 0) break;
+
+    const headerStr = part.subarray(0, headerEnd).toString("utf8");
+    let data = part.subarray(headerEnd + 4);
+    if (data.length >= 2 && data[data.length - 2] === 0x0d && data[data.length - 1] === 0x0a) {
+      data = data.subarray(0, data.length - 2);
+    }
+
+    const nameMatch = headerStr.match(/name="([^"]+)"/);
+    const filenameMatch = headerStr.match(/filename="([^"]*)"/);
+
+    if (nameMatch) {
+      const fieldName = nameMatch[1];
+      if (filenameMatch && fieldName === "file") {
+        fileData = data;
+        fileName = filenameMatch[1] || "upload.bin";
+      } else if (!filenameMatch) {
+        fields[fieldName] = data.toString("utf8");
+      }
+    }
+
+    if (next < 0) break;
+    pos = next + delim.length;
+    if (body.subarray(pos, pos + 2).toString() === "--") break;
+    if (body[pos] === 0x0d && body[pos + 1] === 0x0a) pos += 2;
+  }
+
+  return { fields, fileData, fileName };
+}
+
 async function parseMultipartFile(req) {
   const contentType = req.headers["content-type"] || "";
   const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
@@ -173,7 +242,7 @@ function readBody(req) {
   });
 }
 
-function spawnTool(tool, artifactPath, input) {
+function spawnTool(tool, artifactPath, input, timeoutMs = TOOL_TIMEOUT_MS) {
   return new Promise((resolve) => {
     const script = path.join(TOOLS_DIR, `${tool}.js`);
     let child;
@@ -201,7 +270,7 @@ function spawnTool(tool, artifactPath, input) {
     const timer = setTimeout(() => {
       try { child.kill(); } catch { /* ignore */ }
       resolve({ ok: false, error: { code: "TIMEOUT", message: `Tool ${tool} timed out` } });
-    }, TOOL_TIMEOUT_MS);
+    }, timeoutMs);
 
     child.on("close", () => {
       clearTimeout(timer);
@@ -377,6 +446,105 @@ async function handler(req, res, next) {
     }
     const result = await spawnTool(tool, artifactPath, toolInput);
     sendJSON(res, result);
+    return;
+  }
+
+  // ── GET /artifacts/:name/static/** ─────────────────────────────────────────
+  // Serves artifact asset files (previews, pdfs, html, …) directly from the
+  // bridge so the studio can display thumbnails without a running deploy.
+  const staticMatch = pathname.match(/^\/artifacts\/([^/]+)\/static\/(.+)$/);
+  if (req.method === "GET" && staticMatch) {
+    const artifactName = decodeURIComponent(staticMatch[1]);
+    const relPath = staticMatch[2]; // e.g. "assets/previews/foo.png"
+    const artifactDir = path.join(ARTIFACTS_BASE, artifactName);
+    // Prevent path traversal
+    const target = path.normalize(path.join(artifactDir, relPath));
+    if (!target.startsWith(artifactDir + path.sep) && target !== artifactDir) {
+      res.writeHead(403);
+      res.end("Forbidden");
+      return;
+    }
+    try {
+      await fs.promises.access(target);
+      const ext = path.extname(target).toLowerCase();
+      res.setHeader("Content-Type", STATIC_MIME[ext] || "application/octet-stream");
+      createReadStream(target).pipe(res);
+    } catch {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+    return;
+  }
+
+  // ── POST /intake/:tool ──────────────────────────────────────────────────────
+  // Accepts multipart/form-data: fields[artifactName, fields(JSON)], file (binary).
+  // Stages file to temp dir, injects sourcePath, calls the tool, cleans up.
+  const intakeMatch = pathname.match(/^\/intake\/([^/]+)$/);
+  if (req.method === "POST" && intakeMatch) {
+    const tool = decodeURIComponent(intakeMatch[1]);
+    if (!ALLOWED_INTAKE_TOOLS.has(tool)) {
+      sendJSON(res, { ok: false, error: { code: "INVALID_TOOL", message: `${tool} is not an intake tool` } }, 400);
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = await parseMultipartAll(req);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "UPLOAD_FAILED", message: err.message } }, 400);
+      return;
+    }
+
+    const { fields, fileData, fileName } = parsed;
+    const artifactName = fields.artifactName;
+    if (!artifactName || typeof artifactName !== "string") {
+      sendJSON(res, { ok: false, error: { code: "MISSING_ARTIFACT", message: "artifactName is required" } }, 400);
+      return;
+    }
+
+    let toolInput = {};
+    if (fields.fields) {
+      try {
+        toolInput = JSON.parse(fields.fields);
+      } catch {
+        sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: "fields must be valid JSON" } }, 400);
+        return;
+      }
+    }
+
+    // Validate file type if a file was provided
+    if (fileData && fileName) {
+      const ext = path.extname(fileName).toLowerCase();
+      if (tool === "add-pdf" && ext !== ".pdf") {
+        sendJSON(res, { ok: false, error: { code: "INVALID_FILE", message: "Only .pdf files are accepted for add-pdf" } }, 400);
+        return;
+      }
+      if (tool === "add-html" && ext !== ".html" && ext !== ".htm") {
+        sendJSON(res, { ok: false, error: { code: "INVALID_FILE", message: "Only .html/.htm files are accepted for add-html" } }, 400);
+        return;
+      }
+    }
+
+    const artifactPath = path.join(ARTIFACTS_BASE, artifactName);
+    let tempDir = null;
+
+    try {
+      if (fileData && fileName) {
+        tempDir = path.join(os.tmpdir(), randomUUID());
+        await fs.promises.mkdir(tempDir, { recursive: true });
+        const tempFilePath = path.join(tempDir, path.basename(fileName));
+        await fs.promises.writeFile(tempFilePath, fileData);
+        toolInput = { ...toolInput, sourcePath: tempFilePath };
+      }
+      const result = await spawnTool(tool, artifactPath, toolInput, INTAKE_TOOL_TIMEOUT_MS);
+      sendJSON(res, result);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "INTAKE_FAILED", message: err.message } }, 500);
+    } finally {
+      if (tempDir) {
+        fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    }
     return;
   }
 

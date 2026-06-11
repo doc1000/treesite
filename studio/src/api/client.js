@@ -134,3 +134,27 @@ export function unhideCard(artifactName, id) {
 export function deleteCard(artifactName, id) {
   return runMutatingTool(artifactName, "delete-card", { id, confirm: true });
 }
+
+// ── Asset intakes ──────────────────────────────────────────────────────────
+
+export async function addPdf(artifactName, { name, section, description, value }, file) {
+  const form = new FormData();
+  form.append("artifactName", artifactName);
+  form.append("fields", JSON.stringify({ name, section, description, value }));
+  form.append("file", file);
+  const res = await fetch(`${BASE}/intake/add-pdf`, { method: "POST", body: form });
+  return res.json();
+}
+
+export async function addWebsite(artifactName, { name, section, url }) {
+  return runTool(artifactName, "add-website", { name, section, url });
+}
+
+export async function addHtml(artifactName, { name, section }, file) {
+  const form = new FormData();
+  form.append("artifactName", artifactName);
+  form.append("fields", JSON.stringify({ name, section }));
+  if (file) form.append("file", file);
+  const res = await fetch(`${BASE}/intake/add-html`, { method: "POST", body: form });
+  return res.json();
+}

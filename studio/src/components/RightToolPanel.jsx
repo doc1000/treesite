@@ -10,6 +10,7 @@ import {
   deleteCard,
 } from "../api/client.js";
 import { useStore, useDispatch } from "../state/studioStore.jsx";
+import AddAssetDialog from "./AddAssetDialog.jsx";
 
 function slugify(name) {
   return name
@@ -85,6 +86,7 @@ export default function RightToolPanel({
     type: "text",
     description: "",
   });
+  const [showAssetDialog, setShowAssetDialog] = useState(false);
 
   const editable = Boolean(selectedNodeId && nodeItem?.id);
 
@@ -395,6 +397,13 @@ export default function RightToolPanel({
               >
                 Add Child Card
               </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setShowAssetDialog(true)}
+              >
+                Add Asset…
+              </button>
               <button type="button" disabled={busy} onClick={handleRename}>
                 Rename
               </button>
@@ -414,6 +423,28 @@ export default function RightToolPanel({
               </button>
             </div>
           </form>
+
+          {/* Preview thumbnail for pdf / website / htmlCard */}
+          {nodeItem.previewImage && (() => {
+            const previewUrl = selectedArtifact
+              ? `/api/artifacts/${encodeURIComponent(selectedArtifact)}/static/${nodeItem.previewImage}`
+              : null;
+            return previewUrl ? (
+              <div style={{ margin: "8px 16px 0" }}>
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 4px" }}>Preview</p>
+                <img
+                  src={previewUrl}
+                  alt={`Preview of ${nodeItem.name}`}
+                  style={{ width: "100%", borderRadius: 4, border: "1px solid var(--line-soft)", display: "block" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              </div>
+            ) : (
+              <p style={{ fontSize: 11, color: "var(--muted)", padding: "4px 16px" }}>
+                Deploy to preview images
+              </p>
+            );
+          })()}
 
           {showAddChild && (
             <form
@@ -497,6 +528,14 @@ export default function RightToolPanel({
           </details>
         </>
       )}
+
+      <AddAssetDialog
+        isOpen={showAssetDialog}
+        onClose={() => setShowAssetDialog(false)}
+        artifactName={selectedArtifact}
+        defaultSection={nodeItem ? addCardSectionPath(nodeItem) : ""}
+        onSuccess={() => refreshArtifact()}
+      />
     </>
   );
 }
