@@ -39,3 +39,57 @@ export async function getStats(artifactName) {
   if (!result.ok) throw new Error(result.error?.message || "artifact-stats failed");
   return result.data;
 }
+
+export async function validate(artifactName) {
+  return runTool(artifactName, "validate", { strict: false });
+}
+
+export async function exportZip(artifactName, destZip) {
+  return runTool(artifactName, "export-zip", { destZip });
+}
+
+export async function importZip(srcZip, destDir, overwrite = false) {
+  const res = await fetch(`${BASE}/tool/import-zip`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      artifactName: destDir,
+      destDir,
+      input: { srcZip, overwrite },
+    }),
+  });
+  if (!res.ok) throw new Error(`importZip: HTTP ${res.status}`);
+  return res.json();
+}
+
+export function exportDownloadUrl(artifactName) {
+  return `${BASE}/artifacts/${encodeURIComponent(artifactName)}/export`;
+}
+
+export async function deploy(artifactName, mode) {
+  const res = await fetch(`${BASE}/deploy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ artifactName, mode }),
+  });
+  const data = await res.json();
+  if (!res.ok && !data.error) {
+    return { ok: false, error: { code: "HTTP_ERROR", message: `deploy: HTTP ${res.status}` } };
+  }
+  return data;
+}
+
+export async function stopDeploy() {
+  const res = await fetch(`${BASE}/deploy/stop`, { method: "POST" });
+  if (!res.ok) throw new Error(`stopDeploy: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function uploadFile(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE}/upload`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error?.message || `upload: HTTP ${res.status}`);
+  return data.data;
+}

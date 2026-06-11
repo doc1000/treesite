@@ -4,6 +4,8 @@ import MiniMap from "./MiniMap.jsx";
 import TreemapWorkspace from "./TreemapWorkspace.jsx";
 import RightToolPanel from "./RightToolPanel.jsx";
 import StatusBar from "./StatusBar.jsx";
+import DeployTab from "./DeployTab.jsx";
+import ValidationPanel from "./ValidationPanel.jsx";
 
 const RAIL_ITEMS = [
   { icon: "🛠", label: "Tools", active: true },
@@ -33,12 +35,19 @@ export default function AppShell({
   loading,
   focusNodeId,
   onSetFocus,
+  centerView,
+  onCenterViewChange,
+  deployState,
+  validationResult,
+  showValidationPanel,
+  onToggleValidationPanel,
+  onCloseValidationPanel,
+  commandBarProps,
+  onDeploy,
+  onStopDeploy,
 }) {
   const artifactLabel = manifest.displayName || manifest.name || "Artifact";
-
-  const validationLabel = stats
-    ? `${stats.itemCount} items · ${stats.sectionCount} sections · ${stats.leafCount} leaves`
-    : "Not validated (no artifact loaded)";
+  const selectedMeta = artifacts?.find((a) => a.name === selectedArtifact);
 
   return (
     <div className="app-shell">
@@ -47,6 +56,7 @@ export default function AppShell({
         <p>{artifactLabel} — artifact deployer + editor</p>
         {artifacts?.length > 0 && (
           <select
+            id="artifact-select"
             value={selectedArtifact || ""}
             onChange={(e) => onSelectArtifact(e.target.value)}
             style={{
@@ -71,7 +81,7 @@ export default function AppShell({
         )}
       </aside>
 
-      <TopCommandBar className="shell-panel topbar" />
+      <TopCommandBar className="shell-panel topbar" {...commandBarProps} />
 
       <nav className="shell-panel rail" aria-label="Right ribbon tools">
         <div className="triangle" title="Joydrive focus marker" />
@@ -108,26 +118,53 @@ export default function AppShell({
 
       <main className="shell-panel center-column">
         <div className="tabs">
-          <button type="button" className="tab">👁 {artifactLabel} (View)</button>
-          <button type="button" className="tab active">✎ {artifactLabel} (Edit)</button>
-          <span style={{ color: "var(--muted)", paddingLeft: 4 }}>+</span>
+          <button
+            type="button"
+            className={`tab${centerView === "deploy" ? " active" : ""}`}
+            onClick={() => onCenterViewChange("deploy")}
+          >
+            👁 Deploy
+          </button>
+          <button
+            type="button"
+            className={`tab${centerView === "treemap" ? " active" : ""}`}
+            onClick={() => onCenterViewChange("treemap")}
+          >
+            ✎ {artifactLabel} (Treemap)
+          </button>
           <div className="toolbar">
-            <button type="button">View Mode</button>
-            <button type="button" className="mode">Edit Mode</button>
-            <button type="button" className="active">Treemap</button>
-            <button type="button">List</button>
-            <button type="button">⌕</button>
-            <button type="button">⛶</button>
+            <button type="button" onClick={() => onCenterViewChange("deploy")}>
+              Preview
+            </button>
           </div>
         </div>
-        <TreemapWorkspace
-          manifest={manifest}
-          selectedNodeId={selectedNodeId}
-          onSelectNode={onSelectNode}
-          focusNodeId={focusNodeId}
-          onSetFocus={onSetFocus}
+        <div className="center-body">
+          {centerView === "deploy" ? (
+            <DeployTab
+              deployState={deployState}
+              onDeploy={onDeploy}
+              onStop={onStopDeploy}
+            />
+          ) : (
+            <TreemapWorkspace
+              manifest={manifest}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
+              focusNodeId={focusNodeId}
+              onSetFocus={onSetFocus}
+            />
+          )}
+          {showValidationPanel && validationResult && (
+            <ValidationPanel result={validationResult} onClose={onCloseValidationPanel} />
+          )}
+        </div>
+        <StatusBar
+          deployState={deployState}
+          validationResult={validationResult}
+          artifactName={selectedMeta?.displayName || selectedArtifact}
+          itemCount={stats?.itemCount ?? selectedMeta?.itemCount}
+          onToggleValidation={onToggleValidationPanel}
         />
-        <StatusBar deployStatus="idle" validationStatus={validationLabel} />
       </main>
 
       <aside className="shell-panel right-panel">

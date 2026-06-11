@@ -378,6 +378,19 @@ button {
   grid-template-rows: 54px minmax(0, 1fr) 36px;
 }
 
+.center-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.center-body > .workspace-canvas,
+.center-body > .deploy-tab {
+  flex: 1;
+  min-height: 0;
+}
+
 .tabs {
   display: flex;
   align-items: center;
@@ -534,6 +547,170 @@ button {
 .dot.warn {
   background: var(--yellow);
   box-shadow: 0 0 14px var(--yellow);
+}
+
+.status-validation-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.status-validation-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.status-badge.valid {
+  color: var(--green);
+}
+
+.status-badge.warn {
+  color: var(--yellow);
+}
+
+.status-badge.error {
+  color: var(--red);
+}
+
+.status-artifact-meta {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.validation-panel {
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel-2);
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+
+.validation-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.validation-header.valid {
+  color: var(--green);
+  margin: 0;
+  font-size: 13px;
+}
+
+.validation-header.warn {
+  color: var(--yellow);
+  margin: 0;
+  font-size: 13px;
+}
+
+.validation-header.invalid {
+  color: var(--red);
+  margin: 0;
+  font-size: 13px;
+}
+
+.validation-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.validation-section h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.validation-section ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.validation-section code {
+  color: var(--purple);
+  font-size: 11px;
+}
+
+.deploy-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.deploy-tab-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.deploy-tab-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.deploy-tab-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.deploy-tab-actions button.mode {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.deploy-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+
+.deploy-tab-bar a {
+  color: var(--blue);
+}
+
+.deploy-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.deploy-badge-view {
+  background: rgba(82, 214, 107, 0.15);
+  color: var(--green);
+}
+
+.deploy-badge-edit {
+  background: rgba(53, 120, 255, 0.15);
+  color: var(--blue);
+}
+
+.deploy-iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
 }
 
 .right-panel {

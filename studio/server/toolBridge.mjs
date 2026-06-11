@@ -1,12 +1,161 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import net from "node:net";
+import http from "node:http";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ARTIFACTS_BASE = path.resolve(__dirname, "../../artifacts");
-const TOOLS_DIR = path.resolve(__dirname, "../../tools/node");
+const REPO_ROOT = path.resolve(__dirname, "../..");
+const ARTIFACTS_BASE = path.resolve(REPO_ROOT, "artifacts");
+const TOOLS_DIR = path.resolve(REPO_ROOT, "tools/node");
+const HANDLER_DIR = path.resolve(REPO_ROOT, "handler");
+const HANDLER_DIST = path.join(HANDLER_DIR, "dist");
+const SERVE_ARTIFACT_SCRIPT = path.join(TOOLS_DIR, "serve-artifact.js");
 const TOOL_TIMEOUT_MS = 30_000;
+const NPM_BIN = process.platform === "win32" ? "npm.cmd" : "npm";
+
+const STATIC_MIME = {
+  ".json": "application/json; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+/** @type {{ artifactProc?: import("node:child_process").ChildProcess, handlerProc?: import("node:child_process").ChildProcess, httpd?: import("node:http").Server, mode?: string, url?: string } | null} */
+let activeDeploy = null;
+
+function pickFreePort() {
+  return new Promise((res) => {
+    const s = net.createServer();
+    s.listen(0, "127.0.0.1", () => {
+      const p = s.address().port;
+      s.close(() => res(p));
+    });
+  });
+}
+
+async function waitForUrl(url, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (res.ok) return;
+    } catch {
+      /* retry */
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`Timed out waiting for ${url}`);
+}
+
+async function stopActiveDeploy() {
+  if (!activeDeploy) return;
+  const d = activeDeploy;
+  activeDeploy = null;
+  if (d.httpd) {
+    await new Promise((resolve) => d.httpd.close(() => resolve()));
+  }
+  for (const proc of [d.handlerProc, d.artifactProc]) {
+    if (proc && proc.exitCode === null) {
+      try {
+        proc.kill();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
+function spawnServeArtifact(artifactPath, port) {
+  return spawn(process.execPath, [
+    SERVE_ARTIFACT_SCRIPT,
+    "--dir",
+    artifactPath,
+    "--port",
+    String(port),
+  ], { stdio: "ignore" });
+}
+
+function createDistStaticServer(distDir) {
+  const root = path.resolve(distDir);
+  return http.createServer((req, res) => {
+    const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    const rel = urlPath.replace(/^\/+/, "") || "index.html";
+    let filePath = path.normalize(path.join(root, rel));
+    if (!filePath.startsWith(root)) {
+      res.writeHead(403);
+      res.end("Forbidden");
+      return;
+    }
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      const indexPath = path.join(root, "index.html");
+      if (existsSync(indexPath)) filePath = indexPath;
+      else {
+        res.writeHead(404);
+        res.end("Not found");
+        return;
+      }
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    res.setHeader("Content-Type", STATIC_MIME[ext] || "application/octet-stream");
+    createReadStream(filePath).pipe(res);
+  });
+}
+
+async function parseMultipartFile(req) {
+  const contentType = req.headers["content-type"] || "";
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
+  if (!boundaryMatch) throw new Error("Expected multipart/form-data");
+  const boundary = boundaryMatch[1] || boundaryMatch[2];
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const body = Buffer.concat(chunks);
+  const delim = Buffer.from(`--${boundary}`);
+  let start = body.indexOf(delim);
+  if (start < 0) throw new Error("Invalid multipart body");
+  start += delim.length;
+  if (body[start] === 0x0d && body[start + 1] === 0x0a) start += 2;
+
+  while (start < body.length) {
+    const next = body.indexOf(delim, start);
+    const part = body.subarray(start, next > 0 ? next : body.length);
+    const headerEnd = part.indexOf("\r\n\r\n");
+    if (headerEnd < 0) break;
+    const headers = part.subarray(0, headerEnd).toString("utf8");
+    const data = part.subarray(headerEnd + 4);
+    const trimmed = data[data.length - 1] === 0x0a && data[data.length - 2] === 0x0d
+      ? data.subarray(0, data.length - 2)
+      : data;
+    const nameMatch = headers.match(/name="([^"]+)"/);
+    const filenameMatch = headers.match(/filename="([^"]*)"/);
+    if (nameMatch?.[1] === "file" && filenameMatch) {
+      const originalName = filenameMatch[1] || "upload.bin";
+      const dir = path.join(os.tmpdir(), randomUUID());
+      await fs.promises.mkdir(dir, { recursive: true });
+      const tempPath = path.join(dir, path.basename(originalName));
+      await fs.promises.writeFile(tempPath, trimmed);
+      return { tempPath, originalName };
+    }
+    if (next < 0) break;
+    start = next + delim.length;
+    if (body.subarray(start, start + 2).toString() === "--") break;
+    if (body[start] === 0x0d && body[start + 1] === 0x0a) start += 2;
+  }
+  throw new Error('No "file" field in multipart body');
+}
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -141,6 +290,38 @@ async function handler(req, res, next) {
     return;
   }
 
+  // ── GET /artifacts/:name/export ─────────────────────────────────────────────
+  const exportMatch = pathname.match(/^\/artifacts\/([^/]+)\/export$/);
+  if (req.method === "GET" && exportMatch) {
+    const name = decodeURIComponent(exportMatch[1]);
+    const artifactPath = path.join(ARTIFACTS_BASE, name);
+    const destZip = path.join(os.tmpdir(), `treesite-export-${randomUUID()}.zip`);
+    try {
+      const result = await spawnTool("export-zip", artifactPath, { destZip });
+      if (!result.ok) {
+        sendJSON(res, result, 400);
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${name}.zip"`,
+      );
+      const stream = createReadStream(destZip);
+      stream.pipe(res);
+      stream.on("end", () => {
+        fs.promises.unlink(destZip).catch(() => {});
+      });
+      stream.on("error", () => {
+        fs.promises.unlink(destZip).catch(() => {});
+      });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "EXPORT_FAILED", message: String(err) } }, 500);
+    }
+    return;
+  }
+
   // ── GET /artifacts/:name/files ──────────────────────────────────────────────
   const filesMatch = pathname.match(/^\/artifacts\/([^/]+)\/files$/);
   if (req.method === "GET" && filesMatch) {
@@ -167,14 +348,137 @@ async function handler(req, res, next) {
       sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: err.message } }, 400);
       return;
     }
-    const { artifactName, input = {} } = body;
-    if (!artifactName || typeof artifactName !== "string") {
-      sendJSON(res, { ok: false, error: { code: "MISSING_ARTIFACT", message: "artifactName is required" } }, 400);
+    let artifactPath;
+    let toolInput = body.input ?? {};
+    if (tool === "import-zip") {
+      const destDir = body.destDir ?? body.artifactName;
+      if (!destDir || typeof destDir !== "string") {
+        sendJSON(res, { ok: false, error: { code: "MISSING_DEST", message: "destDir or artifactName is required for import-zip" } }, 400);
+        return;
+      }
+      artifactPath = path.isAbsolute(destDir)
+        ? destDir
+        : path.join(ARTIFACTS_BASE, destDir);
+      toolInput = {
+        srcZip: toolInput.srcZip ?? body.srcZip,
+        overwrite: toolInput.overwrite ?? body.overwrite ?? false,
+      };
+      if (!toolInput.srcZip) {
+        sendJSON(res, { ok: false, error: { code: "MISSING_SRC", message: "srcZip is required" } }, 400);
+        return;
+      }
+    } else {
+      const { artifactName } = body;
+      if (!artifactName || typeof artifactName !== "string") {
+        sendJSON(res, { ok: false, error: { code: "MISSING_ARTIFACT", message: "artifactName is required" } }, 400);
+        return;
+      }
+      artifactPath = path.join(ARTIFACTS_BASE, artifactName);
+    }
+    const result = await spawnTool(tool, artifactPath, toolInput);
+    sendJSON(res, result);
+    return;
+  }
+
+  // ── POST /upload ────────────────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/upload") {
+    try {
+      const { tempPath } = await parseMultipartFile(req);
+      sendJSON(res, { ok: true, data: { tempPath } });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "UPLOAD_FAILED", message: err.message } }, 400);
+    }
+    return;
+  }
+
+  // ── POST /deploy/stop ───────────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/deploy/stop") {
+    await stopActiveDeploy();
+    sendJSON(res, { ok: true });
+    return;
+  }
+
+  // ── POST /deploy ────────────────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/deploy") {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: err.message } }, 400);
+      return;
+    }
+    const { artifactName, mode } = body;
+    if (!artifactName || (mode !== "view" && mode !== "edit")) {
+      sendJSON(res, {
+        ok: false,
+        error: { code: "BAD_REQUEST", message: "artifactName and mode (view|edit) are required" },
+      }, 400);
       return;
     }
     const artifactPath = path.join(ARTIFACTS_BASE, artifactName);
-    const result = await spawnTool(tool, artifactPath, input);
-    sendJSON(res, result);
+    try {
+      await fs.promises.access(path.join(artifactPath, "artifact.json"));
+    } catch {
+      sendJSON(res, { ok: false, error: { code: "NOT_FOUND", message: `Artifact not found: ${artifactName}` } }, 404);
+      return;
+    }
+
+    await stopActiveDeploy();
+
+    try {
+      const artifactPort = await pickFreePort();
+      const artifactProc = spawnServeArtifact(artifactPath, artifactPort);
+      const artifactBase = `http://127.0.0.1:${artifactPort}/`;
+      await waitForUrl(`${artifactBase}artifact.json`, 10_000);
+
+      if (mode === "view") {
+        try {
+          await fs.promises.access(HANDLER_DIST);
+        } catch {
+          if (artifactProc.exitCode === null) artifactProc.kill();
+          sendJSON(res, {
+            ok: false,
+            error: {
+              code: "HANDLER_NOT_BUILT",
+              message: "Run 'npm --prefix handler run build' first.",
+            },
+          }, 400);
+          return;
+        }
+        const handlerPort = await pickFreePort();
+        const httpd = createDistStaticServer(HANDLER_DIST);
+        await new Promise((resolve, reject) => {
+          httpd.listen(handlerPort, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
+        });
+        const url = `http://127.0.0.1:${handlerPort}/?artifact=${encodeURIComponent(artifactBase)}`;
+        await waitForUrl(`http://127.0.0.1:${handlerPort}/`, 10_000);
+        activeDeploy = { artifactProc, httpd, mode: "view", url };
+        sendJSON(res, { ok: true, data: { url, mode: "view" } });
+        return;
+      }
+
+      const handlerPort = await pickFreePort();
+      const handlerProc = spawn(NPM_BIN, [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        String(handlerPort),
+        "--strictPort",
+      ], {
+        cwd: HANDLER_DIR,
+        env: { ...process.env, VITE_ARTIFACT_BASE: artifactBase.replace(/\/$/, "") },
+        stdio: "ignore",
+        shell: process.platform === "win32",
+      });
+      const url = `http://127.0.0.1:${handlerPort}/`;
+      await waitForUrl(url, 60_000);
+      activeDeploy = { artifactProc, handlerProc, mode: "edit", url };
+      sendJSON(res, { ok: true, data: { url, mode: "edit" } });
+    } catch (err) {
+      await stopActiveDeploy();
+      sendJSON(res, { ok: false, error: { code: "DEPLOY_FAILED", message: err.message } }, 500);
+    }
     return;
   }
 

@@ -18,6 +18,9 @@ const initialState = {
   expandedNodeIds: new Set(readLS(LS_EXPANDED, [])),
   activePanel: "treemap",
   viewport: { focusNodeId: null },
+  validationResult: null,
+  deployState: null,
+  showValidationPanel: false,
 };
 
 function reducer(state, action) {
@@ -43,6 +46,12 @@ function reducer(state, action) {
       return { ...state, activePanel: action.payload };
     case "SET_FOCUS":
       return { ...state, viewport: { ...state.viewport, focusNodeId: action.payload } };
+    case "SET_VALIDATION":
+      return { ...state, validationResult: action.payload };
+    case "SET_DEPLOY":
+      return { ...state, deployState: action.payload };
+    case "SET_SHOW_VALIDATION":
+      return { ...state, showValidationPanel: action.payload };
     default:
       return state;
   }
