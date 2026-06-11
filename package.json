@@ -6,6 +6,7 @@
     "test:python": "python -m pytest editor/tests -v",
     "test:mcp": "cd editor && pytest tests/test_mcp.py -v",
     "test:integration": "cd editor && pytest tests/test_integration.py -v",
-    "test:all": "npm run test:tools && npm run test:python"
+    "test:all": "npm run test:tools && npm run test:python",
+    "studio": "npm --prefix studio run dev"
   }
 }
