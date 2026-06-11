@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000012",
+  "name": "How It Works",
+  "slug": "how-it-works",
+  "section": "About This Site",
+  "type": "text",
+  "description": "Content lives in a portable artifact bundle (JSON items + assets). The handler loads manifest.json at runtime—no rebuild required to swap sites.",
+  "value": 10
+}

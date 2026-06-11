@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000021",
+  "name": "Text Card",
+  "slug": "text-card-example",
+  "section": "Content Types",
+  "type": "text",
+  "description": "Plain text tiles show a title and description. They are the simplest content type.",
+  "value": 10
+}

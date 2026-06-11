@@ -1,0 +1,10 @@
+{
+  "id": "72a4f461-984b-4b55-a5f4-17fa6247244f",
+  "name": "test card",
+  "slug": "test-card",
+  "section": "Home",
+  "type": "text",
+  "description": "tester",
+  "value": 8,
+  "hidden": true
+}

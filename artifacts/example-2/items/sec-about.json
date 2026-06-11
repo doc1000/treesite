@@ -1,0 +1,10 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000001",
+  "name": "About This Site",
+  "slug": "sec-about",
+  "section": "Home",
+  "type": "section",
+  "description": "Learn what TreeSite is and how to navigate it.",
+  "value": 50,
+  "color": "#6b8cae"
+}

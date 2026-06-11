@@ -1,0 +1,10 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000022",
+  "name": "Website Card",
+  "slug": "website-card-example",
+  "section": "Content Types",
+  "type": "website",
+  "description": "Website tiles link to external URLs. Previews appear when a screenshot asset is bundled.",
+  "url": "https://example.com",
+  "value": 10
+}

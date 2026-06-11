@@ -1,0 +1,10 @@
+{
+  "schemes": [
+    {
+      "id": "content-default",
+      "label": "Default",
+      "file": "content-default.json"
+    }
+  ],
+  "defaultSchemeId": "content-default"
+}

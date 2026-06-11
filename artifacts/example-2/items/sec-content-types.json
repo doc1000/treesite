@@ -1,0 +1,10 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000002",
+  "name": "Content Types",
+  "slug": "sec-content-types",
+  "section": "Home",
+  "type": "section",
+  "description": "Sample cards for each supported tile type.",
+  "value": 35,
+  "color": "#8b79b8"
+}

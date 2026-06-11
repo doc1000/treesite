@@ -1,0 +1,7 @@
+{
+  "name": "example",
+  "schemaVersion": 1,
+  "displayName": "TreeSite Example",
+  "tagline": "An interactive treemap site. Tap any tile to explore.",
+  "defaultSchemeId": "content-default"
+}

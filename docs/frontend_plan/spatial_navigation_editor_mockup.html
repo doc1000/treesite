@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spatial Navigation Artifact Editor Mockup</title>
+  <style>
+    :root {
+      --bg: #070a0f;
+      --panel: #10151d;
+      --panel-2: #141b25;
+      --panel-3: #0d1219;
+      --line: #273140;
+      --line-soft: rgba(255,255,255,.08);
+      --text: #f4f7fb;
+      --muted: #9aa7b7;
+      --blue: #3578ff;
+      --green: #52d66b;
+      --purple: #a66cff;
+      --orange: #e29632;
+      --yellow: #e8c84a;
+      --red: #ff3b30;
+      --radius: 12px;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 0%, rgba(54,120,255,.16), transparent 30%),
+        radial-gradient(circle at 80% 10%, rgba(166,108,255,.12), transparent 24%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      height: 100vh;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 320px minmax(620px, 1fr) 350px 76px;
+      grid-template-rows: 78px minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .brand, .topbar, .left, .main, .right, .rail {
+      border: 1px solid var(--line-soft);
+      background: linear-gradient(180deg, rgba(20,27,37,.94), rgba(10,15,22,.96));
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+    }
+
+    .brand {
+      padding: 18px 20px;
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: .2px; }
+    .brand p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+
+    .topbar {
+      grid-column: 2 / 4;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr) 190px;
+      overflow: hidden;
+    }
+    .top-action {
+      border: 0;
+      border-right: 1px solid var(--line-soft);
+      background: transparent;
+      color: #dbe5f2;
+      display: grid;
+      place-items: center;
+      gap: 5px;
+      padding: 10px 6px;
+    }
+    .top-action:hover, .top-action.active { background: rgba(53,120,255,.14); }
+    .top-action .icon { font-size: 22px; }
+    .top-action small { color: var(--muted); }
+    .deploy-status {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      color: #c9d5e4; font-size: 13px;
+    }
+    .dot { width: 9px; height: 9px; background: var(--green); border-radius: 99px; box-shadow: 0 0 14px var(--green); }
+
+    .rail {
+      grid-column: 4; grid-row: 1 / 3;
+      border-radius: 10px;
+      display: grid;
+      grid-template-rows: 90px repeat(7, 1fr);
+      overflow: hidden;
+    }
+    .triangle {
+      display: grid; place-items: center; border-bottom: 1px solid var(--line-soft);
+    }
+    .triangle::before {
+      content: "";
+      width: 0; height: 0;
+      border-top: 28px solid transparent;
+      border-bottom: 28px solid transparent;
+      border-left: 42px solid var(--red);
+      filter: drop-shadow(0 0 14px rgba(255,59,48,.5));
+    }
+    .rail-button {
+      display: grid; place-items: center; gap: 2px;
+      border-bottom: 1px solid var(--line-soft);
+      color: #cbd7e6; font-size: 10px; text-transform: uppercase;
+    }
+    .rail-button b { font-size: 24px; font-weight: 500; }
+    .rail-button.active { color: #fff; background: rgba(255,59,48,.1); }
+
+    .left { grid-column: 1; grid-row: 2; overflow: hidden; display: grid; grid-template-rows: auto auto 1fr 300px; }
+    .panel-header { padding: 14px 16px 8px; display:flex; align-items:center; justify-content:space-between; }
+    .panel-header h2 { margin: 0; font-size: 13px; letter-spacing: .5px; text-transform: uppercase; }
+    .toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0 12px 10px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+    .toggle button { border:0; padding: 10px; background: transparent; color: var(--muted); font-size: 13px; }
+    .toggle button.active { background: rgba(53,120,255,.22); color: #fff; box-shadow: inset 0 -2px 0 var(--blue); }
+    .search { margin: 0 12px 12px; padding: 11px 12px; border: 1px solid var(--line); background: #0a0f15; border-radius: 8px; color: #dce6f5; width: calc(100% - 24px); }
+
+    .tree { overflow: auto; padding: 0 12px 12px; font-size: 13px; }
+    .tree ul { list-style: none; margin: 0; padding-left: 18px; border-left: 1px solid rgba(255,255,255,.1); }
+    .tree li { margin: 7px 0; color: #d6e1ef; }
+    .tree .node { display:flex; align-items:center; gap:7px; padding:5px 7px; border-radius:6px; }
+    .tree .node:hover, .tree .node.selected { background: rgba(53,120,255,.22); }
+    .badge { width: 8px; height: 8px; border-radius: 2px; display:inline-block; }
+    .b-blue { background: var(--blue); } .b-green { background: var(--green); } .b-purple { background: var(--purple); } .b-orange { background: var(--orange); } .b-yellow { background: var(--yellow); }
+
+    .minimap-wrap { border-top: 1px solid var(--line-soft); padding: 12px; background: rgba(0,0,0,.15); }
+    .minimap-title { font-size: 12px; text-transform: uppercase; margin-bottom: 10px; color: #dce6f5; }
+    .minimap { height: 190px; border: 1px solid var(--line); border-radius: 6px; position: relative; overflow: hidden; background: #0b1119; }
+    .mini { position:absolute; border:1px solid rgba(255,255,255,.22); opacity:.72; }
+    .viewport { position:absolute; left: 26%; top: 28%; width: 42%; height: 42%; border: 2px solid rgba(255,255,255,.8); box-shadow: 0 0 0 999px rgba(0,0,0,.08); }
+    .mini-controls { display:flex; gap:8px; margin-top:10px; align-items:center; }
+    .mini-controls button { background:#111821; border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+    .mini-controls span { color: var(--muted); margin-left:auto; font-size:12px; }
+
+    .main { grid-column: 2; grid-row: 2; overflow: hidden; display:grid; grid-template-rows: 54px minmax(0, 1fr) 190px; }
+    .tabs { display:flex; align-items:center; gap:6px; padding: 0 14px; border-bottom: 1px solid var(--line-soft); background: rgba(0,0,0,.12); }
+    .tab { border:1px solid var(--line); background:#0d131b; border-radius:8px; padding:9px 13px; font-size:13px; color:#d7e2ef; }
+    .tab.active { background: rgba(53,120,255,.18); border-color: rgba(53,120,255,.6); }
+    .toolbar { margin-left:auto; display:flex; gap:8px; align-items:center; }
+    .toolbar button, .toolbar select { background:#101720; border:1px solid var(--line); border-radius:7px; padding:8px 10px; color:#dce6f5; }
+    .toolbar .mode { background: var(--blue); border-color: var(--blue); }
+
+    .canvas { overflow:auto; padding: 16px; }
+    .breadcrumb { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+    .treemap {
+      min-height: 620px;
+      display:grid;
+      grid-template-columns: 1.25fr .75fr .45fr;
+      grid-template-rows: 240px 330px;
+      gap: 7px;
+    }
+    .cell {
+      position: relative;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 8px;
+      overflow:hidden;
+      background: linear-gradient(145deg, rgba(53,120,255,.18), rgba(53,120,255,.04));
+      outline: 1px solid rgba(255,255,255,.04);
+    }
+    .cell.selected { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue), 0 0 20px rgba(53,120,255,.25); }
+    .cell-label { position:absolute; left:10px; top:9px; z-index:3; font-size:14px; color:#fff; }
+    .cell-file { position:absolute; left:10px; bottom:9px; z-index:3; color:#cbd7e6; font-size:12px; opacity:.85; }
+    .hero { grid-column:1; grid-row:1; background: linear-gradient(rgba(17,52,95,.36), rgba(8,12,18,.65)), url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1000&q=70') center/cover; display:grid; place-items:center; text-align:center; }
+    .hero h3 { font-size: 30px; margin: 0 0 8px; }
+    .hero p { margin: 0 0 18px; color:#edf4ff; }
+    .hero button { background: var(--blue); border:0; border-radius:7px; padding:10px 22px; }
+    .features { grid-column:2 / 4; grid-row:1; background: linear-gradient(145deg, rgba(82,214,107,.25), rgba(82,214,107,.05)); border-color: rgba(82,214,107,.45); padding: 38px 10px 10px; display:grid; grid-template-columns: repeat(3,1fr); gap:4px; }
+    .feature-card { border:1px solid rgba(255,255,255,.15); display:grid; place-items:center; text-align:center; padding:16px; background:rgba(0,0,0,.12); }
+    .feature-card b { font-size:34px; color: var(--purple); }
+    .feature-card h4 { margin: 8px 0 6px; }
+    .feature-card p { margin:0; color:#d4dfeb; line-height:1.45; }
+    .sections { grid-column:1 / 3; grid-row:2; background: linear-gradient(145deg, rgba(166,108,255,.25), rgba(166,108,255,.05)); border-color: rgba(166,108,255,.45); padding:38px 10px 10px; display:grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap:6px; }
+    .overview { grid-row: 1 / 3; display:grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(2,1fr); gap:7px; padding:10px; border:1px solid rgba(255,255,255,.15); }
+    .section-card { border:1px solid rgba(255,255,255,.15); background:rgba(0,0,0,.12); display:grid; place-items:center; text-align:center; border-radius:4px; }
+    .section-card.selected { border-color: var(--blue); background: rgba(53,120,255,.18); }
+    .assets { grid-column:3; grid-row:2; background: linear-gradient(145deg, rgba(226,150,50,.25), rgba(226,150,50,.06)); border-color: rgba(226,150,50,.5); padding:38px 10px 10px; display:grid; gap:7px; }
+    .asset-card { border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.13); border-radius:4px; display:grid; place-items:center; font-size:18px; }
+    .legend { display:flex; gap:18px; align-items:center; justify-content:center; font-size:12px; color:var(--muted); padding-top:8px; }
+
+    .inspector-bottom { border-top:1px solid var(--line-soft); display:grid; grid-template-columns: 290px 1fr; overflow:hidden; }
+    .card-summary { display:grid; grid-template-columns: 90px 1fr; gap:14px; padding:18px; border-right:1px solid var(--line-soft); }
+    .card-icon { background:#101720; border:1px solid var(--line); border-radius:8px; display:grid; place-items:center; font-size:40px; color:#b9c5d8; }
+    .meta h3 { margin:0 0 8px; font-size:15px; }
+    .meta p { margin:4px 0; color:var(--muted); font-size:13px; }
+    .json-preview { padding:18px; overflow:auto; color:#9ee49f; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; line-height:1.55; }
+
+    .right { grid-column: 3; grid-row: 2; overflow:hidden; display:grid; grid-template-rows: auto auto 1fr; }
+    .selected-title { padding:18px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--line-soft); }
+    .selected-title b:first-child { color:var(--purple); font-size:26px; }
+    .tabs-small { display:grid; grid-template-columns: repeat(4,1fr); border-bottom:1px solid var(--line-soft); }
+    .tabs-small button { padding:12px 4px; border:0; background:transparent; color:var(--muted); font-size:12px; }
+    .tabs-small button.active { color:#fff; box-shadow: inset 0 -2px 0 var(--blue); }
+    .form { padding:18px; overflow:auto; }
+    .field { margin-bottom:16px; }
+    label { display:block; color:#d5dfec; font-size:13px; margin-bottom:7px; }
+    input, textarea, select { width:100%; background:#0c1118; border:1px solid var(--line); border-radius:7px; padding:10px; }
+    textarea { min-height:78px; resize:vertical; }
+    .image-row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:center; }
+    .thumb { height:74px; border-radius:7px; background:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=300&q=60') center/cover; border:1px solid var(--line); }
+    .action-list { margin-top:22px; border-top:1px solid var(--line-soft); padding-top:16px; display:grid; gap:8px; }
+    .action-list button { width:100%; text-align:left; background:#0e141c; border:1px solid var(--line); border-radius:7px; padding:11px 12px; }
+    .action-list .danger { color: var(--red); border-color: rgba(255,59,48,.3); }
+
+    @media (max-width: 1200px) {
+      .app { grid-template-columns: 280px 1fr 310px 62px; }
+      .treemap { min-width: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="brand">
+      <h1>Spatial Navigation</h1>
+      <p>Artifact deployer + editor</p>
+    </aside>
+
+    <header class="topbar" aria-label="Artifact workflow commands">
+      <button class="top-action"><span class="icon">🗂</span><small>See Artifacts</small></button>
+      <button class="top-action"><span class="icon">⬇</span><small>Import Artifact</small></button>
+      <button class="top-action"><span class="icon">◇</span><small>Validate Artifact</small></button>
+      <button class="top-action"><span class="icon">⬡</span><small>Deploy (View)</small></button>
+      <button class="top-action active"><span class="icon">✎</span><small>Edit Artifact</small></button>
+      <button class="top-action"><span class="icon">↪</span><small>Export Artifact</small></button>
+      <div class="deploy-status"><span class="dot"></span><span>Local Site<br/>Deployed</span></div>
+    </header>
+
+    <nav class="rail" aria-label="Right ribbon tools">
+      <div class="triangle" title="Joydrive focus marker"></div>
+      <div class="rail-button active"><b>🛠</b><span>Tools</span></div>
+      <div class="rail-button"><b>▣</b><span>Content</span></div>
+      <div class="rail-button"><b>⌘</b><span>Components</span></div>
+      <div class="rail-button"><b>◉</b><span>Data</span></div>
+      <div class="rail-button"><b>▧</b><span>Assets</span></div>
+      <div class="rail-button"><b>👁</b><span>Preview</span></div>
+      <div class="rail-button"><b>?</b><span>Help</span></div>
+    </nav>
+
+    <aside class="left">
+      <div class="panel-header"><h2>View</h2><span>↻ ⌖</span></div>
+      <div class="toggle"><button>File System</button><button class="active">JSON Tree</button></div>
+      <input class="search" placeholder="Search artifacts or manifest..." />
+      <div class="tree" id="tree">
+        <ul>
+          <li><div class="node"><span class="badge b-blue"></span>my-site (root)</div>
+            <ul>
+              <li><div class="node"><span class="badge b-blue"></span>home</div>
+                <ul>
+                  <li><div class="node"><span class="badge b-purple"></span>hero</div></li>
+                  <li><div class="node"><span class="badge b-green"></span>features</div>
+                    <ul>
+                      <li><div class="node">spatial-first</div></li>
+                      <li><div class="node">joydrive-ready</div></li>
+                      <li><div class="node selected">modular</div></li>
+                    </ul>
+                  </li>
+                  <li><div class="node"><span class="badge b-purple"></span>sections</div>
+                    <ul>
+                      <li><div class="node">overview</div>
+                        <ul>
+                          <li><div class="node">card-1</div></li>
+                          <li><div class="node selected">card-2</div></li>
+                          <li><div class="node">card-3</div></li>
+                          <li><div class="node">card-4</div></li>
+                          <li><div class="node">card-5</div></li>
+                          <li><div class="node">card-6</div></li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li><div class="node"><span class="badge b-green"></span>gallery</div></li>
+                  <li><div class="node"><span class="badge b-green"></span>about</div></li>
+                  <li><div class="node"><span class="badge b-green"></span>contact</div></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <section class="minimap-wrap">
+        <div class="minimap-title">Mini-map</div>
+        <div class="minimap">
+          <div class="mini" style="left:0;top:0;width:48%;height:42%;background:rgba(53,120,255,.55)"></div>
+          <div class="mini" style="left:48%;top:0;width:52%;height:42%;background:rgba(82,214,107,.42)"></div>
+          <div class="mini" style="left:0;top:42%;width:78%;height:58%;background:rgba(166,108,255,.48)"></div>
+          <div class="mini" style="left:78%;top:42%;width:22%;height:58%;background:rgba(226,150,50,.48)"></div>
+          <div class="viewport"></div>
+        </div>
+        <div class="mini-controls"><button>−</button><button>+</button><span>100% · Fit View</span></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="tabs">
+        <button class="tab">👁 my-site (View)</button>
+        <button class="tab active">✎ my-site (Edit)</button>
+        <span style="color:var(--muted);padding-left:4px">+</span>
+        <div class="toolbar">
+          <button>View Mode</button><button class="mode">Edit Mode</button>
+          <button class="active">Treemap</button><button>List</button>
+          <button>⌕</button><button>⛶</button>
+        </div>
+      </div>
+      <section class="canvas">
+        <div class="breadcrumb">Path: my-site / sections / overview / card-2</div>
+        <div class="treemap" role="application" aria-label="D3 treemap artifact projection">
+          <article class="cell hero">
+            <div class="cell-label">hero</div>
+            <div><h3>Explore Without Limits</h3><p>Spatial navigation for the real world.</p><button>Get Started</button></div>
+            <div class="cell-file">hero.art</div>
+          </article>
+          <section class="cell features">
+            <div class="cell-label">features</div>
+            <div class="feature-card"><b>◎</b><h4>spatial-first</h4><p>Built for natural movement and exploration.</p></div>
+            <div class="feature-card"><b style="color:var(--green)">♙</b><h4>joydrive-ready</h4><p>Navigate with joystick, controller, or keyboard.</p></div>
+            <div class="feature-card"><b style="color:var(--blue)">⬡</b><h4>modular</h4><p>Composable artifacts for flexible experiences.</p></div>
+            <div class="cell-file">features.art</div>
+          </section>
+          <section class="cell sections">
+            <div class="cell-label">sections</div>
+            <div class="overview">
+              <div class="section-card">◉<br/>card-1</div>
+              <div class="section-card selected">▰<br/>card-2</div>
+              <div class="section-card">▧<br/>card-3</div>
+              <div class="section-card">⬡<br/>card-4</div>
+              <div class="section-card">🎮<br/>card-5</div>
+              <div class="section-card">☷<br/>card-6</div>
+            </div>
+            <div class="section-card">gallery.art</div>
+            <div class="section-card">about.art</div>
+            <div class="section-card">contact.art</div>
+            <div class="cell-file">overview.art</div>
+          </section>
+          <section class="cell assets">
+            <div class="cell-label">assets</div>
+            <div class="asset-card">▧ images</div>
+            <div class="asset-card">☆ icons</div>
+            <div class="asset-card">{} data</div>
+          </section>
+        </div>
+        <div class="legend"><span><i class="badge b-blue"></i> Layout</span><span><i class="badge b-purple"></i> Section</span><span><i class="badge b-green"></i> Feature</span><span><i class="badge b-orange"></i> Asset</span><span><i class="badge b-yellow"></i> Data</span></div>
+      </section>
+      <section class="inspector-bottom">
+        <div class="card-summary">
+          <div class="card-icon">▰</div>
+          <div class="meta"><h3>card-2</h3><p>Type: Card</p><p>ID: card-2</p><p>File: overview.art</p><p>Children: 0</p></div>
+        </div>
+        <pre class="json-preview">{
+  "id": "card-2",
+  "type": "card",
+  "title": "Modular Design",
+  "icon": "layers",
+  "content": "Composable artifacts for flexible experiences.",
+  "layout": { "x": 0.33, "y": 0, "w": 0.33, "h": 0.5 }
+}</pre>
+      </section>
+    </main>
+
+    <aside class="right">
+      <div class="panel-header"><h2>Edit Tools</h2><span>↔</span></div>
+      <div class="selected-title"><b>▰</b><b>Selected: card-2</b><span style="margin-left:auto;color:var(--muted)">×</span></div>
+      <div class="tabs-small"><button class="active">Content</button><button>Style</button><button>Behavior</button><button>Advanced</button></div>
+      <form class="form">
+        <div class="field"><label>Type</label><select><option>Card</option><option>Section</option><option>Layout</option></select></div>
+        <div class="field"><label>ID</label><input value="card-2" /></div>
+        <div class="field"><label>Title</label><input value="Modular Design" /></div>
+        <div class="field"><label>Icon</label><input value="layers" /></div>
+        <div class="field"><label>Description</label><textarea>Composable artifacts for flexible experiences.</textarea></div>
+        <div class="field"><label>Image</label><div class="image-row"><div class="thumb"></div><div><button type="button" class="tab">Change</button><br/><br/><button type="button" class="tab">Remove</button></div></div></div>
+        <div class="action-list">
+          <button type="button">⧉ Duplicate Node</button>
+          <button type="button">⊕ Add Child Card</button>
+          <button type="button">↑ Move Up</button>
+          <button type="button">↓ Move Down</button>
+          <button type="button" class="danger">🗑 Delete Node</button>
+        </div>
+      </form>
+    </aside>
+  </div>
+
+  <script>
+    // Lightweight mock interactions for Cursor integration examples.
+    const cards = document.querySelectorAll('.section-card, .feature-card, .cell');
+    const selectedTitle = document.querySelector('.selected-title b:nth-child(2)');
+    cards.forEach((el, index) => {
+      el.tabIndex = 0;
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.selected').forEach(s => s.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedTitle.textContent = `Selected: ${el.textContent.trim().split('\n').pop() || 'node-' + index}`;
+      });
+    });
+
+    // Joydrive-ish keyboard hooks: arrow keys move focus through interactive cards.
+    let focusIndex = 0;
+    const focusables = Array.from(document.querySelectorAll('.section-card, .feature-card, .top-action, .rail-button'));
+    window.addEventListener('keydown', (event) => {
+      if (!['ArrowRight','ArrowLeft','ArrowUp','ArrowDown','Enter',' '].includes(event.key)) return;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') focusIndex = (focusIndex + 1) % focusables.length;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') focusIndex = (focusIndex - 1 + focusables.length) % focusables.length;
+      focusables[focusIndex].focus();
+      if (event.key === 'Enter' || event.key === ' ') focusables[focusIndex].click();
+      event.preventDefault();
+    });
+  </script>
+</body>
+</html>

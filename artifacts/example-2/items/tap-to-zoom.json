@@ -1,0 +1,9 @@
+{
+  "id": "a1000001-0000-4000-8000-000000000031",
+  "name": "Tap to Zoom",
+  "slug": "tap-to-zoom",
+  "section": "Navigation",
+  "type": "text",
+  "description": "Click or tap a tile to focus that section. The treemap re-layouts to show its children.",
+  "value": 10
+}
