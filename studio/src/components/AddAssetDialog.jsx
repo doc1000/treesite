@@ -3,6 +3,23 @@ import { addPdf, addWebsite, addHtml } from "../api/client.js";
 
 const PLAYWRIGHT_PATTERN = /playwright|chromium|browsertype|executable doesn.t exist|browser.*not.*install/i;
 
+function PreviewPendingNote({ message }) {
+  return (
+    <p
+      style={{
+        color: "var(--accent, #4fc)",
+        fontSize: 12,
+        margin: "8px 0 0",
+        background: "rgba(64,255,192,0.06)",
+        padding: "6px 8px",
+        borderRadius: 4,
+      }}
+    >
+      Card created. Preview pending: {message}
+    </p>
+  );
+}
+
 const OVERLAY = {
   position: "fixed",
   inset: 0,
@@ -114,6 +131,7 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [isPlaywright, setIsPlaywright] = useState(false);
+  const [previewWarning, setPreviewWarning] = useState(null);
   const fileRef = useRef();
 
   const handleSubmit = async (e) => {
@@ -121,6 +139,7 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
     if (!file) { setError("Please select a PDF file."); return; }
     setBusy(true);
     setError(null);
+    setPreviewWarning(null);
     try {
       const payload = { name: form.name.trim(), section: form.section.trim(), description: form.description, value: form.value !== "" ? Number(form.value) : undefined };
       const result = await addPdf(artifactName, payload, file);
@@ -131,7 +150,11 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
         return;
       }
       onSuccess();
-      onClose();
+      if (result.data?.previewPending) {
+        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+      } else {
+        onClose();
+      }
     } catch (err) {
       setError(err.message || "Upload failed");
     } finally {
@@ -170,13 +193,16 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
         </p>
       )}
       {error && <ErrorNote message={error} isPlaywright={isPlaywright} />}
+      {previewWarning && <PreviewPendingNote message={previewWarning} />}
       <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onClose} disabled={busy} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
-          Cancel
+        <button type="button" onClick={onClose} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
+          {previewWarning ? "Close" : "Cancel"}
         </button>
-        <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !file} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
-          {busy ? "Uploading…" : "Add PDF"}
-        </button>
+        {!previewWarning && (
+          <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !file} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
+            {busy ? "Uploading…" : "Add PDF"}
+          </button>
+        )}
       </div>
     </form>
   );
@@ -189,12 +215,14 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [isPlaywright, setIsPlaywright] = useState(false);
+  const [previewWarning, setPreviewWarning] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.url.startsWith("http")) { setError("URL must start with http:// or https://"); return; }
     setBusy(true);
     setError(null);
+    setPreviewWarning(null);
     try {
       const result = await addWebsite(artifactName, { name: form.name.trim(), section: form.section.trim(), url: form.url.trim() });
       if (!result.ok) {
@@ -204,7 +232,11 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
         return;
       }
       onSuccess();
-      onClose();
+      if (result.data?.previewPending) {
+        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+      } else {
+        onClose();
+      }
     } catch (err) {
       setError(err.message || "Request failed");
     } finally {
@@ -224,16 +256,19 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
         <input style={INPUT_STYLE} type="url" value={form.url} required disabled={busy} placeholder="https://example.com" onChange={(e) => setForm({ ...form, url: e.target.value })} />
       </Field>
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
-        Screenshot preview requires Playwright. If unavailable, the card will not be created.
+        Screenshot preview requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview appears on deploy if Playwright is unavailable.
       </p>
       {error && <ErrorNote message={error} isPlaywright={isPlaywright} />}
+      {previewWarning && <PreviewPendingNote message={previewWarning} />}
       <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onClose} disabled={busy} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
-          Cancel
+        <button type="button" onClick={onClose} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
+          {previewWarning ? "Close" : "Cancel"}
         </button>
-        <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !form.url.trim()} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
-          {busy ? "Adding…" : "Add Website"}
-        </button>
+        {!previewWarning && (
+          <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !form.url.trim()} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
+            {busy ? "Adding…" : "Add Website"}
+          </button>
+        )}
       </div>
     </form>
   );
@@ -247,6 +282,7 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [isPlaywright, setIsPlaywright] = useState(false);
+  const [previewWarning, setPreviewWarning] = useState(null);
   const fileRef = useRef();
 
   const handleSubmit = async (e) => {
@@ -254,6 +290,7 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
     if (!file) { setError("Please select an HTML file."); return; }
     setBusy(true);
     setError(null);
+    setPreviewWarning(null);
     try {
       const result = await addHtml(artifactName, { name: form.name.trim(), section: form.section.trim() }, file);
       if (!result.ok) {
@@ -263,7 +300,11 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
         return;
       }
       onSuccess();
-      onClose();
+      if (result.data?.previewPending) {
+        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+      } else {
+        onClose();
+      }
     } catch (err) {
       setError(err.message || "Upload failed");
     } finally {
@@ -296,16 +337,19 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
         </p>
       )}
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
-        Preview screenshot requires Playwright. If unavailable, the card will not be created.
+        Preview screenshot requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview appears on deploy if Playwright is unavailable.
       </p>
       {error && <ErrorNote message={error} isPlaywright={isPlaywright} />}
+      {previewWarning && <PreviewPendingNote message={previewWarning} />}
       <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onClose} disabled={busy} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
-          Cancel
+        <button type="button" onClick={onClose} style={{ padding: "6px 14px", cursor: "pointer", background: "none", border: "1px solid var(--border, #333)", color: "var(--muted, #666)", borderRadius: 4 }}>
+          {previewWarning ? "Close" : "Cancel"}
         </button>
-        <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !file} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
-          {busy ? "Uploading…" : "Add HTML"}
-        </button>
+        {!previewWarning && (
+          <button type="submit" disabled={busy || !form.name.trim() || !form.section.trim() || !file} style={{ padding: "6px 14px", cursor: "pointer", background: "var(--accent, #4fc)", color: "#000", border: "none", borderRadius: 4, fontWeight: 600 }}>
+            {busy ? "Uploading…" : "Add HTML"}
+          </button>
+        )}
       </div>
     </form>
   );

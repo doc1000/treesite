@@ -59,6 +59,18 @@ export function applyCardFields(item, args, { allowIdentity = false } = {}) {
   if (args.linkLabel !== undefined) item.linkLabel = String(args.linkLabel);
   if (args.color !== undefined) item.color = String(args.color);
 
+  if (args.mapFace !== undefined) {
+    const v = String(args.mapFace).toLowerCase().trim();
+    if (!["text", "media", ""].includes(v)) {
+      throw new Error('--mapFace must be "text" or "media".');
+    }
+    if (v === "") {
+      delete item.mapFace;
+    } else {
+      item.mapFace = v;
+    }
+  }
+
   const href = args.href || args.url || args.source;
   if (href !== undefined) {
     const value = String(href);

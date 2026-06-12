@@ -36,12 +36,15 @@ export default function AppShell({
   onSelectArtifact,
   stats,
   files,
+  hiddenItems,
   loading,
   focusNodeId,
   onSetFocus,
   centerView,
   onCenterViewChange,
   deployState,
+  deployPending,
+  devServerWarm,
   validationResult,
   showValidationPanel,
   onToggleValidationPanel,
@@ -51,6 +54,7 @@ export default function AppShell({
   onStopDeploy,
   refreshArtifact,
 }) {
+  const { appError, onDismissError } = commandBarProps ?? {};
   const dispatch = useDispatch();
   const { inputMode } = useStore();
 
@@ -106,6 +110,12 @@ export default function AppShell({
         {loading && (
           <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>Loading…</p>
         )}
+        {appError && (
+          <div style={{ marginTop: 8, background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.3)", borderRadius: 6, padding: "6px 10px", display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ color: "var(--red)", fontSize: 12, flex: 1, wordBreak: "break-word" }}>{appError}</span>
+            <button type="button" onClick={onDismissError} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0, fontSize: 16, lineHeight: 1 }}>×</button>
+          </div>
+        )}
       </aside>
 
       <TopCommandBar
@@ -140,6 +150,7 @@ export default function AppShell({
           selectedArtifact={selectedArtifact}
           onSelectArtifact={onSelectArtifact}
           files={files}
+          hiddenItems={hiddenItems}
           navigation={navigation}
         />
         <MiniMap
@@ -179,6 +190,8 @@ export default function AppShell({
           {centerView === "deploy" ? (
             <DeployTab
               deployState={deployState}
+              deployPending={deployPending}
+              devServerWarm={devServerWarm}
               onDeploy={onDeploy}
               onStop={onStopDeploy}
             />

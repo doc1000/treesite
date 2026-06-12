@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { INTENTS } from "../nav/intents.js";
 import {
   editCard,
-  addCard,
   renameCard,
   moveCard,
   moveSubtree,
@@ -11,23 +10,8 @@ import {
   deleteCard,
 } from "../api/client.js";
 import { useStore, useDispatch } from "../state/studioStore.jsx";
-import AddAssetDialog from "./AddAssetDialog.jsx";
-
-function slugify(name) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function addCardSectionPath(item) {
-  if (!item) return "";
-  if (item.type === "section") {
-    if (item.section === "Home") return item.name;
-    return `${item.section}/${item.name}`;
-  }
-  return item.section ?? "";
-}
+import { collectSectionPaths } from "../state/studioOps.js";
+import AddDialog from "./AddDialog.jsx";
 
 function itemToForm(item) {
   return {
@@ -40,14 +24,12 @@ function itemToForm(item) {
     source: item.source ?? "",
     previewImage: item.previewImage ?? "",
     embed: item.embed ?? "",
+    mapFace: item.mapFace ?? "",
   };
 }
 
 function buildEditFields(form, type) {
-  const fields = {
-    name: form.name.trim(),
-    description: form.description,
-  };
+  const fields = { description: form.description };
   if (form.value !== "") {
     const n = Number(form.value);
     if (!Number.isNaN(n)) fields.value = n;
@@ -58,16 +40,9 @@ function buildEditFields(form, type) {
     if (type === "contact") fields.email = form.email;
   }
   if (type === "htmlCard") fields.embed = form.embed;
+  if (form.mapFace !== undefined) fields.mapFace = form.mapFace;
   return fields;
 }
-
-const ADD_TYPES = [
-  { value: "text", label: "Text" },
-  { value: "link", label: "Link" },
-  { value: "href", label: "Href" },
-  { value: "contact", label: "Contact" },
-  { value: "section", label: "Section" },
-];
 
 const FOCUSABLE_SELECTOR =
   'input:not([type="hidden"]), textarea, select, button, summary, [tabindex="0"]';
@@ -77,6 +52,14 @@ function listFocusables(root) {
   return [...root.querySelectorAll(FOCUSABLE_SELECTOR)].filter(
     (el) => !el.disabled && el.tabIndex !== -1 && !el.hidden,
   );
+}
+
+function slugify(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
 export default function RightToolPanel({
@@ -94,13 +77,12 @@ export default function RightToolPanel({
 
   const [form, setForm] = useState(() => itemToForm(nodeItem ?? {}));
   const [busy, setBusy] = useState(false);
-  const [showAddChild, setShowAddChild] = useState(false);
-  const [addForm, setAddForm] = useState({
-    name: "",
-    type: "text",
-    description: "",
-  });
-  const [showAssetDialog, setShowAssetDialog] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  // Move: inline section picker
+  const [movePending, setMovePending] = useState(false);
+  const [moveTarget, setMoveTarget] = useState("");
+  // Delete: inline confirm
+  const [deletePending, setDeletePending] = useState(false);
 
   const editable = Boolean(selectedNodeId && nodeItem?.id);
 
@@ -109,6 +91,8 @@ export default function RightToolPanel({
       setForm(itemToForm(nodeItem));
       dispatch({ type: "SET_DIRTY", payload: false });
       dispatch({ type: "SET_EDIT_ERROR", payload: null });
+      setMovePending(false);
+      setDeletePending(false);
     }
   }, [nodeItem?.id, nodeItem, dispatch]);
 
@@ -143,52 +127,38 @@ export default function RightToolPanel({
   const handleSave = (e) => {
     e.preventDefault();
     if (!editable || !dirty) return;
-    runMutation(() =>
-      editCard(selectedArtifact, nodeItem.id, buildEditFields(form, nodeItem.type)),
-    );
-  };
+    const newName = form.name.trim();
+    const oldName = nodeItem.name;
 
-  const handleAddChild = (e) => {
-    e.preventDefault();
-    const section = addCardSectionPath(nodeItem);
-    if (!addForm.name.trim() || !section) return;
     runMutation(async () => {
-      await addCard(selectedArtifact, {
-        name: addForm.name.trim(),
-        section,
-        type: addForm.type,
-        description: addForm.description,
-      });
-      setAddForm({ name: "", type: "text", description: "" });
-      setShowAddChild(false);
+      // Inline rename: if name changed, rename slug+file first
+      if (newName && newName !== oldName) {
+        const newSlug = slugify(newName);
+        if (newSlug && newSlug !== nodeItem.slug) {
+          await renameCard(selectedArtifact, {
+            id: nodeItem.id,
+            name: newName,
+            slug: newSlug,
+          });
+        }
+      }
+      const otherFields = buildEditFields(form, nodeItem.type);
+      if (newName) otherFields.name = newName;
+      await editCard(selectedArtifact, nodeItem.id, otherFields);
     });
   };
 
-  const handleRename = () => {
-    const nextName = window.prompt("New name:", nodeItem.name);
-    if (!nextName?.trim() || nextName.trim() === nodeItem.name) return;
-    const name = nextName.trim();
-    const slug = slugify(name);
-    if (!slug) {
-      window.alert("Could not derive a slug from that name.");
-      return;
-    }
-    runMutation(() => renameCard(selectedArtifact, { id: nodeItem.id, name, slug }));
-  };
-
-  const handleMove = () => {
-    const hint =
-      nodeItem.type === "section"
-        ? "Parent section path (e.g. Home or Content Types):"
-        : "New section path:";
-    const section = window.prompt(hint, nodeItem.section ?? "");
-    if (!section?.trim()) return;
-    const target = section.trim();
+  const handleMove = (e) => {
+    e.preventDefault();
+    if (!moveTarget.trim()) return;
+    const target = moveTarget.trim();
     runMutation(() =>
       nodeItem.type === "section"
         ? moveSubtree(selectedArtifact, { id: nodeItem.id, newSection: target })
         : moveCard(selectedArtifact, { id: nodeItem.id, section: target }),
     );
+    setMovePending(false);
+    setMoveTarget("");
   };
 
   const handleHideToggle = () => {
@@ -200,14 +170,11 @@ export default function RightToolPanel({
   };
 
   const handleDelete = () => {
-    const ok = window.confirm(
-      `Delete ${nodeItem.name}? This cannot be undone.`,
-    );
-    if (!ok) return;
     runMutation(
       () => deleteCard(selectedArtifact, nodeItem.id),
       { afterDelete: true },
     );
+    setDeletePending(false);
   };
 
   const rootSelected = !selectedNodeId;
@@ -234,14 +201,8 @@ export default function RightToolPanel({
       let idx = items.indexOf(active);
       if (idx < 0) idx = 0;
 
-      if (intent === INTENTS.UP) {
-        focusAt(idx - 1);
-        return;
-      }
-      if (intent === INTENTS.DOWN) {
-        focusAt(idx + 1);
-        return;
-      }
+      if (intent === INTENTS.UP) { focusAt(idx - 1); return; }
+      if (intent === INTENTS.DOWN) { focusAt(idx + 1); return; }
       if (intent === INTENTS.SELECT) {
         if (active instanceof HTMLElement) {
           if (active.tagName === "BUTTON" || active.tagName === "SUMMARY") {
@@ -267,9 +228,10 @@ export default function RightToolPanel({
       focus: () => focusAt(0),
     });
     return () => navigation.unregisterZone("toolpanel");
-  }, [navigation, handleIntent, focusAt, nodeItem?.id, editable, showAddChild]);
+  }, [navigation, handleIntent, focusAt, nodeItem?.id, editable]);
 
   const zoneClass = zoneActive ? "toolpanel-zone zone-active" : "toolpanel-zone";
+  const sectionPaths = collectSectionPaths(manifest ?? { children: [] });
 
   return (
     <div className={zoneClass} ref={zoneRef}>
@@ -303,6 +265,15 @@ export default function RightToolPanel({
                   />
                 </div>
               </div>
+              <div className="form" style={{ paddingTop: 0 }}>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => setShowAddDialog(true)}
+                >
+                  + Add Card or Asset
+                </button>
+              </div>
             </>
           ) : (
             <p style={{ color: "var(--muted)", fontSize: 12, padding: "12px 16px" }}>
@@ -316,7 +287,7 @@ export default function RightToolPanel({
         <>
           <div className="selected-title">
             <b>▰</b>
-            <b>Selected: {nodeItem.name}</b>
+            <b>{nodeItem.name}</b>
           </div>
 
           <div
@@ -341,28 +312,19 @@ export default function RightToolPanel({
               <span>Slug </span>
               <b style={{ color: "var(--text)" }}>{nodeItem.slug}</b>
             </div>
-            <div style={{ wordBreak: "break-all" }}>
-              <span>ID </span>
-              <b style={{ color: "var(--text)", fontSize: 10 }}>{nodeItem.id}</b>
-            </div>
             {nodeItem.hidden && (
               <div style={{ color: "var(--orange)" }}>Hidden from site</div>
             )}
           </div>
 
           {editError && (
-            <p
-              style={{
-                color: "var(--red)",
-                fontSize: 12,
-                margin: "0 16px 8px",
-              }}
-            >
+            <p style={{ color: "var(--red)", fontSize: 12, margin: "0 16px 8px" }}>
               {editError}
             </p>
           )}
 
           <form className="form" onSubmit={handleSave}>
+            {/* Name — editing here renames slug+file on Save */}
             <div className="field">
               <label htmlFor="field-name">Name</label>
               <input
@@ -371,6 +333,11 @@ export default function RightToolPanel({
                 disabled={busy}
                 onChange={(e) => markDirty({ ...form, name: e.target.value })}
               />
+              {form.name.trim() !== nodeItem.name && form.name.trim() && (
+                <p style={{ fontSize: 10, color: "var(--muted)", margin: "3px 0 0" }}>
+                  Slug will change to "{slugify(form.name.trim())}" on save
+                </p>
+              )}
             </div>
             <div className="field">
               <label htmlFor="field-description">Description</label>
@@ -382,7 +349,7 @@ export default function RightToolPanel({
               />
             </div>
             <div className="field">
-              <label htmlFor="field-value">Value</label>
+              <label htmlFor="field-value">Weight</label>
               <input
                 id="field-value"
                 type="number"
@@ -408,13 +375,19 @@ export default function RightToolPanel({
             {(nodeItem.type === "href" || nodeItem.type === "contact") && (
               <>
                 <div className="field">
-                  <label htmlFor="field-href">Href</label>
+                  <label htmlFor="field-href">Href / path</label>
                   <input
                     id="field-href"
+                    list="toolpanel-href-targets"
                     value={form.href}
                     disabled={busy}
                     onChange={(e) => markDirty({ ...form, href: e.target.value })}
                   />
+                  <datalist id="toolpanel-href-targets">
+                    {sectionPaths.map((p) => (
+                      <option key={p} value={`/${p.toLowerCase().replace(/\s+/g, "-")}`} />
+                    ))}
+                  </datalist>
                 </div>
                 {nodeItem.type === "contact" && (
                   <div className="field">
@@ -433,12 +406,12 @@ export default function RightToolPanel({
             {nodeItem.type === "pdf" && (
               <>
                 <div className="field">
-                  <label htmlFor="field-source">Source</label>
-                  <input id="field-source" value={form.source} readOnly />
+                  <label>Source (read-only)</label>
+                  <input value={form.source} readOnly />
                 </div>
                 <div className="field">
-                  <label htmlFor="field-preview">Preview image</label>
-                  <input id="field-preview" value={form.previewImage} readOnly />
+                  <label>Preview image (read-only)</label>
+                  <input value={form.previewImage || "none"} readOnly />
                 </div>
               </>
             )}
@@ -455,48 +428,102 @@ export default function RightToolPanel({
               </div>
             )}
 
+            {/* mapFace: controls what shows on the tile face in the map */}
+            <div className="field">
+              <label htmlFor="field-mapface">Map face</label>
+              <select
+                id="field-mapface"
+                value={form.mapFace}
+                disabled={busy}
+                onChange={(e) => markDirty({ ...form, mapFace: e.target.value })}
+                style={{ background: "#0c1118", border: "1px solid var(--line)", borderRadius: 7, padding: 10 }}
+              >
+                <option value="">text (default)</option>
+                <option value="text">text</option>
+                <option value="media">media (preview image)</option>
+              </select>
+            </div>
+
             {dirty && (
               <button type="submit" className="primary" disabled={busy}>
                 {busy ? "Saving…" : "Save Changes"}
               </button>
             )}
 
+            {/* Actions */}
             <div className="action-list">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setShowAddChild((v) => !v)}
+                onClick={() => setShowAddDialog(true)}
               >
-                Add Child Card
+                + Add Card or Asset
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setShowAssetDialog(true)}
-              >
-                Add Asset…
-              </button>
-              <button type="button" disabled={busy} onClick={handleRename}>
-                Rename
-              </button>
-              <button type="button" disabled={busy} onClick={handleMove}>
-                Move
-              </button>
+
+              {/* Move — inline section picker */}
+              {movePending ? (
+                <form onSubmit={handleMove} style={{ display: "contents" }}>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      list="move-target-paths"
+                      value={moveTarget}
+                      placeholder="Target section…"
+                      autoFocus
+                      style={{ flex: 1, padding: "6px 8px", fontSize: 12, background: "#0c1118", border: "1px solid var(--line)", borderRadius: 5, color: "inherit" }}
+                      onChange={(e) => setMoveTarget(e.target.value)}
+                    />
+                    <datalist id="move-target-paths">
+                      {sectionPaths.map((p) => (
+                        <option key={p} value={p} />
+                      ))}
+                    </datalist>
+                    <button type="submit" disabled={!moveTarget.trim()} style={{ padding: "6px 10px", fontSize: 12, background: "var(--blue)", border: "none", borderRadius: 5, color: "#fff", cursor: "pointer" }}>
+                      Move
+                    </button>
+                    <button type="button" onClick={() => setMovePending(false)} style={{ padding: "6px 8px", fontSize: 12, background: "none", border: "1px solid var(--line)", borderRadius: 5, color: "var(--muted)", cursor: "pointer" }}>
+                      ×
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => { setMoveTarget(nodeItem.section ?? ""); setMovePending(true); }}
+                >
+                  Move
+                </button>
+              )}
+
               <button type="button" disabled={busy} onClick={handleHideToggle}>
                 {nodeItem.hidden ? "Unhide" : "Hide"}
               </button>
-              <button
-                type="button"
-                className="danger"
-                disabled={busy}
-                onClick={handleDelete}
-              >
-                Delete
-              </button>
+
+              {/* Delete — inline confirm */}
+              {deletePending ? (
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, color: "var(--red)", flex: 1 }}>Delete "{nodeItem.name}"?</span>
+                  <button type="button" onClick={handleDelete} style={{ padding: "5px 10px", fontSize: 12, background: "var(--red)", border: "none", borderRadius: 5, color: "#fff", cursor: "pointer" }}>
+                    Yes
+                  </button>
+                  <button type="button" onClick={() => setDeletePending(false)} style={{ padding: "5px 8px", fontSize: 12, background: "none", border: "1px solid var(--line)", borderRadius: 5, color: "var(--muted)", cursor: "pointer" }}>
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={busy}
+                  onClick={() => setDeletePending(true)}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </form>
 
-          {/* Preview thumbnail for pdf / website / htmlCard */}
+          {/* Preview thumbnail */}
           {nodeItem.previewImage && (() => {
             const previewUrl = selectedArtifact
               ? `/api/artifacts/${encodeURIComponent(selectedArtifact)}/static/${nodeItem.previewImage}`
@@ -511,103 +538,31 @@ export default function RightToolPanel({
                   onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
               </div>
-            ) : (
-              <p style={{ fontSize: 11, color: "var(--muted)", padding: "4px 16px" }}>
-                Deploy to preview images
-              </p>
-            );
+            ) : null;
           })()}
 
-          {showAddChild && (
-            <form
-              className="form"
-              style={{ borderTop: "1px solid var(--line-soft)", marginTop: 8 }}
-              onSubmit={handleAddChild}
-            >
-              <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>
-                New card under{" "}
-                <b style={{ color: "var(--text)" }}>{addCardSectionPath(nodeItem)}</b>
-              </p>
-              <div className="field">
-                <label htmlFor="add-name">Name</label>
-                <input
-                  id="add-name"
-                  value={addForm.name}
-                  disabled={busy}
-                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="add-type">Type</label>
-                <select
-                  id="add-type"
-                  value={addForm.type}
-                  disabled={busy}
-                  onChange={(e) => setAddForm({ ...addForm, type: e.target.value })}
-                >
-                  {ADD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="add-desc">Description</label>
-                <textarea
-                  id="add-desc"
-                  value={addForm.description}
-                  disabled={busy}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, description: e.target.value })
-                  }
-                />
-              </div>
-              <button type="submit" disabled={busy || !addForm.name.trim()}>
-                Create card
-              </button>
-            </form>
-          )}
-
+          {/* Raw JSON (collapsed) */}
           <details style={{ margin: "8px 16px 0" }}>
-            <summary
-              style={{
-                cursor: "pointer",
-                color: "var(--muted)",
-                fontSize: 11,
-                padding: "4px 0",
-                userSelect: "none",
-              }}
-            >
-              items/{nodeItem.slug}.json (raw)
+            <summary style={{ cursor: "pointer", color: "var(--muted)", fontSize: 11, padding: "4px 0", userSelect: "none" }}>
+              items/{nodeItem.slug}.json
             </summary>
-            <pre
-              style={{
-                background: "var(--bg3, #141414)",
-                padding: 8,
-                borderRadius: 4,
-                overflow: "auto",
-                maxHeight: 180,
-                fontSize: 10,
-                color: "var(--text)",
-                margin: 0,
-                lineHeight: 1.4,
-              }}
-            >
+            <pre style={{ background: "var(--bg3, #141414)", padding: 8, borderRadius: 4, overflow: "auto", maxHeight: 180, fontSize: 10, color: "var(--text)", margin: 0, lineHeight: 1.4 }}>
               {JSON.stringify(nodeItem, null, 2)}
             </pre>
           </details>
         </>
       )}
 
-      <AddAssetDialog
-        isOpen={showAssetDialog}
-        onClose={() => setShowAssetDialog(false)}
-        artifactName={selectedArtifact}
-        defaultSection={nodeItem ? addCardSectionPath(nodeItem) : ""}
-        onSuccess={() => refreshArtifact()}
-      />
+      {showAddDialog && (
+        <AddDialog
+          artifactName={selectedArtifact}
+          manifest={manifest}
+          defaultSection={nodeItem?.section ?? "Home"}
+          defaultTarget={nodeItem}
+          onSuccess={() => refreshArtifact()}
+          onClose={() => setShowAddDialog(false)}
+        />
+      )}
     </div>
   );
 }

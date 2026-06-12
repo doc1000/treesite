@@ -105,6 +105,57 @@ function TreeNode({
   );
 }
 
+/**
+ * HiddenGroup — compact list of hidden items that can be unhidden.
+ */
+function HiddenGroup({ hiddenItems, onSelectNode, selectedNodeId }) {
+  const [open, setOpen] = useState(false);
+  if (!hiddenItems?.length) return null;
+  return (
+    <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: 8 }}>
+      <button
+        type="button"
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "6px 14px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontSize: 11,
+          color: "var(--muted, #9aa7b7)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? "▾" : "▸"}
+        Hidden ({hiddenItems.length})
+      </button>
+      {open && (
+        <ul style={{ listStyle: "none", margin: 0, padding: "0 12px 8px 28px" }}>
+          {hiddenItems.map((item) => (
+            <li key={item.id ?? item.slug}>
+              <div
+                className={`tree-node${item.id === selectedNodeId ? " selected" : ""}`}
+                onClick={() => item.id && onSelectNode(item.id)}
+                role="button"
+                tabIndex={0}
+                style={{ opacity: 0.6, fontStyle: "italic" }}
+              >
+                <span className="badge b-yellow" aria-hidden="true" />
+                <span>{item.name}</span>
+                <span className="type-badge">{item.type}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function ManifestTreeView({
   manifest,
   selectedNodeId,
@@ -112,6 +163,7 @@ export default function ManifestTreeView({
   expandedNodeIds,
   onToggleExpanded,
   navigation,
+  hiddenItems,
 }) {
   const rootLabel = manifest.displayName || manifest.name || "root";
   const rootExpanded = expandedNodeIds.has("root");
@@ -229,6 +281,11 @@ export default function ManifestTreeView({
           ) : null}
         </li>
       </ul>
+      <HiddenGroup
+        hiddenItems={hiddenItems}
+        onSelectNode={onSelectNode}
+        selectedNodeId={selectedNodeId}
+      />
     </div>
   );
 }

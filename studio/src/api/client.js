@@ -12,6 +12,12 @@ export async function listFiles(name) {
   return res.json();
 }
 
+export async function listItems(name) {
+  const res = await fetch(`${BASE}/artifacts/${encodeURIComponent(name)}/items`);
+  if (!res.ok) throw new Error(`listItems: HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function runTool(artifactName, tool, input = {}) {
   const res = await fetch(`${BASE}/tool/${encodeURIComponent(tool)}`, {
     method: "POST",
@@ -82,6 +88,16 @@ export async function deploy(artifactName, mode) {
 export async function stopDeploy() {
   const res = await fetch(`${BASE}/deploy/stop`, { method: "POST" });
   if (!res.ok) throw new Error(`stopDeploy: HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function revealArtifact(artifactName) {
+  const res = await fetch(`${BASE}/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ artifactName }),
+  });
+  if (!res.ok) throw new Error(`revealArtifact: HTTP ${res.status}`);
   return res.json();
 }
 

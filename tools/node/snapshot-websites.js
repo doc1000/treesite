@@ -2,8 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import vm from "node:vm";
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { applyContentItems, minimalSiteRoot } from "../../handler/src/contentItems.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const { chromium } = createRequire(path.resolve(__dirname, "../../handler/package.json"))("playwright");
 import { readContentItems } from "./content-utils.js";
 
 const appRoot = process.cwd();

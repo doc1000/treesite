@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
+import TreesiteMap from "treesite-map";
 import { TileTemplate } from "./tileTemplates";
 import { buildCardIndex } from "./cardIndex";
 import {
@@ -50,8 +51,8 @@ const MOBILE_LAYOUT_MAX_WIDTH = 700;
 /** Max index for nested tile map prominence (`input[type="range"]`). */
 const TILE_MAP_LEVEL_MAX = 4;
 
-/** Default prominence level (`TILE_MAP_PRESETS` index): Balanced. */
-const TILE_MAP_LEVEL_DEFAULT = 2;
+/** Default prominence level (`TILE_MAP_PRESETS` index): 0 = Off (nested previews are opt-in). */
+const TILE_MAP_LEVEL_DEFAULT = 0;
 
 /**
  * Nested tile map prominence: 0 = no nested previews (same layout as old toggle off),
@@ -1640,31 +1641,33 @@ function Breadcrumbs({ focus, onSelect, includeBack = true }) {
   );
 }
 
+/**
+ * MiniMap — adapter for the shared TreesiteMap component.
+ *
+ * The handler pre-computes d3 hierarchy nodes with fullName paths.
+ * TreesiteMap computes its own squarified layout from the raw data and uses
+ * path-based IDs that match the handler's fullName format exactly.
+ * We look up the matching d3 node on select to call goTo(d3Node).
+ */
 function MiniMap({ root, focus, recentTrail, onSelect, sectionColor }) {
-  const width = 240;
-  const height = 130;
-  const inset = 16;
-  const sx = (width - inset * 2) / Math.max(1, root.x1 - root.x0);
-  const sy = (height - inset * 2) / Math.max(1, root.y1 - root.y0);
+  // Build a d3-node lookup by fullName for the onSelect adapter
+  const nodeByFullName = useMemo(() => {
+    const map = new Map();
+    root.descendants().forEach(d => map.set(d.fullName, d));
+    return map;
+  }, [root]);
 
-  const nodes = root.descendants().filter(d => d.depth > 0);
-  const topLevelPad = 10;
-  const nodeByName = new Map(root.descendants().map(d => [d.fullName, d]));
-  const center = d => ({
-    x: inset + ((d.x0 + d.x1) / 2) * sx,
-    y: inset + ((d.y0 + d.y1) / 2) * sy
-  });
-  const trailNodes = recentTrail
-    .map(name => nodeByName.get(name))
-    .filter(Boolean);
-  const linePath =
-    trailNodes.length > 1
-      ? d3
-          .line()
-          .x(d => center(d).x)
-          .y(d => center(d).y)
-          .curve(d3.curveCatmullRom.alpha(0.65))(trailNodes)
-      : null;
+  function handleSelect(fullName) {
+    if (fullName === null) { onSelect(root); return; }
+    const d = nodeByFullName.get(fullName);
+    if (d) onSelect(d);
+  }
+
+  function getNodeColor(data) {
+    // Reconstruct fullName from data alone isn't possible; use the pre-built map
+    // by falling back to type-based colors for unknown nodes.
+    return data.color || "#8b79b8";
+  }
 
   return (
     <div className="mini-wrap">
@@ -1672,99 +1675,16 @@ function MiniMap({ root, focus, recentTrail, onSelect, sectionColor }) {
         <span>Mini Map</span>
         <span>click to jump</span>
       </div>
-
-      <svg
-        className="mini-map"
-        viewBox={`0 0 ${width} ${height}`}
-        onClick={() => onSelect(root)}
-      >
-        {nodes.map(d => {
-          const isTop = d.depth === 1;
-          const isTransparentParent = isTop && d.children;
-          const parentPad = isTransparentParent ? topLevelPad : 0;
-
-          return (
-            <rect
-              key={d.fullName}
-              x={inset + d.x0 * sx - parentPad}
-              y={inset + d.y0 * sy - parentPad}
-              width={(d.x1 - d.x0) * sx + parentPad * 2}
-              height={(d.y1 - d.y0) * sy + parentPad * 2}
-              rx="4"
-              ry="4"
-              fill={isTransparentParent ? "transparent" : sectionColor(d)}
-              opacity={isTransparentParent ? 1 : 0.58}
-              onClick={e => {
-                e.stopPropagation();
-                onSelect(d);
-              }}
-            />
-          );
-        })}
-
-        {linePath && (
-          <path
-            d={linePath}
-            fill="none"
-            stroke="rgba(255, 209, 102, .95)"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              filter: "drop-shadow(0 0 6px rgba(255, 209, 102, .75))",
-              pointerEvents: "none"
-            }}
-          />
-        )}
-
-        {trailNodes.map((d, i) => {
-          const c = center(d);
-          const alpha = 0.35 + ((i + 1) / trailNodes.length) * 0.65;
-
-          return (
-            <circle
-              key={`${d.fullName}-${i}`}
-              cx={c.x}
-              cy={c.y}
-              r={i === trailNodes.length - 1 ? 4.2 : 2.8}
-              fill="#ffd166"
-              stroke="#0b0f19"
-              strokeWidth="1.4"
-              opacity={alpha}
-              style={{
-                filter: "drop-shadow(0 0 5px rgba(255, 209, 102, .8))",
-                pointerEvents: "none"
-              }}
-            />
-          );
-        })}
-
-        <path
-          d={d3.symbol(d3.symbolStar, 92)()}
-          transform={`translate(${inset - 2}, ${inset - 2})`}
-          fill="#fff1a8"
-          stroke="#0b0f19"
-          strokeWidth="1.5"
-          style={{
-            cursor: "pointer",
-            filter: "drop-shadow(0 0 6px rgba(255, 209, 102, .9))"
-          }}
-          onClick={e => {
-            e.stopPropagation();
-            onSelect(root);
-          }}
-        />
-
-        <rect
-          x={inset + focus.x0 * sx}
-          y={inset + focus.y0 * sy}
-          width={(focus.x1 - focus.x0) * sx}
-          height={(focus.y1 - focus.y0) * sy}
-          fill="none"
-          stroke="#fff"
-          strokeWidth="2"
-        />
-      </svg>
+      <TreesiteMap
+        tree={root.data}
+        getNodeColor={getNodeColor}
+        focusId={focus.fullName}
+        goldenPath={recentTrail}
+        onSelect={handleSelect}
+        onOpen={handleSelect}
+        width={240}
+        height={130}
+      />
     </div>
   );
 }

@@ -104,7 +104,12 @@ function normalizeSectionItem(item) {
     title,
     ...(item.color !== undefined ? { color: item.color } : {}),
     ...(item.hidden !== undefined ? { hidden: item.hidden } : {}),
-    ...(item.kicker !== undefined ? { kicker: item.kicker } : {})
+    ...(item.kicker !== undefined ? { kicker: item.kicker } : {}),
+    // Container face inheritance: pass through media fields when a content card
+    // was promoted to a section so its original preview shows on the map.
+    ...(item.previewImage ? { previewImage: item.previewImage } : {}),
+    ...(item.image ? { image: item.image } : {}),
+    ...(item.mapFace ? { mapFace: item.mapFace } : {})
   };
 }
 

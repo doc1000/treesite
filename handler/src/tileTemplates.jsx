@@ -74,6 +74,21 @@ export function TileTemplate({
     hasPdf || hasWebsite || node.template || node.image || links.length || node.embed || node.html
   );
 
+  // mapFace: "media" — show the preview image / image as the tile face.
+  // Takes effect for all types including section nodes that inherited a preview.
+  if (node.mapFace === "media") {
+    return (
+      <MediaFaceTile
+        node={node}
+        title={title}
+        small={small}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
+        artifactBase={artifactBase}
+      />
+    );
+  }
+
   if (node.template === "schedule") {
     return (
       <ScheduleTile
@@ -249,22 +264,73 @@ export function TileTemplate({
 }
 
 function MinimalTile({ title, description, small, labelsAtBottom, suppressTileLabels, headerInMapOverlay }) {
-  if (suppressTileLabels || headerInMapOverlay) {
-    return (
-      <div
-        className="tile-html tile-child-preview-hull"
-        aria-hidden="true"
-      />
-    );
-  }
+  // Always show centered title + description — clean section panel.
+  // The tile-child-preview-hull empty blank is removed; a dimmed text panel is
+  // shown instead so the tile always conveys its identity.
+  const dimmed = suppressTileLabels || headerInMapOverlay;
   return (
     <div
       className={`tile-html tile-minimal ${small ? "tile-small" : ""} ${
         labelsAtBottom ? "tile-minimal--labels-bottom" : ""
-      }`}
+      } ${dimmed ? "tile-minimal--dimmed" : ""}`}
+      aria-hidden={dimmed ? "true" : undefined}
     >
       <h3 className="tile-title">{title}</h3>
-      {description && <p className="tile-desc">{description}</p>}
+      {description && !dimmed && <p className="tile-desc">{description}</p>}
+    </div>
+  );
+}
+
+/**
+ * MediaFaceTile — shows a preview image / background as the tile face.
+ * Used when node.mapFace === "media". Falls back to MinimalTile if no image.
+ */
+function MediaFaceTile({
+  node,
+  title,
+  small,
+  suppressTileLabels,
+  headerInMapOverlay,
+  artifactBase
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const previewSrc = node.previewImage
+    ? resolveArtifactUrl(artifactBase, node.previewImage)
+    : node.image
+      ? resolveArtifactUrl(artifactBase, node.image)
+      : null;
+
+  if (!previewSrc || imageFailed) {
+    return (
+      <MinimalTile
+        title={title}
+        description={node.abstract || node.description}
+        small={small}
+        suppressTileLabels={suppressTileLabels}
+        headerInMapOverlay={headerInMapOverlay}
+      />
+    );
+  }
+
+  const dimmed = suppressTileLabels || headerInMapOverlay;
+  return (
+    <div
+      className={`tile-html tile-media-face ${small ? "tile-small" : ""} ${dimmed ? "tile-media-face--dimmed" : ""}`}
+      aria-hidden={dimmed ? "true" : undefined}
+    >
+      <img
+        className="tile-media-face__img"
+        src={previewSrc}
+        alt=""
+        loading="lazy"
+        onError={() => setImageFailed(true)}
+      />
+      {!dimmed && (
+        <div className="tile-media-face__overlay">
+          <h3 className="tile-title">{title}</h3>
+        </div>
+      )}
     </div>
   );
 }

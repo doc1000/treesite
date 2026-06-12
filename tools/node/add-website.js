@@ -1,25 +1,54 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { chromium } from "playwright";
 import { artifactAssetRel } from "./artifact-assets.js";
 import { parseValue, slugify } from "./content-utils.js";
 import { ErrorCodes } from "./error-codes.js";
 import { mergeDescriptionArgs } from "./merge-description-arg.js";
 import { fail, parseToolArgs, rebuildManifest, success, writeItem } from "./tool-runner.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const HANDLER_PKG = path.resolve(__dirname, "../../handler/package.json");
+
+/**
+ * Screenshot a live URL using Playwright.
+ * Returns { ok: true } on success, { ok: false, warning: string } on any failure.
+ */
 async function captureWebsitePreview({ url, outputPath }) {
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  const browser = await chromium.launch();
+
+  let chromium;
   try {
+    const req = createRequire(HANDLER_PKG);
+    ({ chromium } = req("playwright"));
+  } catch (err) {
+    return {
+      ok: false,
+      warning: `Preview skipped — Playwright unavailable. ` +
+        `Run: cd handler && npx playwright install chromium. (${err.message})`
+    };
+  }
+
+  let browser;
+  try {
+    browser = await chromium.launch();
     const page = await browser.newPage({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 1
     });
     await page.goto(url, { waitUntil: "networkidle", timeout: 45000 });
     await page.screenshot({ path: outputPath, fullPage: false });
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      warning: `Preview generation failed: ${err.message}. ` +
+        `The card was created without a preview image — re-run this tool or re-deploy to regenerate.`
+    };
   } finally {
-    await browser.close();
+    try { await browser?.close(); } catch { /* ignore */ }
   }
 }
 
@@ -46,7 +75,9 @@ async function main() {
   const previewOutputPath = path.join(artifactPath, "assets", "previews", previewFilename);
   const previewRel = artifactAssetRel("previews", previewFilename);
 
-  await captureWebsitePreview({ url, outputPath: previewOutputPath });
+  // Attempt preview — non-fatal. Card is created regardless.
+  // Preview regenerates automatically on next deploy if skipped now.
+  const previewResult = await captureWebsitePreview({ url, outputPath: previewOutputPath });
 
   const item = {
     id: randomUUID(),
@@ -57,16 +88,25 @@ async function main() {
     description: typeof args.description === "string" ? args.description : "",
     source: url,
     url,
-    previewImage: previewRel,
     value: parseValue(args.value)
   };
+
+  if (previewResult.ok) {
+    item.previewImage = previewRel;
+  }
 
   if (args.kicker) item.kicker = String(args.kicker);
 
   const written = await writeItem(artifactPath, item);
   await rebuildManifest(artifactPath);
 
-  success({ id: written.id, slug: written.slug, manifestRebuilt: true });
+  const result = { id: written.id, slug: written.slug, manifestRebuilt: true };
+  if (!previewResult.ok) {
+    result.previewPending = true;
+    result.warning = previewResult.warning;
+  }
+
+  success(result);
 }
 
 main().catch(err => {

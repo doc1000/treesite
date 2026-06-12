@@ -8,11 +8,13 @@ import {
   getStats,
   getNode,
   listFiles,
+  listItems,
   validate,
   uploadFile,
   importZip,
   deploy,
   stopDeploy,
+  revealArtifact,
   exportDownloadUrl,
 } from "./api/client.js";
 import { useStore, useDispatch } from "./state/studioStore.jsx";
@@ -50,22 +52,28 @@ export default function App() {
   const [stats, setStats] = useState(null);
   const [nodeItem, setNodeItem] = useState(null);
   const [files, setFiles] = useState([]);
+  const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [explorerView, setExplorerView] = useState("json");
   const [centerView, setCenterView] = useState("treemap");
   const [commandBusy, setCommandBusy] = useState(false);
+  const [deployPending, setDeployPending] = useState(false);
+  // true after the handler Vite dev server has booted at least once this session
+  const [devServerWarm, setDevServerWarm] = useState(false);
 
   const refreshArtifact = useCallback(
     async ({ afterDelete = false } = {}) => {
       if (!selectedArtifact) return;
-      const [m, s, f] = await Promise.all([
+      const [m, s, f, items] = await Promise.all([
         getManifest(selectedArtifact),
         getStats(selectedArtifact),
         listFiles(selectedArtifact),
+        listItems(selectedArtifact),
       ]);
       setManifest(m);
       setStats(s);
       setFiles(f);
+      setAllItems(items);
 
       if (afterDelete) {
         dispatch({ type: "SELECT_NODE", payload: null });
@@ -117,11 +125,13 @@ export default function App() {
       getManifest(selectedArtifact),
       getStats(selectedArtifact),
       listFiles(selectedArtifact),
+      listItems(selectedArtifact),
     ])
-      .then(([m, s, f]) => {
+      .then(([m, s, f, items]) => {
         setManifest(m);
         setStats(s);
         setFiles(f);
+        setAllItems(items);
         const initialExpanded = [
           "root",
           ...(m.children ?? []).map((c) => c.id).filter(Boolean),
@@ -168,26 +178,32 @@ export default function App() {
     [dispatch],
   );
 
+  const [appError, setAppError] = useState(null);
+
   const runDeploy = useCallback(
     async (mode) => {
       if (!selectedArtifact) {
-        window.alert("Select an artifact first.");
+        setAppError("Select an artifact first.");
         return;
       }
       setCommandBusy(true);
+      setDeployPending(true);
+      setAppError(null);
+      setCenterView("deploy");
       try {
         const result = await deploy(selectedArtifact, mode);
         if (!result.ok) {
-          window.alert(result.error?.message || "Deploy failed");
+          setAppError(result.error?.message || "Deploy failed");
           return;
         }
         dispatch({ type: "SET_DEPLOY", payload: { url: result.data.url, mode: result.data.mode } });
-        setCenterView("deploy");
+        if (mode === "edit") setDevServerWarm(true);
       } catch (err) {
         console.error(err);
-        window.alert(err.message || "Deploy failed");
+        setAppError(err.message || "Deploy failed");
       } finally {
         setCommandBusy(false);
+        setDeployPending(false);
       }
     },
     [selectedArtifact, dispatch],
@@ -197,6 +213,7 @@ export default function App() {
     try {
       await stopDeploy();
       dispatch({ type: "SET_DEPLOY", payload: null });
+      setDevServerWarm(false);
     } catch (err) {
       console.error(err);
     }
@@ -204,21 +221,22 @@ export default function App() {
 
   const handleValidate = useCallback(async () => {
     if (!selectedArtifact) {
-      window.alert("Select an artifact first.");
+      setAppError("Select an artifact first.");
       return;
     }
     setCommandBusy(true);
+    setAppError(null);
     try {
       const result = await validate(selectedArtifact);
       if (!result.ok) {
-        window.alert(result.error?.message || "Validation failed");
+        setAppError(result.error?.message || "Validation failed");
         return;
       }
       dispatch({ type: "SET_VALIDATION", payload: result.data });
       dispatch({ type: "SET_SHOW_VALIDATION", payload: true });
     } catch (err) {
       console.error(err);
-      window.alert(err.message || "Validation failed");
+      setAppError(err.message || "Validation failed");
     } finally {
       setCommandBusy(false);
     }
@@ -227,6 +245,7 @@ export default function App() {
   const handleImport = useCallback(
     async (file) => {
       setCommandBusy(true);
+      setAppError(null);
       try {
         const { tempPath } = await uploadFile(file);
         const list = await refreshArtifacts();
@@ -234,14 +253,14 @@ export default function App() {
         const destDir = pickImportDestName(slugFromZipName(file.name), names);
         const result = await importZip(tempPath, destDir, false);
         if (!result.ok) {
-          window.alert(result.error?.message || "Import failed");
+          setAppError(result.error?.message || "Import failed");
           return;
         }
         await refreshArtifacts();
         dispatch({ type: "SELECT_ARTIFACT", payload: destDir });
       } catch (err) {
         console.error(err);
-        window.alert(err.message || "Import failed");
+        setAppError(err.message || "Import failed");
       } finally {
         setCommandBusy(false);
       }
@@ -251,7 +270,7 @@ export default function App() {
 
   const handleExport = useCallback(() => {
     if (!selectedArtifact) {
-      window.alert("Select an artifact first.");
+      setAppError("Select an artifact first.");
       return;
     }
     const a = document.createElement("a");
@@ -263,11 +282,15 @@ export default function App() {
   }, [selectedArtifact]);
 
   const handleSeeArtifacts = useCallback(() => {
-    dispatch({ type: "SET_PANEL", payload: "fileTree" });
+    // Focus the artifact selector in the studio sidebar
     const el = document.getElementById("artifact-select");
     el?.focus();
     el?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, [dispatch]);
+    // Open the artifact folder in the OS file browser
+    revealArtifact(selectedArtifact || "").catch((err) => {
+      console.warn("reveal:", err.message);
+    });
+  }, [selectedArtifact]);
 
   const toggleValidationPanel = useCallback(() => {
     if (!validationResult) return;
@@ -277,6 +300,8 @@ export default function App() {
   const closeValidationPanel = useCallback(() => {
     dispatch({ type: "SET_SHOW_VALIDATION", payload: false });
   }, [dispatch]);
+
+  const hiddenItems = allItems.filter((item) => item.hidden);
 
   return (
     <AppShell
@@ -294,6 +319,7 @@ export default function App() {
       onSelectArtifact={handleSelectArtifact}
       stats={stats}
       files={files}
+      hiddenItems={hiddenItems}
       loading={loading}
       focusNodeId={viewport.focusNodeId}
       onSetFocus={handleSetFocus}
@@ -304,11 +330,15 @@ export default function App() {
       showValidationPanel={showValidationPanel}
       onToggleValidationPanel={toggleValidationPanel}
       onCloseValidationPanel={closeValidationPanel}
+      deployPending={deployPending}
+      devServerWarm={devServerWarm}
       onDeploy={runDeploy}
       onStopDeploy={handleStopDeploy}
       commandBarProps={{
         busy: commandBusy,
         deployMode: deployState?.mode,
+        appError,
+        onDismissError: () => setAppError(null),
         onSeeArtifacts: handleSeeArtifacts,
         onImport: handleImport,
         onValidate: handleValidate,

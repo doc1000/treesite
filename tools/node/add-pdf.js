@@ -50,7 +50,10 @@ async function main() {
 
   await fs.mkdir(path.dirname(pdfOutputPath), { recursive: true });
   await fs.copyFile(filePath, pdfOutputPath);
-  await renderPdfPreview({
+
+  // Attempt preview — non-fatal. Card is created regardless.
+  // Preview regenerates automatically on next deploy if skipped now.
+  const previewResult = await renderPdfPreview({
     pdfPath: pdfOutputPath,
     outputPath: previewOutputPath,
     appRoot: handlerRoot
@@ -65,16 +68,25 @@ async function main() {
     description: typeof args.description === "string" ? args.description : "",
     source: pdfRel,
     pdf: pdfRel,
-    previewImage: previewRel,
     value: parseValue(args.value)
   };
+
+  if (previewResult.ok) {
+    item.previewImage = previewRel;
+  }
 
   if (args.kicker) item.kicker = String(args.kicker);
 
   const written = await writeItem(artifactPath, item);
   await rebuildManifest(artifactPath);
 
-  success({ id: written.id, slug: written.slug, manifestRebuilt: true });
+  const result = { id: written.id, slug: written.slug, manifestRebuilt: true };
+  if (!previewResult.ok) {
+    result.previewPending = true;
+    result.warning = previewResult.warning;
+  }
+
+  success(result);
 }
 
 main().catch(err => {

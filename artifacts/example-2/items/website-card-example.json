@@ -6,5 +6,7 @@
   "type": "website",
   "description": "Website tiles link to external URLs. Previews appear when a screenshot asset is bundled.",
   "url": "https://example.com",
-  "value": 10
+  "value": 10,
+  "mapFace": "media",
+  "source": "https://example.com"
 }

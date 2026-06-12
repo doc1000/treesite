@@ -40,6 +40,7 @@ export default function ArtifactExplorer({
   selectedArtifact,
   onSelectArtifact,
   files,
+  hiddenItems,
   navigation,
 }) {
   const explorerBodyRef = useRef(null);
@@ -137,6 +138,7 @@ export default function ArtifactExplorer({
             expandedNodeIds={expandedNodeIds}
             onToggleExpanded={onToggleExpanded}
             navigation={navigation}
+            hiddenItems={hiddenItems}
           />
         )}
       </div>

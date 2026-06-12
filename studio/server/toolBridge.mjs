@@ -15,8 +15,8 @@ const TOOLS_DIR = path.resolve(REPO_ROOT, "tools/node");
 const HANDLER_DIR = path.resolve(REPO_ROOT, "handler");
 const HANDLER_DIST = path.join(HANDLER_DIR, "dist");
 const SERVE_ARTIFACT_SCRIPT = path.join(TOOLS_DIR, "serve-artifact.js");
-const TOOL_TIMEOUT_MS = 30_000;
-const INTAKE_TOOL_TIMEOUT_MS = 90_000;
+const TOOL_TIMEOUT_MS = 60_000;
+const INTAKE_TOOL_TIMEOUT_MS = 120_000;
 const INTAKE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_INTAKE_TOOLS = new Set(["add-pdf", "add-website", "add-html"]);
 const NPM_BIN = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -37,8 +37,25 @@ const STATIC_MIME = {
   ".woff2": "font/woff2",
 };
 
-/** @type {{ artifactProc?: import("node:child_process").ChildProcess, handlerProc?: import("node:child_process").ChildProcess, httpd?: import("node:http").Server, mode?: string, url?: string } | null} */
-let activeDeploy = null;
+/**
+ * Three independent long-lived server handles.
+ *
+ * artifactServer  – serves the selected artifact's JSON/asset files.
+ *                   Replaced only when the artifact name changes.
+ * handlerDevServer – `npm run dev` for the handler (Vite HMR).
+ *                   Started once per session; NEVER killed on mode switch.
+ * viewServer      – plain Node http.Server serving handler/dist.
+ *                   Started once; reused for every view-mode deploy.
+ */
+
+/** @type {{ proc: import("node:child_process").ChildProcess, port: number, artifactName: string, artifactBase: string } | null} */
+let artifactServer = null;
+
+/** @type {{ proc: import("node:child_process").ChildProcess, port: number } | null} */
+let handlerDevServer = null;
+
+/** @type {{ httpd: import("node:http").Server, port: number } | null} */
+let viewServer = null;
 
 function pickFreePort() {
   return new Promise((res) => {
@@ -64,22 +81,87 @@ async function waitForUrl(url, timeoutMs = 10_000) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
-async function stopActiveDeploy() {
-  if (!activeDeploy) return;
-  const d = activeDeploy;
-  activeDeploy = null;
-  if (d.httpd) {
-    await new Promise((resolve) => d.httpd.close(() => resolve()));
+function killProc(proc) {
+  if (proc && proc.exitCode === null) {
+    try { proc.kill(); } catch { /* ignore */ }
   }
-  for (const proc of [d.handlerProc, d.artifactProc]) {
-    if (proc && proc.exitCode === null) {
-      try {
-        proc.kill();
-      } catch {
-        /* ignore */
-      }
-    }
+}
+
+/** Ensure the artifact file server is up for the given artifact.
+ *  Restarts only when the artifact name changes. */
+async function ensureArtifactServer(artifactName, artifactPath) {
+  if (
+    artifactServer?.artifactName === artifactName &&
+    artifactServer.proc?.exitCode === null
+  ) {
+    return artifactServer;
   }
+  // Kill the old one if running
+  if (artifactServer) killProc(artifactServer.proc);
+
+  const port = await pickFreePort();
+  const proc = spawnServeArtifact(artifactPath, port);
+  const artifactBase = `http://127.0.0.1:${port}/`;
+  await waitForUrl(`${artifactBase}artifact.json`, 10_000);
+  artifactServer = { proc, port, artifactName, artifactBase };
+  return artifactServer;
+}
+
+/** Ensure handler/dist static server is up.
+ *  Started once per session; kept alive across mode switches. */
+async function ensureViewServer() {
+  if (viewServer?.httpd?.listening) return viewServer;
+  try {
+    await fs.promises.access(HANDLER_DIST);
+  } catch {
+    throw Object.assign(
+      new Error("Run 'npm --prefix handler run build' first."),
+      { code: "HANDLER_NOT_BUILT" },
+    );
+  }
+  const port = await pickFreePort();
+  const httpd = createDistStaticServer(HANDLER_DIST);
+  await new Promise((resolve, reject) => {
+    httpd.listen(port, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
+  });
+  viewServer = { httpd, port };
+  return viewServer;
+}
+
+/** Ensure the handler Vite dev server is up.
+ *  Started once per session; NEVER restarted on artifact or mode changes.
+ *  The artifact URL is passed as ?artifact= in the iframe, not via env. */
+async function ensureHandlerDevServer() {
+  if (handlerDevServer?.proc?.exitCode === null) return handlerDevServer;
+
+  const port = await pickFreePort();
+  const proc = spawn(
+    NPM_BIN,
+    ["run", "dev", "--", "--port", String(port), "--strictPort"],
+    {
+      cwd: HANDLER_DIR,
+      env: { ...process.env },
+      stdio: "ignore",
+      shell: process.platform === "win32",
+    },
+  );
+  await waitForUrl(`http://127.0.0.1:${port}/`, 60_000);
+  handlerDevServer = { proc, port };
+  return handlerDevServer;
+}
+
+/** Stop everything. Called only by POST /deploy/stop. */
+async function stopAllServers() {
+  killProc(artifactServer?.proc);
+  artifactServer = null;
+
+  killProc(handlerDevServer?.proc);
+  handlerDevServer = null;
+
+  if (viewServer?.httpd) {
+    await new Promise((resolve) => viewServer.httpd.close(() => resolve()));
+  }
+  viewServer = null;
 }
 
 function spawnServeArtifact(artifactPath, port) {
@@ -242,7 +324,41 @@ function readBody(req) {
   });
 }
 
-function spawnTool(tool, artifactPath, input, timeoutMs = TOOL_TIMEOUT_MS) {
+// Concurrency limiter: cap simultaneous tool spawns so that a long-running
+// deploy/export does not starve quick ribbon-button tools.
+const MAX_CONCURRENT_TOOLS = 3;
+let _activeTools = 0;
+const _toolQueue = [];
+
+function _acquireTool() {
+  return new Promise((resolve) => {
+    if (_activeTools < MAX_CONCURRENT_TOOLS) {
+      _activeTools++;
+      resolve();
+    } else {
+      _toolQueue.push(resolve);
+    }
+  });
+}
+
+function _releaseTool() {
+  if (_toolQueue.length > 0) {
+    _toolQueue.shift()();
+  } else {
+    _activeTools--;
+  }
+}
+
+async function spawnTool(tool, artifactPath, input, timeoutMs = TOOL_TIMEOUT_MS) {
+  await _acquireTool();
+  try {
+    return await _spawnToolInner(tool, artifactPath, input, timeoutMs);
+  } finally {
+    _releaseTool();
+  }
+}
+
+function _spawnToolInner(tool, artifactPath, input, timeoutMs) {
   return new Promise((resolve) => {
     const script = path.join(TOOLS_DIR, `${tool}.js`);
     let child;
@@ -269,20 +385,20 @@ function spawnTool(tool, artifactPath, input, timeoutMs = TOOL_TIMEOUT_MS) {
 
     const timer = setTimeout(() => {
       try { child.kill(); } catch { /* ignore */ }
-      resolve({ ok: false, error: { code: "TIMEOUT", message: `Tool ${tool} timed out` } });
+      resolve({ ok: false, error: { code: "TIMEOUT", message: `Tool ${tool} timed out after ${timeoutMs}ms. stderr: ${stderr.slice(0, 2048)}` } });
     }, timeoutMs);
 
     child.on("close", () => {
       clearTimeout(timer);
       const lines = stdout.split("\n").map((l) => l.trim()).filter(Boolean);
       if (!lines.length) {
-        resolve({ ok: false, error: { code: "NO_OUTPUT", message: `Tool ${tool} produced no stdout. stderr: ${stderr.slice(0, 200)}` } });
+        resolve({ ok: false, error: { code: "NO_OUTPUT", message: `Tool ${tool} produced no stdout. stderr: ${stderr.slice(0, 4096)}` } });
         return;
       }
       try {
         resolve(JSON.parse(lines[lines.length - 1]));
       } catch {
-        resolve({ ok: false, error: { code: "INVALID_JSON", message: `Tool ${tool} returned non-JSON: ${lines[lines.length - 1].slice(0, 120)}` } });
+        resolve({ ok: false, error: { code: "INVALID_JSON", message: `Tool ${tool} returned non-JSON: ${lines[lines.length - 1].slice(0, 400)}. stderr: ${stderr.slice(0, 2048)}` } });
       }
     });
 
@@ -387,6 +503,40 @@ async function handler(req, res, next) {
       });
     } catch (err) {
       sendJSON(res, { ok: false, error: { code: "EXPORT_FAILED", message: String(err) } }, 500);
+    }
+    return;
+  }
+
+  // ── GET /artifacts/:name/items ─────────────────────────────────────────────
+  // Returns raw items including hidden ones (manifest omits them). Used by the
+  // studio to show the Hidden group in the nav and as href-target candidates.
+  const itemsMatch = pathname.match(/^\/artifacts\/([^/]+)\/items$/);
+  if (req.method === "GET" && itemsMatch) {
+    const name = decodeURIComponent(itemsMatch[1]);
+    const itemsDir = path.join(ARTIFACTS_BASE, name, "items");
+    try {
+      const entries = await fs.promises.readdir(itemsDir, { withFileTypes: true });
+      const items = [];
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+        try {
+          const raw = JSON.parse(
+            await fs.promises.readFile(path.join(itemsDir, entry.name), "utf8")
+          );
+          // Surface a minimal shape: no large embedded html/pdf blobs
+          items.push({
+            id: raw.id,
+            slug: raw.slug || path.basename(entry.name, ".json"),
+            name: raw.name,
+            section: raw.section,
+            type: raw.type,
+            hidden: raw.hidden ?? false,
+          });
+        } catch { /* skip malformed item */ }
+      }
+      sendJSON(res, items);
+    } catch {
+      sendJSON(res, []);
     }
     return;
   }
@@ -559,14 +709,62 @@ async function handler(req, res, next) {
     return;
   }
 
+  // ── GET /deploy/status ──────────────────────────────────────────────────────
+  // Returns which servers are currently running so the UI can show state.
+  if (req.method === "GET" && pathname === "/deploy/status") {
+    sendJSON(res, {
+      ok: true,
+      data: {
+        artifactServer: artifactServer
+          ? { artifactName: artifactServer.artifactName, port: artifactServer.port }
+          : null,
+        handlerDevServer: handlerDevServer
+          ? { port: handlerDevServer.port, alive: handlerDevServer.proc?.exitCode === null }
+          : null,
+        viewServer: viewServer
+          ? { port: viewServer.port, alive: viewServer.httpd?.listening ?? false }
+          : null,
+      },
+    });
+    return;
+  }
+
+  // ── POST /reveal ────────────────────────────────────────────────────────────
+  // Opens the artifact folder (or the artifacts base) in the OS file browser.
+  if (req.method === "POST" && pathname === "/reveal") {
+    let body = {};
+    try { body = await readBody(req); } catch { /* ignore */ }
+    const name = typeof body.artifactName === "string" ? body.artifactName.trim() : "";
+    const targetDir = name
+      ? path.join(ARTIFACTS_BASE, name)
+      : ARTIFACTS_BASE;
+    try {
+      if (process.platform === "win32") {
+        spawn("explorer", [targetDir], { shell: false, detached: true, stdio: "ignore" });
+      } else if (process.platform === "darwin") {
+        spawn("open", [targetDir], { detached: true, stdio: "ignore" });
+      } else {
+        spawn("xdg-open", [targetDir], { detached: true, stdio: "ignore" });
+      }
+      sendJSON(res, { ok: true });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "REVEAL_FAILED", message: err.message } }, 500);
+    }
+    return;
+  }
+
   // ── POST /deploy/stop ───────────────────────────────────────────────────────
   if (req.method === "POST" && pathname === "/deploy/stop") {
-    await stopActiveDeploy();
+    await stopAllServers();
     sendJSON(res, { ok: true });
     return;
   }
 
   // ── POST /deploy ────────────────────────────────────────────────────────────
+  // Mode switches (view ↔ edit) never restart the handler Vite dev server.
+  // The artifact server restarts only when the selected artifact changes.
+  // Both view and edit pass the artifact URL as ?artifact= so the handler
+  // instance can be reused across mode/artifact changes without env restarts.
   if (req.method === "POST" && pathname === "/deploy") {
     let body;
     try {
@@ -591,60 +789,32 @@ async function handler(req, res, next) {
       return;
     }
 
-    await stopActiveDeploy();
-
     try {
-      const artifactPort = await pickFreePort();
-      const artifactProc = spawnServeArtifact(artifactPath, artifactPort);
-      const artifactBase = `http://127.0.0.1:${artifactPort}/`;
-      await waitForUrl(`${artifactBase}artifact.json`, 10_000);
+      // Step 1: artifact file server (restarts only on artifact change)
+      const as = await ensureArtifactServer(artifactName, artifactPath);
 
       if (mode === "view") {
+        // Step 2v: static handler/dist server (started once, reused)
+        let vs;
         try {
-          await fs.promises.access(HANDLER_DIST);
-        } catch {
-          if (artifactProc.exitCode === null) artifactProc.kill();
+          vs = await ensureViewServer();
+        } catch (err) {
           sendJSON(res, {
             ok: false,
-            error: {
-              code: "HANDLER_NOT_BUILT",
-              message: "Run 'npm --prefix handler run build' first.",
-            },
+            error: { code: err.code || "HANDLER_NOT_BUILT", message: err.message },
           }, 400);
           return;
         }
-        const handlerPort = await pickFreePort();
-        const httpd = createDistStaticServer(HANDLER_DIST);
-        await new Promise((resolve, reject) => {
-          httpd.listen(handlerPort, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
-        });
-        const url = `http://127.0.0.1:${handlerPort}/?artifact=${encodeURIComponent(artifactBase)}`;
-        await waitForUrl(`http://127.0.0.1:${handlerPort}/`, 10_000);
-        activeDeploy = { artifactProc, httpd, mode: "view", url };
+        const url = `http://127.0.0.1:${vs.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
         sendJSON(res, { ok: true, data: { url, mode: "view" } });
         return;
       }
 
-      const handlerPort = await pickFreePort();
-      const handlerProc = spawn(NPM_BIN, [
-        "run",
-        "dev",
-        "--",
-        "--port",
-        String(handlerPort),
-        "--strictPort",
-      ], {
-        cwd: HANDLER_DIR,
-        env: { ...process.env, VITE_ARTIFACT_BASE: artifactBase.replace(/\/$/, "") },
-        stdio: "ignore",
-        shell: process.platform === "win32",
-      });
-      const url = `http://127.0.0.1:${handlerPort}/`;
-      await waitForUrl(url, 60_000);
-      activeDeploy = { artifactProc, handlerProc, mode: "edit", url };
+      // Step 2e: handler Vite dev server (started once, never killed on mode switch)
+      const hds = await ensureHandlerDevServer();
+      const url = `http://127.0.0.1:${hds.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
       sendJSON(res, { ok: true, data: { url, mode: "edit" } });
     } catch (err) {
-      await stopActiveDeploy();
       sendJSON(res, { ok: false, error: { code: "DEPLOY_FAILED", message: err.message } }, 500);
     }
     return;

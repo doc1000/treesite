@@ -50,6 +50,11 @@ function serveExampleArtifactPlugin() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), serveExampleArtifactPlugin()],
+  resolve: {
+    alias: {
+      "treesite-map": path.resolve(appRoot, "../shared/treesite-map/index.jsx"),
+    },
+  },
   envPrefix: "VITE_",
   server: {
     port: 5174
