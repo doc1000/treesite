@@ -14,6 +14,7 @@ import {
   importZip,
   deploy,
   stopDeploy,
+  getDeployStatus,
   revealArtifact,
   exportDownloadUrl,
 } from "./api/client.js";
@@ -106,7 +107,19 @@ export default function App() {
     return list;
   }, []);
 
-  // Load artifact list on mount
+  // Sync handler dev warm state from bridge (survives better than React-only flag)
+  const refreshDeployStatus = useCallback(async () => {
+    try {
+      const result = await getDeployStatus();
+      if (result.ok && result.data?.handlerDevServer?.alive) {
+        setDevServerWarm(true);
+      }
+    } catch {
+      /* bridge not ready yet */
+    }
+  }, []);
+
+  // Load artifact list on mount; warm handler dev starts in bridge configureServer
   useEffect(() => {
     refreshArtifacts()
       .then((list) => {
@@ -115,6 +128,9 @@ export default function App() {
         }
       })
       .catch((err) => console.error("listArtifacts:", err));
+    refreshDeployStatus();
+    const t = setInterval(refreshDeployStatus, 3000);
+    return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load manifest + stats + files when selected artifact changes
@@ -187,9 +203,21 @@ export default function App() {
         return;
       }
       setCommandBusy(true);
-      setDeployPending(true);
       setAppError(null);
       setCenterView("deploy");
+
+      let handlerWarm = devServerWarm;
+      try {
+        const st = await getDeployStatus();
+        handlerWarm = Boolean(st.ok && st.data?.handlerDevServer?.alive);
+        if (handlerWarm) setDevServerWarm(true);
+      } catch {
+        /* ignore */
+      }
+
+      const needsHandlerBoot = mode === "edit" && !handlerWarm;
+      if (needsHandlerBoot) setDeployPending(true);
+
       try {
         const result = await deploy(selectedArtifact, mode);
         if (!result.ok) {
@@ -197,7 +225,7 @@ export default function App() {
           return;
         }
         dispatch({ type: "SET_DEPLOY", payload: { url: result.data.url, mode: result.data.mode } });
-        if (mode === "edit") setDevServerWarm(true);
+        if (mode === "edit" || result.data?.reused) setDevServerWarm(true);
       } catch (err) {
         console.error(err);
         setAppError(err.message || "Deploy failed");
@@ -206,7 +234,7 @@ export default function App() {
         setDeployPending(false);
       }
     },
-    [selectedArtifact, dispatch],
+    [selectedArtifact, dispatch, devServerWarm],
   );
 
   const handleStopDeploy = useCallback(async () => {

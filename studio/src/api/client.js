@@ -91,6 +91,12 @@ export async function stopDeploy() {
   return res.json();
 }
 
+export async function getDeployStatus() {
+  const res = await fetch(`${BASE}/deploy/status`);
+  if (!res.ok) throw new Error(`getDeployStatus: HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function revealArtifact(artifactName) {
   const res = await fetch(`${BASE}/reveal`, {
     method: "POST",

@@ -20,6 +20,13 @@ const INTAKE_TOOL_TIMEOUT_MS = 120_000;
 const INTAKE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_INTAKE_TOOLS = new Set(["add-pdf", "add-website", "add-html"]);
 const NPM_BIN = process.platform === "win32" ? "npm.cmd" : "npm";
+/** Fixed port for handler Vite dev — matches handler/vite.config.js server.port */
+const HANDLER_DEV_PORT = 5174;
+/** Fixed port for static handler/dist preview in view mode */
+const HANDLER_VIEW_PORT = 5180;
+
+/** @type {Promise<{ port: number, proc: import("node:child_process").ChildProcess | null, adopted: boolean }> | null} */
+let handlerDevStartPromise = null;
 
 const STATIC_MIME = {
   ".json": "application/json; charset=utf-8",
@@ -51,7 +58,7 @@ const STATIC_MIME = {
 /** @type {{ proc: import("node:child_process").ChildProcess, port: number, artifactName: string, artifactBase: string } | null} */
 let artifactServer = null;
 
-/** @type {{ proc: import("node:child_process").ChildProcess, port: number } | null} */
+/** @type {{ proc: import("node:child_process").ChildProcess | null, port: number, adopted?: boolean } | null} */
 let handlerDevServer = null;
 
 /** @type {{ httpd: import("node:http").Server, port: number } | null} */
@@ -70,15 +77,27 @@ function pickFreePort() {
 async function waitForUrl(url, timeoutMs = 10_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
-      if (res.ok) return;
-    } catch {
-      /* retry */
-    }
+    if (await isUrlReachable(url, 2000)) return;
     await new Promise((r) => setTimeout(r, 250));
   }
   throw new Error(`Timed out waiting for ${url}`);
+}
+
+async function isUrlReachable(url, timeoutMs = 1500) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function handlerDevBaseUrl(port = HANDLER_DEV_PORT) {
+  return `http://127.0.0.1:${port}/`;
+}
+
+async function isHandlerDevReachable(port = HANDLER_DEV_PORT) {
+  return isUrlReachable(handlerDevBaseUrl(port), 2000);
 }
 
 function killProc(proc) {
@@ -92,7 +111,7 @@ function killProc(proc) {
 async function ensureArtifactServer(artifactName, artifactPath) {
   if (
     artifactServer?.artifactName === artifactName &&
-    artifactServer.proc?.exitCode === null
+    (await isUrlReachable(`${artifactServer.artifactBase}artifact.json`, 2000))
   ) {
     return artifactServer;
   }
@@ -111,6 +130,10 @@ async function ensureArtifactServer(artifactName, artifactPath) {
  *  Started once per session; kept alive across mode switches. */
 async function ensureViewServer() {
   if (viewServer?.httpd?.listening) return viewServer;
+  if (await isUrlReachable(`http://127.0.0.1:${HANDLER_VIEW_PORT}/`, 1500)) {
+    viewServer = { httpd: null, port: HANDLER_VIEW_PORT, adopted: true };
+    return viewServer;
+  }
   try {
     await fs.promises.access(HANDLER_DIST);
   } catch {
@@ -119,22 +142,24 @@ async function ensureViewServer() {
       { code: "HANDLER_NOT_BUILT" },
     );
   }
-  const port = await pickFreePort();
+  const port = HANDLER_VIEW_PORT;
   const httpd = createDistStaticServer(HANDLER_DIST);
-  await new Promise((resolve, reject) => {
-    httpd.listen(port, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
-  });
-  viewServer = { httpd, port };
-  return viewServer;
+  try {
+    await new Promise((resolve, reject) => {
+      httpd.listen(port, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
+    });
+    viewServer = { httpd, port, adopted: false };
+    return viewServer;
+  } catch (err) {
+    if (err?.code === "EADDRINUSE" && (await isUrlReachable(`http://127.0.0.1:${port}/`, 1500))) {
+      viewServer = { httpd: null, port, adopted: true };
+      return viewServer;
+    }
+    throw err;
+  }
 }
 
-/** Ensure the handler Vite dev server is up.
- *  Started once per session; NEVER restarted on artifact or mode changes.
- *  The artifact URL is passed as ?artifact= in the iframe, not via env. */
-async function ensureHandlerDevServer() {
-  if (handlerDevServer?.proc?.exitCode === null) return handlerDevServer;
-
-  const port = await pickFreePort();
+function spawnHandlerDevProcess(port) {
   const proc = spawn(
     NPM_BIN,
     ["run", "dev", "--", "--port", String(port), "--strictPort"],
@@ -142,12 +167,52 @@ async function ensureHandlerDevServer() {
       cwd: HANDLER_DIR,
       env: { ...process.env },
       stdio: "ignore",
-      shell: process.platform === "win32",
+      detached: true,
+      shell: false,
+      windowsHide: true,
     },
   );
-  await waitForUrl(`http://127.0.0.1:${port}/`, 60_000);
-  handlerDevServer = { proc, port };
-  return handlerDevServer;
+  proc.unref();
+  return proc;
+}
+
+/** Ensure the handler Vite dev server is up on HANDLER_DEV_PORT.
+ *  Reuses any process already listening (HTTP probe). Single-flight start. */
+async function ensureHandlerDevServer() {
+  if (await isHandlerDevReachable()) {
+    if (!handlerDevServer) {
+      handlerDevServer = { port: HANDLER_DEV_PORT, proc: null, adopted: true };
+    }
+    return handlerDevServer;
+  }
+
+  if (handlerDevStartPromise) return handlerDevStartPromise;
+
+  handlerDevStartPromise = (async () => {
+    if (await isHandlerDevReachable()) {
+      handlerDevServer = { port: HANDLER_DEV_PORT, proc: null, adopted: true };
+      return handlerDevServer;
+    }
+
+    if (handlerDevServer?.proc && !handlerDevServer.adopted) {
+      killProc(handlerDevServer.proc);
+    }
+
+    const port = HANDLER_DEV_PORT;
+    const proc = spawnHandlerDevProcess(port);
+    await waitForUrl(handlerDevBaseUrl(port), 90_000);
+    handlerDevServer = { proc, port, adopted: false };
+    return handlerDevServer;
+  })().finally(() => {
+    handlerDevStartPromise = null;
+  });
+
+  return handlerDevStartPromise;
+}
+
+/** Start handler dev in the background when the studio Vite server boots. */
+function warmHandlerDevServer() {
+  return ensureHandlerDevServer();
 }
 
 /** Stop everything. Called only by POST /deploy/stop. */
@@ -155,10 +220,13 @@ async function stopAllServers() {
   killProc(artifactServer?.proc);
   artifactServer = null;
 
-  killProc(handlerDevServer?.proc);
+  if (handlerDevServer?.proc && !handlerDevServer.adopted) {
+    killProc(handlerDevServer.proc);
+  }
   handlerDevServer = null;
+  handlerDevStartPromise = null;
 
-  if (viewServer?.httpd) {
+  if (viewServer?.httpd && !viewServer.adopted) {
     await new Promise((resolve) => viewServer.httpd.close(() => resolve()));
   }
   viewServer = null;
@@ -712,17 +780,27 @@ async function handler(req, res, next) {
   // ── GET /deploy/status ──────────────────────────────────────────────────────
   // Returns which servers are currently running so the UI can show state.
   if (req.method === "GET" && pathname === "/deploy/status") {
+    const handlerAlive = await isHandlerDevReachable();
+    const viewAlive =
+      (viewServer?.httpd?.listening ?? false)
+      || (await isUrlReachable(`http://127.0.0.1:${HANDLER_VIEW_PORT}/`, 1500));
     sendJSON(res, {
       ok: true,
       data: {
         artifactServer: artifactServer
-          ? { artifactName: artifactServer.artifactName, port: artifactServer.port }
+          ? {
+              artifactName: artifactServer.artifactName,
+              port: artifactServer.port,
+              alive: await isUrlReachable(`${artifactServer.artifactBase}artifact.json`, 2000),
+            }
           : null,
-        handlerDevServer: handlerDevServer
-          ? { port: handlerDevServer.port, alive: handlerDevServer.proc?.exitCode === null }
-          : null,
-        viewServer: viewServer
-          ? { port: viewServer.port, alive: viewServer.httpd?.listening ?? false }
+        handlerDevServer: {
+          port: HANDLER_DEV_PORT,
+          alive: handlerAlive,
+          warming: handlerDevStartPromise != null,
+        },
+        viewServer: viewAlive
+          ? { port: viewServer?.port ?? HANDLER_VIEW_PORT, alive: true }
           : null,
       },
     });
@@ -806,14 +884,18 @@ async function handler(req, res, next) {
           return;
         }
         const url = `http://127.0.0.1:${vs.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
-        sendJSON(res, { ok: true, data: { url, mode: "view" } });
+        sendJSON(res, { ok: true, data: { url, mode: "view", reused: true } });
         return;
       }
 
       // Step 2e: handler Vite dev server (started once, never killed on mode switch)
+      const wasWarm = await isHandlerDevReachable();
       const hds = await ensureHandlerDevServer();
       const url = `http://127.0.0.1:${hds.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
-      sendJSON(res, { ok: true, data: { url, mode: "edit" } });
+      sendJSON(res, {
+        ok: true,
+        data: { url, mode: "edit", reused: wasWarm },
+      });
     } catch (err) {
       sendJSON(res, { ok: false, error: { code: "DEPLOY_FAILED", message: err.message } }, 500);
     }
@@ -828,6 +910,9 @@ export default function toolBridgePlugin() {
     name: "tool-bridge",
     configureServer(server) {
       server.middlewares.use("/api", handler);
+      void warmHandlerDevServer().catch((err) => {
+        console.warn("[tool-bridge] handler dev warm-up:", err.message);
+      });
     },
   };
 }
