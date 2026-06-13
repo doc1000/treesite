@@ -12,9 +12,8 @@ import {
   validate,
   uploadFile,
   importZip,
-  deploy,
-  stopDeploy,
-  getDeployStatus,
+  openPreview,
+  getPreviewStatus,
   revealArtifact,
   exportDownloadUrl,
 } from "./api/client.js";
@@ -43,7 +42,6 @@ export default function App() {
     expandedNodeIds,
     viewport,
     validationResult,
-    deployState,
     showValidationPanel,
   } = useStore();
   const dispatch = useDispatch();
@@ -56,11 +54,8 @@ export default function App() {
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [explorerView, setExplorerView] = useState("json");
-  const [centerView, setCenterView] = useState("treemap");
   const [commandBusy, setCommandBusy] = useState(false);
-  const [deployPending, setDeployPending] = useState(false);
-  // true after the handler Vite dev server has booted at least once this session
-  const [devServerWarm, setDevServerWarm] = useState(false);
+  const [handlerDistReady, setHandlerDistReady] = useState(false);
 
   const refreshArtifact = useCallback(
     async ({ afterDelete = false } = {}) => {
@@ -107,19 +102,15 @@ export default function App() {
     return list;
   }, []);
 
-  // Sync handler dev warm state from bridge (survives better than React-only flag)
-  const refreshDeployStatus = useCallback(async () => {
+  const syncPreviewStatus = useCallback(async () => {
     try {
-      const result = await getDeployStatus();
-      if (result.ok && result.data?.handlerDevServer?.alive) {
-        setDevServerWarm(true);
-      }
+      const result = await getPreviewStatus();
+      setHandlerDistReady(Boolean(result.ok && result.data?.handlerDistReady));
     } catch {
-      /* bridge not ready yet */
+      setHandlerDistReady(false);
     }
   }, []);
 
-  // Load artifact list on mount; warm handler dev starts in bridge configureServer
   useEffect(() => {
     refreshArtifacts()
       .then((list) => {
@@ -128,12 +119,9 @@ export default function App() {
         }
       })
       .catch((err) => console.error("listArtifacts:", err));
-    refreshDeployStatus();
-    const t = setInterval(refreshDeployStatus, 3000);
-    return () => clearInterval(t);
+    syncPreviewStatus();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load manifest + stats + files when selected artifact changes
   useEffect(() => {
     if (!selectedArtifact) return;
     setLoading(true);
@@ -158,7 +146,6 @@ export default function App() {
       .finally(() => setLoading(false));
   }, [selectedArtifact]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch get-node payload when selection changes
   useEffect(() => {
     if (!selectedArtifact || !selectedNodeId) {
       setNodeItem(null);
@@ -196,56 +183,41 @@ export default function App() {
 
   const [appError, setAppError] = useState(null);
 
-  const runDeploy = useCallback(
-    async (mode) => {
-      if (!selectedArtifact) {
-        setAppError("Select an artifact first.");
-        return;
-      }
-      setCommandBusy(true);
-      setAppError(null);
-      setCenterView("deploy");
-
-      let handlerWarm = devServerWarm;
-      try {
-        const st = await getDeployStatus();
-        handlerWarm = Boolean(st.ok && st.data?.handlerDevServer?.alive);
-        if (handlerWarm) setDevServerWarm(true);
-      } catch {
-        /* ignore */
-      }
-
-      const needsHandlerBoot = mode === "edit" && !handlerWarm;
-      if (needsHandlerBoot) setDeployPending(true);
-
-      try {
-        const result = await deploy(selectedArtifact, mode);
-        if (!result.ok) {
-          setAppError(result.error?.message || "Deploy failed");
+  const handleOpenPreview = useCallback(async () => {
+    if (!selectedArtifact) {
+      setAppError("Select an artifact first.");
+      return;
+    }
+    setCommandBusy(true);
+    setAppError(null);
+    try {
+      const result = await openPreview(selectedArtifact);
+      if (!result.ok) {
+        if (result.error?.code === "HANDLER_NOT_BUILT") {
+          setAppError(
+            result.error?.message
+              || "Handler preview build missing. Run npm --prefix handler run build:studio-preview.",
+          );
           return;
         }
-        dispatch({ type: "SET_DEPLOY", payload: { url: result.data.url, mode: result.data.mode } });
-        if (mode === "edit" || result.data?.reused) setDevServerWarm(true);
-      } catch (err) {
-        console.error(err);
-        setAppError(err.message || "Deploy failed");
-      } finally {
-        setCommandBusy(false);
-        setDeployPending(false);
+        setAppError(result.error?.message || "Preview failed to open");
+        return;
       }
-    },
-    [selectedArtifact, dispatch, devServerWarm],
-  );
-
-  const handleStopDeploy = useCallback(async () => {
-    try {
-      await stopDeploy();
-      dispatch({ type: "SET_DEPLOY", payload: null });
-      setDevServerWarm(false);
+      const url = result.data?.url ?? result.url;
+      if (url) {
+        window.open(new URL(url, window.location.origin).href, "_blank", "noopener");
+      }
     } catch (err) {
       console.error(err);
+      setAppError(err.message || "Preview failed to open");
+    } finally {
+      setCommandBusy(false);
     }
-  }, [dispatch]);
+  }, [selectedArtifact]);
+
+  const handleEditInStudio = useCallback(() => {
+    document.querySelector(".center-column")?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, []);
 
   const handleValidate = useCallback(async () => {
     if (!selectedArtifact) {
@@ -310,11 +282,9 @@ export default function App() {
   }, [selectedArtifact]);
 
   const handleSeeArtifacts = useCallback(() => {
-    // Focus the artifact selector in the studio sidebar
     const el = document.getElementById("artifact-select");
     el?.focus();
     el?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-    // Open the artifact folder in the OS file browser
     revealArtifact(selectedArtifact || "").catch((err) => {
       console.warn("reveal:", err.message);
     });
@@ -351,27 +321,21 @@ export default function App() {
       loading={loading}
       focusNodeId={viewport.focusNodeId}
       onSetFocus={handleSetFocus}
-      centerView={centerView}
-      onCenterViewChange={setCenterView}
-      deployState={deployState}
+      handlerDistReady={handlerDistReady}
       validationResult={validationResult}
       showValidationPanel={showValidationPanel}
       onToggleValidationPanel={toggleValidationPanel}
       onCloseValidationPanel={closeValidationPanel}
-      deployPending={deployPending}
-      devServerWarm={devServerWarm}
-      onDeploy={runDeploy}
-      onStopDeploy={handleStopDeploy}
       commandBarProps={{
         busy: commandBusy,
-        deployMode: deployState?.mode,
+        editStudioActive: true,
         appError,
         onDismissError: () => setAppError(null),
         onSeeArtifacts: handleSeeArtifacts,
         onImport: handleImport,
         onValidate: handleValidate,
-        onDeployView: () => runDeploy("view"),
-        onDeployEdit: () => runDeploy("edit"),
+        onOpenPreview: handleOpenPreview,
+        onEditInStudio: handleEditInStudio,
         onExport: handleExport,
       }}
       refreshArtifact={refreshArtifact}

@@ -16,7 +16,7 @@ Visual reference (not a spec): [spatial_navigation_editor_mockup.html](spatial_n
 - The operation contract lives in **Node** (`tools/node/*.js`). Each tool reads `--artifact <path>` plus a JSON object on stdin and prints one JSON line: `{"ok":true,"data":...}` or `{"ok":false,"error":{code,message}}`. Shared helpers: [tools/node/tool-runner.js](../../tools/node/tool-runner.js).
 - The **Python SDK** ([editor/treesite_editor/tools.py](../../editor/treesite_editor/tools.py)) and **FastAPI API** are both thin adapters that subprocess those same Node tools (see [editor/treesite_editor/runner.py](../../editor/treesite_editor/runner.py)). The Studio bridge is a third thin adapter of the same kind, in Node.
 - Artifacts are plain files (see [docs/artifact-spec.md](../artifact-spec.md)): `artifact.json` (meta) + generated `manifest.json` (tree) + `items/<slug>.json` (one per card/section, immutable UUID `id`) + `assets/` + `schemes/`. Example: [artifacts/example/manifest.json](../../artifacts/example/manifest.json).
-- Deploy/preview already exists: [editor/treesite_editor/preview.py](../../editor/treesite_editor/preview.py) launches the real handler in `static` (View) or `dev` (Edit) mode; [tools/node/serve-artifact.js](../../tools/node/serve-artifact.js) serves an artifact bundle over HTTP. The Studio deploy launcher reuses these scripts rather than reimplementing the viewer.
+- View preview is **in-process on Studio port 5175**: `/preview/*` serves built `handler/dist` (via `npm --prefix handler run build:studio-preview`), `/artifact/:name/*` serves artifact files. URL shape: `/preview/?artifact=/artifact/:name/`. See [`docs/studio-preview.md`](../studio-preview.md). Optional detached CLI ([`open-view-preview.js`](../../tools/node/open-view-preview.js)) is not used by Studio MVP. Studio does not embed the handler in an iframe.
 
 ## Tool catalog (all included)
 
@@ -42,15 +42,16 @@ A new Vite dev-server middleware (`studio/server/toolBridge.mjs`) invokes the No
 - `GET /api/artifacts/:name/files` -> recursive file listing of the artifact dir (for the File System view).
 - `POST /api/tool/:tool` -> body `{ artifactName, input }`. Resolves name -> path, spawns `node tools/node/:tool.js --artifact <path>` with `JSON.stringify(input)` on stdin, returns the tool's `{ok,data|error}` verbatim. **This single endpoint covers every tool** (get-node, edit-card, validate, add-card, ...).
 - `POST /api/upload` -> multipart; stages an uploaded file to a temp path; returns `{ tempPath }` for use as `sourcePath` (used by `add-pdf` / `add-html`). Clean up temp files after the tool runs.
-- `POST /api/deploy` -> body `{ artifactName, mode: "view"|"edit" }`. Spawns `serve-artifact.js` for the bundle, then opens the handler (built `dist` for view, `vite dev` with `VITE_ARTIFACT_BASE` for edit). Returns `{ url, mode }`. Mirror the two modes in `preview.py`; one active deploy at a time.
-- `POST /api/deploy/stop` -> stop the active deploy.
+- `POST /api/preview/open` -> body `{ artifactName }`. Validates `handler/dist` (studio-preview build) and artifact dir; returns self-contained `{ url: "/preview/?artifact=/artifact/:name/", ... }`. No child processes.
+- `POST /api/preview/stop` -> no-op `{ ok: true }`.
+- `GET /api/preview/status` -> `{ handlerDistReady }`.
 
 Keep the bridge dumb: it resolves the artifact path, runs the tool, returns the result. No business logic, no schema reimplementation.
 
 ## State / memory model
 
 - **Derived from files (re-fetch, never duplicate):** manifest tree, item fields, file list, stats, validation result. Re-fetch after every mutation + `rebuild-manifest`.
-- **UI-only (React, in-memory):** `selectedArtifact`, `selectedNodeId`, `mode` (view/edit), `activePanel` (fileTree | manifestTree | tools | treemap), `expandedNodeIds`, `viewport` (focusNodeId/zoom/pan), `validationStatus`, `dirty` (unsaved field edits), `lastDeploy` ({url,mode}), `inputMode` (keyboard | controller).
+- **UI-only (React, in-memory):** `selectedArtifact`, `selectedNodeId`, `activePanel` (fileTree | manifestTree | tools | treemap), `expandedNodeIds`, `viewport` (focusNodeId/zoom/pan), `validationStatus`, `dirty` (unsaved field edits), `inputMode` (keyboard | controller).
 - **Persisted (localStorage only, no DB):** last selected artifact, panel layout, expanded nodes, input mode.
 
 ## Data flow
@@ -65,7 +66,7 @@ flowchart LR
   Bridge -->|"rebuild-manifest"| Files
   Inspector -.->|"refetch manifest + get-node"| UI
   UI -->|"validate"| Status["StatusBar / ValidationPanel"]
-  UI -->|"deploy view/edit"| Preview["serve-artifact.js + handler (iframe/tab)"]
+  UI -->|"open preview (external tab)"| Preview["Studio /preview + /artifact/:name"]
 ```
 
 ### Treemap card -> source mapping (required)
@@ -75,13 +76,13 @@ Every treemap cell and tree row is built from a `manifest.json` node, which carr
 ## Component plan (short)
 
 - `AppShell` - grid layout, focus-zone routing, keyboard manager (mockup conversion).
-- `TopCommandBar` - See / Import / Validate / Deploy(View) / Edit / Export (integration).
+- `TopCommandBar` - See / Import / Validate / Open Preview / Stop Preview / Edit in Studio / Export (integration).
 - `ArtifactExplorer` - File System list + JSON/Manifest tree toggle (integration).
 - `ManifestTreeView` - tree from `manifest.json`, selection-synced (integration).
 - `TreemapWorkspace` - new lightweight D3 squarified treemap projection + selection (new, small).
 - `MiniMap` - abstract D3 overview + viewport rect (new, small).
 - `RightToolPanel` - contextual fields + action set for the selected node (integration).
-- `StatusBar` / `ValidationPanel` - deploy status + validation results (integration).
+- `StatusBar` / `ValidationPanel` - preview status + validation results (integration).
 
 ## Phases (run one fresh agent per phase, in order)
 

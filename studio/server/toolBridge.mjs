@@ -1,31 +1,27 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import net from "node:net";
-import http from "node:http";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import {
+  artifactExists,
+  buildPreviewUrl,
+  handlerDistReady,
+  HANDLER_PREVIEW_BUILD_MSG,
+  artifactDirForName,
+} from "./previewPaths.mjs";
+import { appendLog } from "./sessionLog.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const ARTIFACTS_BASE = path.resolve(REPO_ROOT, "artifacts");
 const TOOLS_DIR = path.resolve(REPO_ROOT, "tools/node");
-const HANDLER_DIR = path.resolve(REPO_ROOT, "handler");
-const HANDLER_DIST = path.join(HANDLER_DIR, "dist");
-const SERVE_ARTIFACT_SCRIPT = path.join(TOOLS_DIR, "serve-artifact.js");
 const TOOL_TIMEOUT_MS = 60_000;
 const INTAKE_TOOL_TIMEOUT_MS = 120_000;
 const INTAKE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_INTAKE_TOOLS = new Set(["add-pdf", "add-website", "add-html"]);
-/** Fixed port for handler Vite dev — matches handler/vite.config.js server.port */
-const HANDLER_DEV_PORT = 5174;
-/** Fixed port for static handler/dist preview in view mode */
-const HANDLER_VIEW_PORT = 5180;
-
-/** @type {Promise<{ port: number, proc: import("node:child_process").ChildProcess | null, adopted: boolean }> | null} */
-let handlerDevStartPromise = null;
 
 const STATIC_MIME = {
   ".json": "application/json; charset=utf-8",
@@ -42,243 +38,6 @@ const STATIC_MIME = {
   ".woff": "font/woff",
   ".woff2": "font/woff2",
 };
-
-/**
- * Three independent long-lived server handles.
- *
- * artifactServer  – serves the selected artifact's JSON/asset files.
- *                   Replaced only when the artifact name changes.
- * handlerDevServer – `npm run dev` for the handler (Vite HMR).
- *                   Started once per session; NEVER killed on mode switch.
- * viewServer      – plain Node http.Server serving handler/dist.
- *                   Started once; reused for every view-mode deploy.
- */
-
-/** @type {{ proc: import("node:child_process").ChildProcess, port: number, artifactName: string, artifactBase: string } | null} */
-let artifactServer = null;
-
-/** @type {{ proc: import("node:child_process").ChildProcess | null, port: number, adopted?: boolean } | null} */
-let handlerDevServer = null;
-
-/** @type {{ httpd: import("node:http").Server, port: number } | null} */
-let viewServer = null;
-
-function pickFreePort() {
-  return new Promise((res) => {
-    const s = net.createServer();
-    s.listen(0, "127.0.0.1", () => {
-      const p = s.address().port;
-      s.close(() => res(p));
-    });
-  });
-}
-
-async function waitForUrl(url, timeoutMs = 10_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (await isUrlReachable(url, 2000)) return;
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  throw new Error(`Timed out waiting for ${url}`);
-}
-
-async function isUrlReachable(url, timeoutMs = 1500) {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function handlerDevBaseUrl(port = HANDLER_DEV_PORT) {
-  return `http://127.0.0.1:${port}/`;
-}
-
-async function isHandlerDevReachable(port = HANDLER_DEV_PORT) {
-  return isUrlReachable(handlerDevBaseUrl(port), 2000);
-}
-
-function killProc(proc) {
-  if (proc && proc.exitCode === null) {
-    try { proc.kill(); } catch { /* ignore */ }
-  }
-}
-
-/** Ensure the artifact file server is up for the given artifact.
- *  Restarts only when the artifact name changes. */
-async function ensureArtifactServer(artifactName, artifactPath) {
-  if (
-    artifactServer?.artifactName === artifactName &&
-    (await isUrlReachable(`${artifactServer.artifactBase}artifact.json`, 2000))
-  ) {
-    return artifactServer;
-  }
-  // Kill the old one if running
-  if (artifactServer) killProc(artifactServer.proc);
-
-  const port = await pickFreePort();
-  const proc = spawnServeArtifact(artifactPath, port);
-  const artifactBase = `http://127.0.0.1:${port}/`;
-  await waitForUrl(`${artifactBase}artifact.json`, 10_000);
-  artifactServer = { proc, port, artifactName, artifactBase };
-  return artifactServer;
-}
-
-/** Ensure handler/dist static server is up.
- *  Started once per session; kept alive across mode switches. */
-async function ensureViewServer() {
-  if (viewServer?.httpd?.listening) return viewServer;
-  if (await isUrlReachable(`http://127.0.0.1:${HANDLER_VIEW_PORT}/`, 1500)) {
-    viewServer = { httpd: null, port: HANDLER_VIEW_PORT, adopted: true };
-    return viewServer;
-  }
-  try {
-    await fs.promises.access(HANDLER_DIST);
-  } catch {
-    throw Object.assign(
-      new Error("Run 'npm --prefix handler run build' first."),
-      { code: "HANDLER_NOT_BUILT" },
-    );
-  }
-  const port = HANDLER_VIEW_PORT;
-  const httpd = createDistStaticServer(HANDLER_DIST);
-  try {
-    await new Promise((resolve, reject) => {
-      httpd.listen(port, "127.0.0.1", (err) => (err ? reject(err) : resolve()));
-    });
-    viewServer = { httpd, port, adopted: false };
-    return viewServer;
-  } catch (err) {
-    if (err?.code === "EADDRINUSE" && (await isUrlReachable(`http://127.0.0.1:${port}/`, 1500))) {
-      viewServer = { httpd: null, port, adopted: true };
-      return viewServer;
-    }
-    throw err;
-  }
-}
-
-function resolveHandlerViteBin() {
-  const candidates = [
-    path.join(HANDLER_DIR, "node_modules", "vite", "bin", "vite.js"),
-    path.join(HANDLER_DIR, "node_modules", "vite", "bin", "vite.mjs"),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  throw new Error(
-    "handler Vite not installed. Run: npm --prefix handler install",
-  );
-}
-
-function spawnHandlerDevProcess(port) {
-  const viteBin = resolveHandlerViteBin();
-  const proc = spawn(
-    process.execPath,
-    [viteBin, "--port", String(port), "--strictPort"],
-    {
-      cwd: HANDLER_DIR,
-      env: { ...process.env },
-      stdio: "ignore",
-      detached: true,
-      windowsHide: true,
-    },
-  );
-  proc.unref();
-  return proc;
-}
-
-/** Ensure the handler Vite dev server is up on HANDLER_DEV_PORT.
- *  Reuses any process already listening (HTTP probe). Single-flight start. */
-async function ensureHandlerDevServer() {
-  if (await isHandlerDevReachable()) {
-    if (!handlerDevServer) {
-      handlerDevServer = { port: HANDLER_DEV_PORT, proc: null, adopted: true };
-    }
-    return handlerDevServer;
-  }
-
-  if (handlerDevStartPromise) return handlerDevStartPromise;
-
-  handlerDevStartPromise = (async () => {
-    if (await isHandlerDevReachable()) {
-      handlerDevServer = { port: HANDLER_DEV_PORT, proc: null, adopted: true };
-      return handlerDevServer;
-    }
-
-    if (handlerDevServer?.proc && !handlerDevServer.adopted) {
-      killProc(handlerDevServer.proc);
-    }
-
-    const port = HANDLER_DEV_PORT;
-    const proc = spawnHandlerDevProcess(port);
-    await waitForUrl(handlerDevBaseUrl(port), 90_000);
-    handlerDevServer = { proc, port, adopted: false };
-    return handlerDevServer;
-  })().finally(() => {
-    handlerDevStartPromise = null;
-  });
-
-  return handlerDevStartPromise;
-}
-
-/** Start handler dev in the background when the studio Vite server boots. */
-function warmHandlerDevServer() {
-  return ensureHandlerDevServer();
-}
-
-/** Stop everything. Called only by POST /deploy/stop. */
-async function stopAllServers() {
-  killProc(artifactServer?.proc);
-  artifactServer = null;
-
-  if (handlerDevServer?.proc && !handlerDevServer.adopted) {
-    killProc(handlerDevServer.proc);
-  }
-  handlerDevServer = null;
-  handlerDevStartPromise = null;
-
-  if (viewServer?.httpd && !viewServer.adopted) {
-    await new Promise((resolve) => viewServer.httpd.close(() => resolve()));
-  }
-  viewServer = null;
-}
-
-function spawnServeArtifact(artifactPath, port) {
-  return spawn(process.execPath, [
-    SERVE_ARTIFACT_SCRIPT,
-    "--dir",
-    artifactPath,
-    "--port",
-    String(port),
-  ], { stdio: "ignore" });
-}
-
-function createDistStaticServer(distDir) {
-  const root = path.resolve(distDir);
-  return http.createServer((req, res) => {
-    const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
-    const rel = urlPath.replace(/^\/+/, "") || "index.html";
-    let filePath = path.normalize(path.join(root, rel));
-    if (!filePath.startsWith(root)) {
-      res.writeHead(403);
-      res.end("Forbidden");
-      return;
-    }
-    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
-      const indexPath = path.join(root, "index.html");
-      if (existsSync(indexPath)) filePath = indexPath;
-      else {
-        res.writeHead(404);
-        res.end("Not found");
-        return;
-      }
-    }
-    const ext = path.extname(filePath).toLowerCase();
-    res.setHeader("Content-Type", STATIC_MIME[ext] || "application/octet-stream");
-    createReadStream(filePath).pipe(res);
-  });
-}
 
 /** Parse ALL parts of a multipart/form-data request.
  * Returns { fields: Record<string,string>, fileData: Buffer|null, fileName: string|null }
@@ -404,8 +163,8 @@ function readBody(req) {
   });
 }
 
-// Concurrency limiter: cap simultaneous tool spawns so that a long-running
-// deploy/export does not starve quick ribbon-button tools.
+// Concurrency limiter: cap simultaneous tool spawns so long-running
+// tools do not starve quick ribbon-button tools.
 const MAX_CONCURRENT_TOOLS = 3;
 let _activeTools = 0;
 const _toolQueue = [];
@@ -432,7 +191,14 @@ function _releaseTool() {
 async function spawnTool(tool, artifactPath, input, timeoutMs = TOOL_TIMEOUT_MS) {
   await _acquireTool();
   try {
-    return await _spawnToolInner(tool, artifactPath, input, timeoutMs);
+    const result = await _spawnToolInner(tool, artifactPath, input, timeoutMs);
+    appendLog({
+      type: "tool",
+      tool,
+      ok: Boolean(result.ok),
+      code: result.ok ? undefined : (result.error?.code ?? "UNKNOWN"),
+    });
+    return result;
   } finally {
     _releaseTool();
   }
@@ -510,6 +276,15 @@ function sendJSON(res, data, status = 200) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(data));
+}
+
+function previewErrorHttpStatus(code) {
+  if (code === "NOT_FOUND" || code === "ARTIFACT_NOT_FOUND" || code === "INVALID_ARTIFACT") {
+    return 404;
+  }
+  if (code === "HANDLER_NOT_BUILT") return 503;
+  if (code === "MISSING_ARTIFACT" || code === "BAD_REQUEST") return 400;
+  return 500;
 }
 
 async function handler(req, res, next) {
@@ -789,32 +564,88 @@ async function handler(req, res, next) {
     return;
   }
 
-  // ── GET /deploy/status ──────────────────────────────────────────────────────
-  // Returns which servers are currently running so the UI can show state.
-  if (req.method === "GET" && pathname === "/deploy/status") {
-    const handlerAlive = await isHandlerDevReachable();
-    const viewAlive =
-      (viewServer?.httpd?.listening ?? false)
-      || (await isUrlReachable(`http://127.0.0.1:${HANDLER_VIEW_PORT}/`, 1500));
+  // ── GET /preview/status ─────────────────────────────────────────────────────
+  if (req.method === "GET" && pathname === "/preview/status") {
+    try {
+      const dist = await handlerDistReady();
+      sendJSON(res, {
+        ok: true,
+        data: { handlerDistReady: dist.ready && !dist.wrongBase },
+      });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "STATUS_FAILED", message: String(err) } }, 500);
+    }
+    return;
+  }
+
+  // ── POST /preview/stop ──────────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/preview/stop") {
+    sendJSON(res, { ok: true });
+    return;
+  }
+
+  // ── POST /preview/open ──────────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/preview/open") {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: err.message } }, 400);
+      return;
+    }
+
+    const { artifactName } = body;
+    if (!artifactName || typeof artifactName !== "string") {
+      sendJSON(res, {
+        ok: false,
+        error: { code: "MISSING_ARTIFACT", message: "artifactName is required" },
+      }, 400);
+      return;
+    }
+
+    if (!artifactDirForName(artifactName)) {
+      sendJSON(res, {
+        ok: false,
+        error: { code: "INVALID_ARTIFACT", message: "Invalid artifact name" },
+      }, 400);
+      return;
+    }
+
+    const dist = await handlerDistReady();
+    if (!dist.ready) {
+      const message = dist.wrongBase
+        ? "Handler dist was built for root (/). Run npm --prefix handler run build:studio-preview."
+        : HANDLER_PREVIEW_BUILD_MSG;
+      sendJSON(res, {
+        ok: false,
+        error: { code: "HANDLER_NOT_BUILT", message },
+      }, previewErrorHttpStatus("HANDLER_NOT_BUILT"));
+      return;
+    }
+
+    if (!(await artifactExists(artifactName))) {
+      sendJSON(res, {
+        ok: false,
+        error: { code: "NOT_FOUND", message: `Artifact not found: ${artifactName}` },
+      }, 404);
+      return;
+    }
+
+    const artifactPath = path.join(ARTIFACTS_BASE, artifactName);
+    const url = buildPreviewUrl(artifactName);
+
+    appendLog({
+      type: "preview",
+      action: "open",
+      ok: true,
+      artifactName,
+      url,
+    });
+
     sendJSON(res, {
       ok: true,
-      data: {
-        artifactServer: artifactServer
-          ? {
-              artifactName: artifactServer.artifactName,
-              port: artifactServer.port,
-              alive: await isUrlReachable(`${artifactServer.artifactBase}artifact.json`, 2000),
-            }
-          : null,
-        handlerDevServer: {
-          port: HANDLER_DEV_PORT,
-          alive: handlerAlive,
-          warming: handlerDevStartPromise != null,
-        },
-        viewServer: viewAlive
-          ? { port: viewServer?.port ?? HANDLER_VIEW_PORT, alive: true }
-          : null,
-      },
+      url,
+      data: { url, artifactName, artifactPath },
     });
     return;
   }
@@ -843,88 +674,34 @@ async function handler(req, res, next) {
     return;
   }
 
-  // ── POST /deploy/stop ───────────────────────────────────────────────────────
-  if (req.method === "POST" && pathname === "/deploy/stop") {
-    await stopAllServers();
-    sendJSON(res, { ok: true });
-    return;
-  }
-
-  // ── POST /deploy ────────────────────────────────────────────────────────────
-  // Mode switches (view ↔ edit) never restart the handler Vite dev server.
-  // The artifact server restarts only when the selected artifact changes.
-  // Both view and edit pass the artifact URL as ?artifact= so the handler
-  // instance can be reused across mode/artifact changes without env restarts.
-  if (req.method === "POST" && pathname === "/deploy") {
-    let body;
-    try {
-      body = await readBody(req);
-    } catch (err) {
-      sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: err.message } }, 400);
-      return;
-    }
-    const { artifactName, mode } = body;
-    if (!artifactName || (mode !== "view" && mode !== "edit")) {
-      sendJSON(res, {
-        ok: false,
-        error: { code: "BAD_REQUEST", message: "artifactName and mode (view|edit) are required" },
-      }, 400);
-      return;
-    }
-    const artifactPath = path.join(ARTIFACTS_BASE, artifactName);
-    try {
-      await fs.promises.access(path.join(artifactPath, "artifact.json"));
-    } catch {
-      sendJSON(res, { ok: false, error: { code: "NOT_FOUND", message: `Artifact not found: ${artifactName}` } }, 404);
-      return;
-    }
-
-    try {
-      // Step 1: artifact file server (restarts only on artifact change)
-      const as = await ensureArtifactServer(artifactName, artifactPath);
-
-      if (mode === "view") {
-        // Step 2v: static handler/dist server (started once, reused)
-        let vs;
-        try {
-          vs = await ensureViewServer();
-        } catch (err) {
-          sendJSON(res, {
-            ok: false,
-            error: { code: err.code || "HANDLER_NOT_BUILT", message: err.message },
-          }, 400);
-          return;
-        }
-        const url = `http://127.0.0.1:${vs.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
-        sendJSON(res, { ok: true, data: { url, mode: "view", reused: true } });
-        return;
-      }
-
-      // Step 2e: handler Vite dev server (started once, never killed on mode switch)
-      const wasWarm = await isHandlerDevReachable();
-      const hds = await ensureHandlerDevServer();
-      const url = `http://127.0.0.1:${hds.port}/?artifact=${encodeURIComponent(as.artifactBase)}`;
-      sendJSON(res, {
-        ok: true,
-        data: { url, mode: "edit", reused: wasWarm },
-      });
-    } catch (err) {
-      sendJSON(res, { ok: false, error: { code: "DEPLOY_FAILED", message: err.message } }, 500);
-    }
-    return;
-  }
-
   next();
+}
+
+function apiLoggingWrapper(inner) {
+  return (req, res, next) => {
+    const start = Date.now();
+    const pathname = (req.url || "/").split("?")[0];
+    const apiPath = `/api${pathname === "/" ? "" : pathname}`;
+
+    res.on("finish", () => {
+      appendLog({
+        type: "api",
+        method: req.method,
+        path: apiPath,
+        status: res.statusCode,
+        ms: Date.now() - start,
+      });
+    });
+
+    return inner(req, res, next);
+  };
 }
 
 export default function toolBridgePlugin() {
   return {
     name: "tool-bridge",
     configureServer(server) {
-      server.middlewares.use("/api", handler);
-      void warmHandlerDevServer().catch((err) => {
-        console.warn("[tool-bridge] handler dev warm-up:", err.message);
-      });
+      server.middlewares.use("/api", apiLoggingWrapper(handler));
     },
   };
 }

@@ -1,12 +1,17 @@
+import { buildPreviewUrl } from "../api/client.js";
+
 export default function StatusBar({
-  deployState,
+  handlerDistReady,
+  selectedArtifact,
   validationResult,
   artifactName,
   itemCount,
   onToggleValidation,
 }) {
-  const deployed = Boolean(deployState?.url);
-  const deployDotClass = deployed ? "dot" : "dot idle";
+  const previewUrl = selectedArtifact && handlerDistReady
+    ? buildPreviewUrl(selectedArtifact)
+    : null;
+  const previewDotClass = handlerDistReady ? "dot" : "dot idle";
 
   let validationBadge = "Not validated";
   let validationClass = "status-badge idle";
@@ -31,8 +36,26 @@ export default function StatusBar({
   return (
     <footer className="status-bar" aria-label="Studio status">
       <div className="status-item">
-        <span className={deployDotClass} aria-hidden="true" />
-        <span>{deployed ? "Local Site Deployed" : "Deploy: Not deployed"}</span>
+        <span className={previewDotClass} aria-hidden="true" />
+        <span>
+          {handlerDistReady ? "Preview: ready" : "Preview: build required"}
+          {!handlerDistReady && (
+            <span className="status-preview-hint" title="Studio preview handler build">
+              {" "}
+              · run npm --prefix handler run build:studio-preview
+            </span>
+          )}
+        </span>
+        {previewUrl && (
+          <a
+            className="status-preview-link"
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open in browser
+          </a>
+        )}
       </div>
       <button
         type="button"

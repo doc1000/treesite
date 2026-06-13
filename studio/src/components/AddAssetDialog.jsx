@@ -151,7 +151,7 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
       }
       onSuccess();
       if (result.data?.previewPending) {
-        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+        setPreviewWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else {
         onClose();
       }
@@ -233,7 +233,7 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
       }
       onSuccess();
       if (result.data?.previewPending) {
-        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+        setPreviewWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else {
         onClose();
       }
@@ -256,7 +256,7 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
         <input style={INPUT_STYLE} type="url" value={form.url} required disabled={busy} placeholder="https://example.com" onChange={(e) => setForm({ ...form, url: e.target.value })} />
       </Field>
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
-        Screenshot preview requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview appears on deploy if Playwright is unavailable.
+        Screenshot preview requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview image is generated when Playwright is available.
       </p>
       {error && <ErrorNote message={error} isPlaywright={isPlaywright} />}
       {previewWarning && <PreviewPendingNote message={previewWarning} />}
@@ -301,7 +301,7 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
       }
       onSuccess();
       if (result.data?.previewPending) {
-        setPreviewWarning(result.data.warning || "Preview will be generated on next deploy.");
+        setPreviewWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else {
         onClose();
       }
@@ -337,7 +337,7 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
         </p>
       )}
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
-        Preview screenshot requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview appears on deploy if Playwright is unavailable.
+        Preview screenshot requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview image is generated when Playwright is available.
       </p>
       {error && <ErrorNote message={error} isPlaywright={isPlaywright} />}
       {previewWarning && <PreviewPendingNote message={previewWarning} />}

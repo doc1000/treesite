@@ -5,20 +5,20 @@ const ACTIONS = [
   { key: "see", icon: "🗂", label: "See Artifacts" },
   { key: "import", icon: "⬇", label: "Import Artifact" },
   { key: "validate", icon: "◇", label: "Validate Artifact" },
-  { key: "deployView", icon: "⬡", label: "Deploy View" },
-  { key: "deployEdit", icon: "✎", label: "Edit Artifact" },
+  { key: "openPreview", icon: "⬡", label: "Open Preview" },
+  { key: "editStudio", icon: "✎", label: "Edit in Studio" },
   { key: "export", icon: "↪", label: "Export Artifact" },
 ];
 
 export default function TopCommandBar({
   className = "",
-  deployMode,
+  editStudioActive,
   busy,
   onSeeArtifacts,
   onImport,
   onValidate,
-  onDeployView,
-  onDeployEdit,
+  onOpenPreview,
+  onEditInStudio,
   onExport,
   navigation,
   zoneActive,
@@ -31,8 +31,8 @@ export default function TopCommandBar({
     see: onSeeArtifacts,
     import: () => fileRef.current?.click(),
     validate: onValidate,
-    deployView: onDeployView,
-    deployEdit: onDeployEdit,
+    openPreview: onOpenPreview,
+    editStudio: onEditInStudio,
     export: onExport,
   };
 
@@ -85,9 +85,8 @@ export default function TopCommandBar({
         }}
       />
       {ACTIONS.map((action, index) => {
-        const active =
-          action.key === "deployEdit" && deployMode === "edit"
-          || action.key === "deployView" && deployMode === "view";
+        const active = action.key === "editStudio" && editStudioActive;
+        const disabled = busy;
         const navFocus = index === focusedIndex;
         return (
           <button
@@ -97,7 +96,7 @@ export default function TopCommandBar({
             }}
             type="button"
             className={`top-action${active ? " active" : ""}${navFocus ? " nav-focus" : ""}`}
-            disabled={busy}
+            disabled={disabled}
             tabIndex={navFocus ? 0 : -1}
             onClick={() => handlers[action.key]?.()}
             onFocus={() => setFocusedIndex(index)}

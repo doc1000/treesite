@@ -1,11 +1,10 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import TopCommandBar from "./TopCommandBar.jsx";
 import ArtifactExplorer from "./ArtifactExplorer.jsx";
 import MiniMap from "./MiniMap.jsx";
 import TreemapWorkspace from "./TreemapWorkspace.jsx";
 import RightToolPanel from "./RightToolPanel.jsx";
 import StatusBar from "./StatusBar.jsx";
-import DeployTab from "./DeployTab.jsx";
 import ValidationPanel from "./ValidationPanel.jsx";
 import { useNavigation } from "../nav/useNavigation.js";
 import { useGamepad } from "../nav/gamepad.js";
@@ -40,18 +39,12 @@ export default function AppShell({
   loading,
   focusNodeId,
   onSetFocus,
-  centerView,
-  onCenterViewChange,
-  deployState,
-  deployPending,
-  devServerWarm,
+  handlerDistReady,
   validationResult,
   showValidationPanel,
   onToggleValidationPanel,
   onCloseValidationPanel,
   commandBarProps,
-  onDeploy,
-  onStopDeploy,
   refreshArtifact,
 }) {
   const { appError, onDismissError } = commandBarProps ?? {};
@@ -74,17 +67,11 @@ export default function AppShell({
   const selectedMeta = artifacts?.find((a) => a.name === selectedArtifact);
   const activeZoneId = navigation.activeZoneId;
 
-  useEffect(() => {
-    if (activeZoneId === "treemap" && centerView !== "treemap") {
-      onCenterViewChange("treemap");
-    }
-  }, [activeZoneId, centerView, onCenterViewChange]);
-
   return (
     <div className="app-shell">
       <aside className="shell-panel brand">
         <h1>TreeSite Studio</h1>
-        <p>{artifactLabel} — artifact deployer + editor</p>
+        <p>{artifactLabel} — artifact editor</p>
         {artifacts?.length > 0 && (
           <select
             id="artifact-select"
@@ -166,51 +153,26 @@ export default function AppShell({
         className={`shell-panel center-column${activeZoneId === "treemap" ? " zone-active" : ""}`}
       >
         <div className="tabs">
-          <button
-            type="button"
-            className={`tab${centerView === "deploy" ? " active" : ""}`}
-            onClick={() => onCenterViewChange("deploy")}
-          >
-            👁 Deploy
-          </button>
-          <button
-            type="button"
-            className={`tab${centerView === "treemap" ? " active" : ""}`}
-            onClick={() => onCenterViewChange("treemap")}
-          >
+          <button type="button" className="tab active" aria-current="page">
             ✎ {artifactLabel} (Treemap)
           </button>
-          <div className="toolbar">
-            <button type="button" onClick={() => onCenterViewChange("deploy")}>
-              Preview
-            </button>
-          </div>
         </div>
         <div className="center-body">
-          {centerView === "deploy" ? (
-            <DeployTab
-              deployState={deployState}
-              deployPending={deployPending}
-              devServerWarm={devServerWarm}
-              onDeploy={onDeploy}
-              onStop={onStopDeploy}
-            />
-          ) : (
-            <TreemapWorkspace
-              manifest={manifest}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={onSelectNode}
-              focusNodeId={focusNodeId}
-              onSetFocus={onSetFocus}
-              navigation={navigation}
-            />
-          )}
+          <TreemapWorkspace
+            manifest={manifest}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={onSelectNode}
+            focusNodeId={focusNodeId}
+            onSetFocus={onSetFocus}
+            navigation={navigation}
+          />
           {showValidationPanel && validationResult && (
             <ValidationPanel result={validationResult} onClose={onCloseValidationPanel} />
           )}
         </div>
         <StatusBar
-          deployState={deployState}
+          handlerDistReady={handlerDistReady}
+          selectedArtifact={selectedArtifact}
           validationResult={validationResult}
           artifactName={selectedMeta?.displayName || selectedArtifact}
           itemCount={stats?.itemCount ?? selectedMeta?.itemCount}

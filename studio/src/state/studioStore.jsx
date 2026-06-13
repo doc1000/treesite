@@ -20,7 +20,6 @@ const initialState = {
   activePanel: "treemap",
   viewport: { focusNodeId: null },
   validationResult: null,
-  deployState: null,
   showValidationPanel: false,
   dirty: false,
   editError: null,
@@ -53,8 +52,6 @@ function reducer(state, action) {
       return { ...state, viewport: { ...state.viewport, focusNodeId: action.payload } };
     case "SET_VALIDATION":
       return { ...state, validationResult: action.payload };
-    case "SET_DEPLOY":
-      return { ...state, deployState: action.payload };
     case "SET_SHOW_VALIDATION":
       return { ...state, showValidationPanel: action.payload };
     case "SET_DIRTY":

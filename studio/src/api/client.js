@@ -72,28 +72,27 @@ export function exportDownloadUrl(artifactName) {
   return `${BASE}/artifacts/${encodeURIComponent(artifactName)}/export`;
 }
 
-export async function deploy(artifactName, mode) {
-  const res = await fetch(`${BASE}/deploy`, {
+export function buildPreviewUrl(artifactName) {
+  const artifactPath = `/artifact/${artifactName}/`;
+  return `/preview/?artifact=${encodeURIComponent(artifactPath)}`;
+}
+
+export async function openPreview(artifactName) {
+  const res = await fetch(`${BASE}/preview/open`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ artifactName, mode }),
+    body: JSON.stringify({ artifactName }),
   });
   const data = await res.json();
   if (!res.ok && !data.error) {
-    return { ok: false, error: { code: "HTTP_ERROR", message: `deploy: HTTP ${res.status}` } };
+    return { ok: false, error: { code: "HTTP_ERROR", message: `openPreview: HTTP ${res.status}` } };
   }
   return data;
 }
 
-export async function stopDeploy() {
-  const res = await fetch(`${BASE}/deploy/stop`, { method: "POST" });
-  if (!res.ok) throw new Error(`stopDeploy: HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function getDeployStatus() {
-  const res = await fetch(`${BASE}/deploy/status`);
-  if (!res.ok) throw new Error(`getDeployStatus: HTTP ${res.status}`);
+export async function getPreviewStatus() {
+  const res = await fetch(`${BASE}/preview/status`);
+  if (!res.ok) throw new Error(`getPreviewStatus: HTTP ${res.status}`);
   return res.json();
 }
 

@@ -49,6 +49,7 @@ function serveExampleArtifactPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.TREESITE_HANDLER_BASE || "/",
   plugins: [react(), serveExampleArtifactPlugin()],
   resolve: {
     alias: {

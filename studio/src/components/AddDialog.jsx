@@ -165,7 +165,7 @@ export default function AddDialog({
         if (!result.ok)
           throw new Error(result.error?.message || "add-pdf failed");
         if (result.data?.previewPending)
-          setWarning(result.data.warning || "Preview will appear on next deploy.");
+          setWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else if (type === "html") {
         if (!file) throw new Error("Select an HTML file.");
         const form = new FormData();
@@ -180,7 +180,7 @@ export default function AddDialog({
         if (!result.ok)
           throw new Error(result.error?.message || "add-html failed");
         if (result.data?.previewPending)
-          setWarning(result.data.warning || "Preview will appear on next deploy.");
+          setWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else if (type === "website") {
         if (!url.startsWith("http")) throw new Error("URL must start with http:// or https://");
         const result = await addWebsite(artifactName, {
@@ -191,7 +191,7 @@ export default function AddDialog({
         if (!result.ok)
           throw new Error(result.error?.message || "add-website failed");
         if (result.data?.previewPending)
-          setWarning(result.data.warning || "Preview will appear on next deploy.");
+          setWarning(result.data.warning || "Preview image will be generated when Playwright is available.");
       } else {
         const spec = { name: name.trim(), type, section, description };
         if (value !== undefined) spec.value = value;
@@ -400,7 +400,7 @@ export default function AddDialog({
                   </p>
                 )}
                 <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
-                  Preview requires Playwright — card always created; preview appears on deploy if unavailable.
+                  Preview requires Playwright — card always created; preview image is generated when Playwright is available.
                 </p>
               </Field>
             )}
