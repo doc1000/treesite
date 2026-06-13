@@ -19,7 +19,6 @@ const TOOL_TIMEOUT_MS = 60_000;
 const INTAKE_TOOL_TIMEOUT_MS = 120_000;
 const INTAKE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_INTAKE_TOOLS = new Set(["add-pdf", "add-website", "add-html"]);
-const NPM_BIN = process.platform === "win32" ? "npm.cmd" : "npm";
 /** Fixed port for handler Vite dev — matches handler/vite.config.js server.port */
 const HANDLER_DEV_PORT = 5174;
 /** Fixed port for static handler/dist preview in view mode */
@@ -159,16 +158,29 @@ async function ensureViewServer() {
   }
 }
 
+function resolveHandlerViteBin() {
+  const candidates = [
+    path.join(HANDLER_DIR, "node_modules", "vite", "bin", "vite.js"),
+    path.join(HANDLER_DIR, "node_modules", "vite", "bin", "vite.mjs"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  throw new Error(
+    "handler Vite not installed. Run: npm --prefix handler install",
+  );
+}
+
 function spawnHandlerDevProcess(port) {
+  const viteBin = resolveHandlerViteBin();
   const proc = spawn(
-    NPM_BIN,
-    ["run", "dev", "--", "--port", String(port), "--strictPort"],
+    process.execPath,
+    [viteBin, "--port", String(port), "--strictPort"],
     {
       cwd: HANDLER_DIR,
       env: { ...process.env },
       stdio: "ignore",
       detached: true,
-      shell: false,
       windowsHide: true,
     },
   );
