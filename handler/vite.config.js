@@ -43,15 +43,44 @@ function serveExampleArtifactPlugin() {
         res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
         createReadStream(filePath).pipe(res);
       });
-    }
+    },
+  };
+}
+
+/** Rolldown resolves bare imports from the importer path; ../shared must use handler/node_modules. */
+function resolveSharedImportsFromHandler() {
+  const handlerPkg = path.join(appRoot, "package.json");
+  const sharedDir = path.resolve(appRoot, "../shared") + path.sep;
+
+  return {
+    name: "resolve-shared-imports-from-handler",
+    enforce: "pre",
+    async resolveId(source, importer, options) {
+      if (!importer || !importer.includes(sharedDir)) return null;
+      if (
+        source !== "react"
+        && source !== "react-dom"
+        && source !== "d3"
+        && !source.startsWith("react/")
+        && !source.startsWith("react-dom/")
+      ) {
+        return null;
+      }
+      const resolved = await this.resolve(source, handlerPkg, {
+        skipSelf: true,
+        ...options,
+      });
+      return resolved?.id ?? null;
+    },
   };
 }
 
 // https://vite.dev/config/
 export default defineConfig({
   base: process.env.TREESITE_HANDLER_BASE || "/",
-  plugins: [react(), serveExampleArtifactPlugin()],
+  plugins: [resolveSharedImportsFromHandler(), react(), serveExampleArtifactPlugin()],
   resolve: {
+    dedupe: ["react", "react-dom", "d3"],
     alias: {
       "treesite-map": path.resolve(appRoot, "../shared/treesite-map/index.jsx"),
     },
