@@ -54,3 +54,23 @@ import artifact seemed to work just fine when I re-imported the "example.zip"
 seems to be an issue going from deploy view to edit view.
 
 small thing: the "stop deploy" button is white lettering on light background... can't read it.  needs darker background.
+
+-- above are marked done --
+
+6/12/2026
+
+section tiles still have the title overlay.  it should be gone.
+
+on mini-map: change direct navigation behavior with options.  create optional preferences/settings for mini-map behavior: 
+Current approach can be "click-jump".
+New behavior: add "go" arrow at the bottom right of mini-map to navigate main map to selected mini-map card.  Click on mini-map to navigate.   Mini-map navigation should behave like treemap.  this way the user can see the layout and labels without navigating directly to them.  the Star in the top left is always available to go home.  
+
+on mini-map:
+display option: on hover name of section or card should be displayed below the mini-map.  
+
+there should be a button to launch a new project.
+
+project should start off with a full page landing page.  click anywhere to enter.
+
+
+i could pretty easily keep projects and assets there... visual approach.
