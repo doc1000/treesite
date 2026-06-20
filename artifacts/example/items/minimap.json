@@ -5,5 +5,6 @@
   "section": "Navigation",
   "type": "text",
   "description": "The mini map shows the full site hierarchy so you can jump between top-level sections quickly.",
-  "value": 9
+  "value": 9,
+  "mapFace": "text"
 }
