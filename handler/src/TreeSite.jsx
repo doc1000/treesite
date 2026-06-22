@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import TreesiteMap from "treesite-map";
+import {
+  readMinimapLabelMode,
+  readMinimapNavMode,
+} from "treesite-map/minimap-prefs.js";
 import { TileTemplate } from "./tileTemplates";
 import { buildCardIndex } from "./cardIndex";
 import {
@@ -17,6 +21,10 @@ import {
   loadTreemapSchemeFile,
   sectionColorFromContent
 } from "./treemapColorScheme";
+import EntryGate, {
+  entryGateStorageKey,
+  findEntryGateNode
+} from "./EntryGate.jsx";
 import { resolveArtifactUrl } from "./artifactUrls.js";
 const COLOR_SCHEME_STORAGE_ID = "treesite.colorSchemeId";
 const COLOR_SCHEME_STORAGE_MINIMAP = "treesite.applySchemeToMinimap";
@@ -279,7 +287,8 @@ function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
 export default function TreeSite({
   siteData,
   artifactBase = "/artifact",
-  defaultSchemeId = null
+  defaultSchemeId = null,
+  artifactMeta = null
 }) {
   const schemesBase = `${String(artifactBase).replace(/\/$/, "")}/schemes`;
   const treesiteRef = useRef(null);
@@ -515,16 +524,6 @@ export default function TreeSite({
     });
 
     return nodes.length > 0 ? nodes : [displayRoot];
-  }, [displayRoot, showImmediateChildren, isMobile]);
-
-  const parentHeaderOverlayNodes = useMemo(() => {
-    if (!showImmediateChildren || isMobile) return [];
-    return displayRoot.descendants().filter(
-      d =>
-        d.depth === 1 &&
-        d.children &&
-        d.children.length > 0
-    );
   }, [displayRoot, showImmediateChildren, isMobile]);
 
   const mobileFocusStripContent = useMemo(() => {
@@ -814,6 +813,35 @@ export default function TreeSite({
     [goTo]
   );
 
+  const entryNode = useMemo(() => findEntryGateNode(siteData), [siteData]);
+  const entryStorageKey = entryGateStorageKey(artifactBase);
+  const [entryDismissed, setEntryDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setEntryDismissed(sessionStorage.getItem(entryStorageKey) === "1");
+    } catch {
+      setEntryDismissed(false);
+    }
+  }, [entryStorageKey]);
+
+  if (entryNode && !entryDismissed) {
+    return (
+      <EntryGate
+        meta={artifactMeta}
+        entryNode={entryNode}
+        onEnter={() => {
+          try {
+            sessionStorage.setItem(entryStorageKey, "1");
+          } catch {
+            /* ignore */
+          }
+          setEntryDismissed(true);
+        }}
+      />
+    );
+  }
+
   return (
     <div
       className={`treesite${sidebarExpanded ? "" : " treesite--sidebar-collapsed"}`}
@@ -1009,9 +1037,6 @@ export default function TreeSite({
                   }}
                 />
               ))}
-          {parentHeaderOverlayNodes.map(d => (
-            <ParentMapHeaderOverlay key={`map-hdr-${d.fullName}`} d={d} focusHeaderHeight={focusHeaderHeight} />
-          ))}
           {!stackPageChrome ? (
             <FocusLabel
               focus={focus}
@@ -1414,44 +1439,6 @@ function FocusedCardViewer({ item, iframeSrc, plainText, isNavHighlight }) {
   );
 }
 
-function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
-  const b = {
-    x: d.x0,
-    y: d.y0 + focusHeaderHeight,
-    w: d.x1 - d.x0,
-    h: d.y1 - d.y0
-  };
-  const node = d.data;
-  const kicker = node.kicker || node.source || node.publication;
-  const title = node.title || node.name;
-  const description = node.abstract || node.description;
-  const hasDesc = Boolean(description);
-  const overlayH = Math.round(
-    Math.min(
-      b.h,
-      Math.max(56, b.h * (hasDesc ? 0.62 : 0.36))
-    )
-  );
-
-  return (
-    <g
-      className="tree-node-parent-header-overlay"
-      transform={`translate(${b.x},${b.y})`}
-      pointerEvents="none"
-    >
-      <foreignObject width={Math.max(0, b.w)} height={overlayH}>
-        <div className="tile-parent-map-overlay" xmlns="http://www.w3.org/1999/xhtml">
-          {kicker && <div className="tile-kicker">{kicker}</div>}
-          <h3 className="tile-title">{title}</h3>
-          {description && (
-            <p className="tile-desc">{description}</p>
-          )}
-        </div>
-      </foreignObject>
-    </g>
-  );
-}
-
 function FocusLabel({ focus, headerHeight, hasParent }) {
   const title =
     focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
@@ -1650,41 +1637,99 @@ function Breadcrumbs({ focus, onSelect, includeBack = true }) {
  * We look up the matching d3 node on select to call goTo(d3Node).
  */
 function MiniMap({ root, focus, recentTrail, onSelect, sectionColor }) {
-  // Build a d3-node lookup by fullName for the onSelect adapter
+  const [navMode] = useState(() => readMinimapNavMode());
+  const [labelMode] = useState(() => readMinimapLabelMode());
+  const [drillFullName, setDrillFullName] = useState(null);
+  const [selectedFullName, setSelectedFullName] = useState(null);
+
   const nodeByFullName = useMemo(() => {
     const map = new Map();
     root.descendants().forEach(d => map.set(d.fullName, d));
     return map;
   }, [root]);
 
+  const treeWithIds = useMemo(() => cloneTreeWithFullNames(root), [root]);
+
+  function resolveD3(fullName) {
+    if (fullName === null) return root;
+    return nodeByFullName.get(fullName) ?? null;
+  }
+
   function handleSelect(fullName) {
-    if (fullName === null) { onSelect(root); return; }
-    const d = nodeByFullName.get(fullName);
+    if (fullName === null) {
+      setDrillFullName(null);
+      setSelectedFullName(null);
+      onSelect(root);
+      return;
+    }
+    setSelectedFullName(fullName);
+    if (navMode === "click-jump") {
+      const d = resolveD3(fullName);
+      if (d) onSelect(d);
+    }
+  }
+
+  function handleOpen(fullName) {
+    if (navMode !== "click-jump") return;
+    const d = resolveD3(fullName);
+    if (d) onSelect(d);
+  }
+
+  function handleGo(fullName) {
+    const d = resolveD3(fullName);
     if (d) onSelect(d);
   }
 
   function getNodeColor(data) {
-    // Reconstruct fullName from data alone isn't possible; use the pre-built map
-    // by falling back to type-based colors for unknown nodes.
-    return data.color || "#8b79b8";
+    if (sectionColor && data) {
+      const d = nodeByFullName.get(data.__fullName);
+      if (d) return sectionColor(d);
+    }
+    return data?.color || "#8b79b8";
   }
+
+  const hint =
+    navMode === "explore"
+      ? "explore, then Go"
+      : "click to jump";
 
   return (
     <div className="mini-wrap">
       <div className="mini-label">
         <span>Mini Map</span>
-        <span>click to jump</span>
+        <span>{hint}</span>
       </div>
       <TreesiteMap
-        tree={root.data}
+        tree={treeWithIds}
+        getNodeId={(data) => data.__fullName}
         getNodeColor={getNodeColor}
+        selectedId={selectedFullName}
         focusId={focus.fullName}
+        drillId={navMode === "explore" ? drillFullName : null}
+        onDrillChange={setDrillFullName}
+        navMode={navMode}
+        labelMode={labelMode}
         goldenPath={recentTrail}
         onSelect={handleSelect}
-        onOpen={handleSelect}
+        onOpen={handleOpen}
+        onGo={handleGo}
+        onHome={() => {
+          setDrillFullName(null);
+          setSelectedFullName(null);
+        }}
         width={240}
         height={130}
       />
     </div>
   );
+}
+
+function cloneTreeWithFullNames(d3Node) {
+  const childNodes = d3Node.children ? [...d3Node.children] : [];
+  const children = childNodes.map(cloneTreeWithFullNames);
+  return {
+    ...d3Node.data,
+    __fullName: d3Node.fullName,
+    ...(children.length ? { children } : {})
+  };
 }

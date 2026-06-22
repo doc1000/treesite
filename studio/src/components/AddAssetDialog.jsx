@@ -212,6 +212,7 @@ function PdfTab({ artifactName, defaultSection, onSuccess, onClose }) {
 
 function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
   const [form, setForm] = useState({ name: "", section: defaultSection ?? "", url: "" });
+  const [capturePreview, setCapturePreview] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [isPlaywright, setIsPlaywright] = useState(false);
@@ -224,7 +225,12 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
     setError(null);
     setPreviewWarning(null);
     try {
-      const result = await addWebsite(artifactName, { name: form.name.trim(), section: form.section.trim(), url: form.url.trim() });
+      const result = await addWebsite(artifactName, {
+        name: form.name.trim(),
+        section: form.section.trim(),
+        url: form.url.trim(),
+        skipPreview: !capturePreview,
+      });
       if (!result.ok) {
         const msg = result.error?.message || "add-website failed";
         setIsPlaywright(PLAYWRIGHT_PATTERN.test(msg));
@@ -255,6 +261,15 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
       <Field label="URL *">
         <input style={INPUT_STYLE} type="url" value={form.url} required disabled={busy} placeholder="https://example.com" onChange={(e) => setForm({ ...form, url: e.target.value })} />
       </Field>
+      <label style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--muted, #666)", marginBottom: 4, alignItems: "center" }}>
+        <input
+          type="checkbox"
+          checked={capturePreview}
+          disabled={busy}
+          onChange={(e) => setCapturePreview(e.target.checked)}
+        />
+        Capture front page as card preview (optional; needs Playwright)
+      </label>
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
         Screenshot preview requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview image is generated when Playwright is available.
       </p>
@@ -278,6 +293,7 @@ function WebsiteTab({ artifactName, defaultSection, onSuccess, onClose }) {
 
 function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
   const [form, setForm] = useState({ name: "", section: defaultSection ?? "" });
+  const [capturePreview, setCapturePreview] = useState(true);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -292,7 +308,11 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
     setError(null);
     setPreviewWarning(null);
     try {
-      const result = await addHtml(artifactName, { name: form.name.trim(), section: form.section.trim() }, file);
+      const result = await addHtml(
+        artifactName,
+        { name: form.name.trim(), section: form.section.trim(), skipPreview: !capturePreview },
+        file,
+      );
       if (!result.ok) {
         const msg = result.error?.message || "add-html failed";
         setIsPlaywright(PLAYWRIGHT_PATTERN.test(msg));
@@ -336,6 +356,22 @@ function HtmlTab({ artifactName, defaultSection, onSuccess, onClose }) {
           {file.name} ({(file.size / 1024).toFixed(0)} KB)
         </p>
       )}
+      <label style={{
+        display: "flex",
+        gap: 8,
+        fontSize: 11,
+        color: "var(--muted, #666)",
+        marginBottom: 4,
+        alignItems: "center",
+      }}>
+        <input
+          type="checkbox"
+          checked={capturePreview}
+          disabled={busy}
+          onChange={(e) => setCapturePreview(e.target.checked)}
+        />
+        Capture front page as card preview (optional; needs Playwright)
+      </label>
       <p style={{ fontSize: 11, color: "var(--muted, #666)", margin: "0 0 4px" }}>
         Preview screenshot requires Playwright (cd handler &amp;&amp; npx playwright install chromium). Card is always created; preview image is generated when Playwright is available.
       </p>

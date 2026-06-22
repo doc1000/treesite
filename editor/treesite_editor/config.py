@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -45,6 +46,30 @@ class TreeSiteConfig(BaseSettings):
         return (root / path).resolve()
 
 
+def load_repo_dotenv() -> None:
+    """Load repo-root .env into os.environ (LangSmith, etc.) without overwriting existing vars."""
+    env_path = find_repo_root() / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(env_path, override=False)
+        return
+    except ImportError:
+        pass
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, _, value = stripped.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"', '"').strip("'", "'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 @lru_cache
 def get_config() -> TreeSiteConfig:
+    load_repo_dotenv()
     return TreeSiteConfig()

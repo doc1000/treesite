@@ -3,6 +3,7 @@ import { INTENTS } from "../nav/intents.js";
 
 const ACTIONS = [
   { key: "see", icon: "🗂", label: "See Artifacts" },
+  { key: "newProject", icon: "＋", label: "New Project" },
   { key: "import", icon: "⬇", label: "Import Artifact" },
   { key: "validate", icon: "◇", label: "Validate Artifact" },
   { key: "openPreview", icon: "⬡", label: "Open Preview" },
@@ -15,6 +16,7 @@ export default function TopCommandBar({
   editStudioActive,
   busy,
   onSeeArtifacts,
+  onNewProject,
   onImport,
   onValidate,
   onOpenPreview,
@@ -29,6 +31,7 @@ export default function TopCommandBar({
 
   const handlers = {
     see: onSeeArtifacts,
+    newProject: onNewProject,
     import: () => fileRef.current?.click(),
     validate: onValidate,
     openPreview: onOpenPreview,

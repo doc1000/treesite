@@ -330,6 +330,37 @@ async function handler(req, res, next) {
     return;
   }
 
+  // ── POST /artifacts/create ────────────────────────────────────────────────
+  if (req.method === "POST" && pathname === "/artifacts/create") {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "BAD_REQUEST", message: err.message } }, 400);
+      return;
+    }
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) {
+      sendJSON(res, { ok: false, error: { code: "INVALID_INPUT", message: "name is required" } }, 400);
+      return;
+    }
+    try {
+      const result = await spawnTool(
+        "create-artifact",
+        ARTIFACTS_BASE,
+        {
+          name,
+          displayName: body.displayName,
+          tagline: body.tagline,
+        },
+      );
+      sendJSON(res, result);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: { code: "CREATE_FAILED", message: err.message } }, 500);
+    }
+    return;
+  }
+
   // ── GET /artifacts/:name/export ─────────────────────────────────────────────
   const exportMatch = pathname.match(/^\/artifacts\/([^/]+)\/export$/);
   if (req.method === "GET" && exportMatch) {

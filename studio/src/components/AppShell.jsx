@@ -10,16 +10,6 @@ import { useNavigation } from "../nav/useNavigation.js";
 import { useGamepad } from "../nav/gamepad.js";
 import { useDispatch, useStore } from "../state/studioStore.jsx";
 
-const RAIL_ITEMS = [
-  { icon: "🛠", label: "Tools", active: true },
-  { icon: "▣", label: "Content" },
-  { icon: "⌘", label: "Components" },
-  { icon: "◉", label: "Data" },
-  { icon: "▧", label: "Assets" },
-  { icon: "👁", label: "Preview" },
-  { icon: "?", label: "Help" },
-];
-
 export default function AppShell({
   manifest,
   selectedNodeId,
@@ -111,16 +101,6 @@ export default function AppShell({
         navigation={navigation}
         zoneActive={activeZoneId === "topbar"}
       />
-
-      <nav className="shell-panel rail" aria-label="Right ribbon tools">
-        <div className="triangle" title="Joydrive focus marker" />
-        {RAIL_ITEMS.map((item) => (
-          <div key={item.label} className={`rail-button${item.active ? " active" : ""}`}>
-            <b>{item.icon}</b>
-            <span>{item.label}</span>
-          </div>
-        ))}
-      </nav>
 
       <aside
         className={`shell-panel left-panel${activeZoneId === "explorer" ? " zone-active" : ""}`}

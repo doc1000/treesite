@@ -6,6 +6,16 @@ export async function listArtifacts() {
   return res.json();
 }
 
+export async function createProject({ name, displayName, tagline }) {
+  const res = await fetch(`${BASE}/artifacts/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, displayName, tagline }),
+  });
+  if (!res.ok) throw new Error(`createProject: HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function listFiles(name) {
   const res = await fetch(`${BASE}/artifacts/${encodeURIComponent(name)}/files`);
   if (!res.ok) throw new Error(`listFiles: HTTP ${res.status}`);
@@ -167,14 +177,14 @@ export async function addPdf(artifactName, { name, section, description, value }
   return res.json();
 }
 
-export async function addWebsite(artifactName, { name, section, url }) {
-  return runTool(artifactName, "add-website", { name, section, url });
+export async function addWebsite(artifactName, { name, section, url, skipPreview = false }) {
+  return runTool(artifactName, "add-website", { name, section, url, skipPreview });
 }
 
-export async function addHtml(artifactName, { name, section }, file) {
+export async function addHtml(artifactName, { name, section, skipPreview = false }, file) {
   const form = new FormData();
   form.append("artifactName", artifactName);
-  form.append("fields", JSON.stringify({ name, section }));
+  form.append("fields", JSON.stringify({ name, section, skipPreview }));
   if (file) form.append("file", file);
   const res = await fetch(`${BASE}/intake/add-html`, { method: "POST", body: form });
   return res.json();

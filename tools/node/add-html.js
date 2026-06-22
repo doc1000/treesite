@@ -105,12 +105,17 @@ async function main() {
   const previewRel = artifactAssetRel("html", slug, previewFilename);
 
   // Attempt preview — non-fatal. Card is created regardless.
-  // Preview regenerates automatically on next deploy if skipped now.
-  let previewResult;
+  let previewResult = { ok: false, warning: "Preview skipped by request." };
+  const skipPreview =
+    args.skipPreview === true ||
+    args.skipPreview === "true" ||
+    args.skipPreview === 1 ||
+    args.skipPreview === "1";
+
   if (typeof args.image === "string" && args.image.trim()) {
     await fs.copyFile(path.resolve(args.image), previewOutputPath);
     previewResult = { ok: true };
-  } else {
+  } else if (!skipPreview) {
     previewResult = await captureHtmlPreview({ pagePath: indexPath, outputPath: previewOutputPath });
   }
 

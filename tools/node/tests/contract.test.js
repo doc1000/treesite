@@ -255,6 +255,23 @@ test("import_zip round-trip preserves item count", async () => {
   assert.equal(json.data.schemaVersion, 1);
 });
 
+test("create_artifact scaffolds valid bundle", async () => {
+  const parent = path.dirname(exampleArtifact);
+  const unique = `test-create-${Date.now()}`;
+  const { json, status } = runTool("create-artifact", parent, {
+    name: unique,
+    displayName: "Test Create",
+    tagline: "Enter the site.",
+  });
+  assert.equal(status, 0);
+  assert.equal(json.ok, true);
+  const artifactPath = path.join(parent, json.data.name);
+  const validate = runTool("validate", artifactPath);
+  assert.equal(validate.status, 0);
+  assert.equal(validate.json.ok, true);
+  await fs.rm(artifactPath, { recursive: true, force: true });
+});
+
 test("export_zip is deterministic", async () => {
   const tmp = await copyArtifactToTemp();
   const zipA = path.join(path.dirname(tmp), `${path.basename(tmp)}-a.zip`);

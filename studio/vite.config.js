@@ -12,6 +12,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "treesite-map": path.resolve(__dirname, "../shared/treesite-map/index.jsx"),
+      "treesite-map/minimap-prefs.js": path.resolve(
+        __dirname,
+        "../shared/treesite-map/minimap-prefs.js",
+      ),
     },
   },
   server: { port: 5175, strictPort: true },

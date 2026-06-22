@@ -3,39 +3,24 @@
  *
  * Self-contained: computes its own treemap layout from a plain JSON tree.
  * Embeddable anywhere — no dependency on the outer app's navigation state.
- *
- * Props
- * ─────
- * tree          object    Plain tree: { name, children: [...], value? }
- *                         Leaf nodes need a numeric `value` or default to 1.
- * getNodeId     fn(data)  Returns a string ID for a node's raw data.
- *                         Default: data.id ?? path-from-root (see below).
- * getNodeColor  fn(data)  Returns a CSS color for a node's raw data.
- *                         Default: type-based color map.
- * selectedId    string    Highlight the selected node (solid ring).
- * focusId       string    Show a dashed focus rectangle.
- * goldenPath    string[]  Array of node IDs for the recent navigation trail.
- *                         Rendered as a glowing gold line with dots.
- * labels        bool      Show a section-name strip below the map (default: false).
- * onSelect      fn(id)    Called with the node's ID when clicked. First click selects;
- *                         a second click on the same node calls onOpen (if provided).
- * onOpen        fn(id)    Called on the second activation of the same node ("Go").
- * width         number    SVG width  (default 220)
- * height        number    SVG height (default 80)
  */
 import { useMemo, useState } from "react";
 import * as d3 from "d3";
-
-// ── Defaults ───────────────────────────────────────────────────────────────────
+import {
+  layoutTreeAtDrill,
+  nodeDisplayName,
+  shouldNavigateMainOnCellClick,
+  captionForModes,
+} from "./minimap-utils.js";
 
 const TYPE_COLORS = {
-  section:  "#8b79b8",
-  text:     "#5a9e7a",
-  website:  "#3578ff",
-  pdf:      "#e87d40",
-  href:     "#3578ff",
-  link:     "#3578ff",
-  contact:  "#5a9e7a",
+  section: "#8b79b8",
+  text: "#5a9e7a",
+  website: "#3578ff",
+  pdf: "#e87d40",
+  href: "#3578ff",
+  link: "#3578ff",
+  contact: "#5a9e7a",
   htmlCard: "#e8c040",
 };
 
@@ -44,21 +29,19 @@ function defaultColor(data) {
   return TYPE_COLORS[data.type] || "#3578ff";
 }
 
-// ── Layout ─────────────────────────────────────────────────────────────────────
-
 function computeLayout(tree, width, height) {
   const root = d3
     .hierarchy(tree, (n) => n.children)
     .sum((n) => (!n.children?.length ? Math.max(n.value ?? 1, 1) : 0))
     .sort((a, b) => b.value - a.value);
 
-  d3.treemap()
+  d3
+    .treemap()
     .tile(d3.treemapSquarify)
     .size([width, height])
     .paddingInner(1)
     .paddingOuter(1)(root);
 
-  // Assign IDs: use path-from-root as stable default
   root.each((node) => {
     node._pathId = node
       .ancestors()
@@ -70,61 +53,81 @@ function computeLayout(tree, width, height) {
   return root;
 }
 
-// ── Component ──────────────────────────────────────────────────────────────────
-
 export default function TreesiteMap({
   tree,
   getNodeId,
   getNodeColor,
   selectedId,
   focusId,
+  drillId = null,
+  onDrillChange,
   goldenPath = [],
   labels = false,
+  navMode = "explore",
+  labelMode = "hover",
   onSelect,
   onOpen,
+  onGo,
+  onHome,
   width = 220,
   height = 80,
 }) {
   const [lastClickedId, setLastClickedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
-  const { cells, focusRect, trailCells } = useMemo(() => {
-    if (!tree?.children?.length) return { cells: [], focusRect: null, trailCells: [] };
+  const getId = useMemo(
+    () => (getNodeId ? (data) => getNodeId(data) : (data) => data.id ?? data.name),
+    [getNodeId],
+  );
 
-    const root = computeLayout(tree, width, height);
+  const layoutTree = useMemo(
+    () => layoutTreeAtDrill(tree, drillId, getId),
+    [tree, drillId, getId],
+  );
 
-    const getId = getNodeId
+  const { cells, focusRect, trailCells, idToData } = useMemo(() => {
+    if (!layoutTree?.children?.length) {
+      return { cells: [], focusRect: null, trailCells: [], idToData: new Map() };
+    }
+
+    const root = computeLayout(layoutTree, width, height);
+    const getIdFromNode = getNodeId
       ? (d) => getNodeId(d.data)
       : (d) => d._pathId;
 
     const collected = [];
+    const dataMap = new Map();
     root.each((node) => {
-      if (node.depth === 0) return; // skip root background
+      if (node.depth === 0) return;
+      const id = getIdFromNode(node);
       collected.push({
-        id: getId(node),
+        id,
         data: node.data,
         depth: node.depth,
-        x0: node.x0, y0: node.y0,
-        x1: node.x1, y1: node.y1,
+        x0: node.x0,
+        y0: node.y0,
+        x1: node.x1,
+        y1: node.y1,
         hasChildren: (node.data.children?.length ?? 0) > 0,
       });
+      dataMap.set(id, node.data);
     });
 
-    // Focus rect
     let rect = null;
-    if (focusId) {
+    const highlightId = navMode === "explore" ? selectedId : focusId;
+    if (highlightId) {
       root.each((node) => {
-        if (getId(node) === focusId) {
+        if (getIdFromNode(node) === highlightId) {
           rect = { x0: node.x0, y0: node.y0, x1: node.x1, y1: node.y1 };
         }
       });
     }
 
-    // Golden path trail
     const trailSet = new Set(goldenPath);
     const trailCells = [];
     if (trailSet.size > 0) {
       root.each((node) => {
-        const id = getId(node);
+        const id = getIdFromNode(node);
         if (trailSet.has(id)) {
           const cx = (node.x0 + node.x1) / 2;
           const cy = (node.y0 + node.y1) / 2;
@@ -135,10 +138,9 @@ export default function TreesiteMap({
       trailCells.sort((a, b) => a.idx - b.idx);
     }
 
-    return { cells: collected, focusRect: rect, trailCells };
-  }, [tree, width, height, getNodeId, focusId, goldenPath]);
+    return { cells: collected, focusRect: rect, trailCells, idToData: dataMap };
+  }, [layoutTree, width, height, getNodeId, focusId, selectedId, navMode, goldenPath]);
 
-  // Golden path line
   const trailPath = useMemo(() => {
     if (trailCells.length < 2) return null;
     return d3
@@ -148,16 +150,29 @@ export default function TreesiteMap({
       .curve(d3.curveCatmullRom.alpha(0.5))(trailCells);
   }, [trailCells]);
 
-  // Collect top-level section names for labels strip
   const topLevelLabels = useMemo(() => {
-    if (!labels || !tree?.children?.length) return [];
-    return tree.children
+    if (!labels || !layoutTree?.children?.length) return [];
+    return layoutTree.children
       .filter((n) => n.name)
-      .map((n) => n.name.split(" ")[0]); // first word to keep compact
-  }, [labels, tree]);
+      .map((n) => n.name.split(" ")[0]);
+  }, [labels, layoutTree]);
+
+  const selectedName = selectedId
+    ? nodeDisplayName(idToData.get(selectedId))
+    : "";
+  const hoverName = hoveredId ? nodeDisplayName(idToData.get(hoveredId)) : "";
+  const caption = captionForModes({ labelMode, hoverName, selectedName });
 
   function handleCellClick(id) {
-    if (id === lastClickedId) {
+    const isRepeat = id === lastClickedId;
+    if (navMode === "explore") {
+      setLastClickedId(id);
+      onSelect?.(id);
+      const cell = cells.find((c) => c.id === id);
+      if (cell?.hasChildren) onDrillChange?.(id);
+      return;
+    }
+    if (shouldNavigateMainOnCellClick(navMode, isRepeat)) {
       onOpen?.(id);
     } else {
       setLastClickedId(id);
@@ -165,10 +180,24 @@ export default function TreesiteMap({
     }
   }
 
+  function handleStarClick(e) {
+    e.stopPropagation();
+    setLastClickedId(null);
+    onDrillChange?.(null);
+    onHome?.();
+    onSelect?.(null);
+  }
+
+  function handleGoClick(e) {
+    e.stopPropagation();
+    if (selectedId != null) onGo?.(selectedId);
+  }
+
   const colorFn = getNodeColor ?? ((data) => defaultColor(data));
+  const showGo = navMode === "explore";
 
   return (
-    <div style={{ display: "inline-block" }}>
+    <div style={{ position: "relative", display: "inline-block", width }}>
       <svg
         width={width}
         height={height}
@@ -177,7 +206,7 @@ export default function TreesiteMap({
       >
         {cells.map((cell) => {
           const isSelected = cell.id === selectedId;
-          const isFocused = cell.id === focusId;
+          const isFocused = cell.id === focusId && navMode === "click-jump";
           const w = Math.max(0, cell.x1 - cell.x0);
           const h = Math.max(0, cell.y1 - cell.y0);
           if (w <= 0 || h <= 0) return null;
@@ -195,11 +224,12 @@ export default function TreesiteMap({
               strokeWidth={isSelected ? 1.5 : 1}
               style={{ cursor: "pointer" }}
               onClick={() => handleCellClick(cell.id)}
+              onMouseEnter={() => setHoveredId(cell.id)}
+              onMouseLeave={() => setHoveredId((prev) => (prev === cell.id ? null : prev))}
             />
           );
         })}
 
-        {/* Focus rect */}
         {focusRect && (
           <rect
             x={focusRect.x0}
@@ -214,7 +244,6 @@ export default function TreesiteMap({
           />
         )}
 
-        {/* Golden path line */}
         {trailPath && (
           <path
             d={trailPath}
@@ -230,7 +259,6 @@ export default function TreesiteMap({
           />
         )}
 
-        {/* Golden path dots */}
         {trailCells.map((tc, i) => (
           <circle
             key={`trail-${tc.id}-${i}`}
@@ -248,7 +276,6 @@ export default function TreesiteMap({
           />
         ))}
 
-        {/* Star / home anchor */}
         <path
           d={d3.symbol(d3.symbolStar, 64)()}
           transform="translate(10,10)"
@@ -259,11 +286,55 @@ export default function TreesiteMap({
             cursor: "pointer",
             filter: "drop-shadow(0 0 5px rgba(255,209,102,0.9))",
           }}
-          onClick={(e) => { e.stopPropagation(); onSelect?.(null); }}
+          onClick={handleStarClick}
         />
       </svg>
 
-      {/* Labels strip */}
+      {showGo && (
+        <button
+          type="button"
+          aria-label="Go to selected section on main map"
+          title="Go"
+          onClick={handleGoClick}
+          disabled={selectedId == null}
+          style={{
+            position: "absolute",
+            right: 4,
+            bottom: caption ? 22 : 4,
+            width: 28,
+            height: 22,
+            padding: 0,
+            fontSize: 14,
+            lineHeight: 1,
+            borderRadius: 4,
+            border: "1px solid rgba(255,255,255,0.35)",
+            background: "rgba(0,0,0,0.55)",
+            color: "#fff",
+            cursor: selectedId == null ? "default" : "pointer",
+            opacity: selectedId == null ? 0.45 : 1,
+          }}
+        >
+          →
+        </button>
+      )}
+
+      {caption ? (
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.72)",
+            marginTop: 4,
+            minHeight: 16,
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            textOverflow: "ellipsis",
+            width,
+          }}
+        >
+          {caption}
+        </div>
+      ) : null}
+
       {labels && topLevelLabels.length > 0 && (
         <div
           style={{
@@ -277,7 +348,16 @@ export default function TreesiteMap({
           }}
         >
           {topLevelLabels.map((lbl) => (
-            <span key={lbl} style={{ flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", textAlign: "center" }}>
+            <span
+              key={lbl}
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                textAlign: "center",
+              }}
+            >
               {lbl}
             </span>
           ))}

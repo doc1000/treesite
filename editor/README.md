@@ -23,6 +23,16 @@ Environment variables (prefix `TREESITE_`) or an `.env` file in the repo root:
 | `TREESITE_DEFAULT_ARTIFACT` | `artifacts/example` | Default artifact path |
 | `TREESITE_LOG_LEVEL` | `INFO` | Structured log level |
 
+LangSmith tracing (optional, repo-root `.env`, loaded into `os.environ` when the SDK starts):
+
+| Variable | Meaning |
+|----------|---------|
+| `LANGSMITH_TRACING` | Set to `true` to enable LangSmith traces for LangGraph runs |
+| `LANGSMITH_API_KEY` | LangSmith API key |
+| `LANGSMITH_PROJECT` | LangSmith project name (e.g. `treesite-studio`) |
+
+Do not commit `.env`; it is gitignored at the repo root.
+
 ## Quick start — inspect
 
 ```bash

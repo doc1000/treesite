@@ -83,6 +83,10 @@ export default defineConfig({
     dedupe: ["react", "react-dom", "d3"],
     alias: {
       "treesite-map": path.resolve(appRoot, "../shared/treesite-map/index.jsx"),
+      "treesite-map/minimap-prefs.js": path.resolve(
+        appRoot,
+        "../shared/treesite-map/minimap-prefs.js",
+      ),
     },
   },
   envPrefix: "VITE_",

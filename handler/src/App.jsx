@@ -100,6 +100,7 @@ export default function App() {
         siteData={loadState.siteData}
         artifactBase={loadState.artifactBase}
         defaultSchemeId={loadState.meta.defaultSchemeId}
+        artifactMeta={loadState.meta}
       />
       {import.meta.env.DEV ? (
         <DevArtifactSwitcher onReload={() => setReloadToken(t => t + 1)} />

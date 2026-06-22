@@ -77,7 +77,16 @@ async function main() {
 
   // Attempt preview — non-fatal. Card is created regardless.
   // Preview regenerates automatically on next deploy if skipped now.
-  const previewResult = await captureWebsitePreview({ url, outputPath: previewOutputPath });
+  const skipPreview =
+    args.skipPreview === true ||
+    args.skipPreview === "true" ||
+    args.skipPreview === 1 ||
+    args.skipPreview === "1";
+
+  let previewResult = { ok: false, warning: "Preview skipped by request." };
+  if (!skipPreview) {
+    previewResult = await captureWebsitePreview({ url, outputPath: previewOutputPath });
+  }
 
   const item = {
     id: randomUUID(),

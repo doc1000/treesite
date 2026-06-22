@@ -127,6 +127,10 @@ export default function TreemapWorkspace({
       id: node.data.id,
       slug: node.data.slug,
       name: node.data.name || node.data.title || node.data.slug || "",
+      description:
+        node.data.description ||
+        node.data.abstract ||
+        "",
       type: node.data.type,
       color: nodeColor(node.data),
       hasChildren: (node.data.children?.length ?? 0) > 0,
@@ -278,7 +282,13 @@ export default function TreemapWorkspace({
             const selected = Boolean(cell.id && cell.id === selectedNodeId);
             const navFocus = Boolean(cell.id && cell.id === navFocusCellId);
             const labelSize = Math.min(13, Math.max(9, cw / 12));
-            const maxChars = Math.floor(cw / (labelSize * 0.6));
+            const descSize = Math.max(8, labelSize - 2);
+            const maxTitleChars = Math.floor(cw / (labelSize * 0.55));
+            const maxDescChars = Math.floor(cw / (descSize * 0.52));
+            const titleY = ch * 0.42;
+            const descY = ch * 0.58;
+            const showText = cw > 48 && ch > 36;
+            const showDesc = showText && ch > 52 && cell.description;
 
             return (
               <g
@@ -313,30 +323,33 @@ export default function TreemapWorkspace({
                   strokeWidth={navFocus ? 3 : selected ? 2.5 : 0.8}
                   strokeOpacity={navFocus || selected ? 1 : 0.5}
                 />
-                {cw > 36 && ch > 22 && (
-                  <text
-                    x={10}
-                    y={Math.min(20, ch / 2 + 5)}
-                    fill="#ffffff"
-                    fontSize={labelSize}
-                    fontWeight="600"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {truncate(cell.name, maxChars)}
-                  </text>
-                )}
-                {cw > 60 && ch > 40 && cell.type && (
-                  <text
-                    x={10}
-                    y={Math.min(34, ch / 2 + 18)}
-                    fill="#ffffff"
-                    fontSize={9}
-                    fillOpacity={0.65}
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {cell.type}
-                    {cell.hasChildren ? " ›" : ""}
-                  </text>
+                {showText && (
+                  <>
+                    <text
+                      x={cw / 2}
+                      y={titleY}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize={labelSize}
+                      fontWeight="600"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {truncate(cell.name, maxTitleChars)}
+                    </text>
+                    {showDesc && (
+                      <text
+                        x={cw / 2}
+                        y={descY}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize={descSize}
+                        fillOpacity={0.78}
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {truncate(cell.description, maxDescChars)}
+                      </text>
+                    )}
+                  </>
                 )}
               </g>
             );

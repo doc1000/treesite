@@ -1638,6 +1638,50 @@ body {
   font-size: 0.9rem;
 }
 
+.treesite-entry-gate {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem;
+  cursor: pointer;
+  text-align: center;
+  color: #eef4fb;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(54, 120, 255, 0.18), transparent 45%),
+    #0b1118;
+}
+
+.treesite-entry-gate__inner {
+  max-width: 640px;
+}
+
+.treesite-entry-gate h1 {
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.treesite-entry-gate__tagline {
+  font-size: 1.05rem;
+  opacity: 0.85;
+  margin: 0 0 1.25rem;
+}
+
+.treesite-entry-gate__body {
+  font-size: 1rem;
+  line-height: 1.55;
+  opacity: 0.78;
+  margin: 0 0 2rem;
+}
+
+.treesite-entry-gate__hint {
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin: 0;
+}
+
 .dev-artifact-switcher {
   position: fixed;
   left: 0;

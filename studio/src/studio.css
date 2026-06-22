@@ -56,7 +56,7 @@ button {
   height: 100vh;
   padding: 10px;
   display: grid;
-  grid-template-columns: 300px minmax(520px, 1fr) 340px 72px;
+  grid-template-columns: 300px minmax(520px, 1fr) 340px;
   grid-template-rows: 54px minmax(0, 1fr);
   gap: 8px;
 }
@@ -358,6 +358,19 @@ button {
   gap: 8px;
   margin-top: 10px;
   align-items: center;
+}
+
+.mini-controls--prefs {
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.mini-controls--prefs select {
+  background: #111821;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 2px 4px;
 }
 
 .mini-controls button {
@@ -791,6 +804,6 @@ textarea {
 
 @media (max-width: 1200px) {
   .app-shell {
-    grid-template-columns: 280px 1fr 310px 62px;
+    grid-template-columns: 280px 1fr 310px;
   }
 }

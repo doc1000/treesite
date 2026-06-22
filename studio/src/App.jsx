@@ -12,6 +12,7 @@ import {
   validate,
   uploadFile,
   importZip,
+  createProject,
   openPreview,
   getPreviewStatus,
   revealArtifact,
@@ -268,6 +269,36 @@ export default function App() {
     [dispatch, refreshArtifacts],
   );
 
+  const handleNewProject = useCallback(async () => {
+    const displayName = window.prompt("Project display name?", "My TreeSite");
+    if (displayName == null || !displayName.trim()) return;
+    setCommandBusy(true);
+    setAppError(null);
+    try {
+      const list = await refreshArtifacts();
+      const names = new Set(list.map((a) => a.name));
+      const baseSlug = slugFromZipName(`${displayName.trim()}.zip`);
+      const dirName = pickImportDestName(baseSlug, names);
+      const result = await createProject({
+        name: dirName,
+        displayName: displayName.trim(),
+        tagline: "Click anywhere to enter.",
+      });
+      if (!result.ok) {
+        setAppError(result.error?.message || "Could not create project");
+        return;
+      }
+      const created = result.data?.name || dirName;
+      await refreshArtifacts();
+      dispatch({ type: "SELECT_ARTIFACT", payload: created });
+    } catch (err) {
+      console.error(err);
+      setAppError(err.message || "Could not create project");
+    } finally {
+      setCommandBusy(false);
+    }
+  }, [dispatch, refreshArtifacts]);
+
   const handleExport = useCallback(() => {
     if (!selectedArtifact) {
       setAppError("Select an artifact first.");
@@ -332,6 +363,7 @@ export default function App() {
         appError,
         onDismissError: () => setAppError(null),
         onSeeArtifacts: handleSeeArtifacts,
+        onNewProject: handleNewProject,
         onImport: handleImport,
         onValidate: handleValidate,
         onOpenPreview: handleOpenPreview,
