@@ -38,7 +38,7 @@ export function MobileTileContent({ node, box }) {
       {kickerPick ? (
         <div className="tile-mobile__kicker">{kickerPick}</div>
       ) : null}
-      <h3 className="tile-mobile__title">{title}</h3>
+      <h2 className="tile-mobile__title">{title}</h2>
       {descShort ? (
         <p className="tile-mobile__desc">{descShort}</p>
       ) : null}
@@ -154,7 +154,7 @@ export function TileTemplate({
   const headerBlock = (
     <div>
       {kicker && <div className="tile-kicker">{kicker}</div>}
-      <h3 className="tile-title">{title}</h3>
+      <h2 className="tile-title">{title}</h2>
       <p className="tile-desc">{description}</p>
     </div>
   );
@@ -258,7 +258,7 @@ function MinimalTile({ title, description, small, labelsAtBottom, suppressTileLa
         labelsAtBottom ? "tile-minimal--labels-bottom" : ""
       }`}
     >
-      <h3 className="tile-title">{title}</h3>
+      <h2 className="tile-title">{title}</h2>
       {description && <p className="tile-desc">{description}</p>}
     </div>
   );
@@ -361,7 +361,7 @@ function PdfTile({
         ) : (
           <div className="pdf-fallback-body">
             <div className="pdf-icon" aria-hidden="true">PDF</div>
-            <h3 className="tile-title">{title}</h3>
+            <h2 className="tile-title">{title}</h2>
             {description && <p className="tile-desc">{description}</p>}
           </div>
         )
@@ -376,7 +376,7 @@ function PdfTile({
           {!hideTextChrome && (
             <div className="pdf-overlay">
               <div className="tile-kicker">{node.kicker || node.source || "PDF"}</div>
-              <h3 className="tile-title">{title}</h3>
+              <h2 className="tile-title">{title}</h2>
               {description && <p className="tile-desc">{description}</p>}
             </div>
           )}
@@ -452,7 +452,7 @@ function WebsiteTile({
       {!hideTextChrome && (
         <div className="preview-overlay">
           <div className="tile-kicker">{node.kicker || fallbackKicker}</div>
-          <h3 className="tile-title">{title}</h3>
+          <h2 className="tile-title">{title}</h2>
           {description && <p className="tile-desc">{description}</p>}
         </div>
       )}
@@ -503,7 +503,7 @@ ${needs}`
     const header = (
       <div>
         <div className="tile-kicker">Contact</div>
-        <h3 className="tile-title">Schedule a Call</h3>
+        <h2 className="tile-title">Schedule a Call</h2>
         <p className="tile-desc">{node.description}</p>
       </div>
     );
@@ -546,7 +546,7 @@ ${needs}`
     >
       <div className="tile-card schedule-card">
         {!headerInMapOverlay && (
-          <h3 className="tile-title">Schedule a Call</h3>
+          <h2 className="tile-title">Schedule a Call</h2>
         )}
 
         <input
@@ -599,7 +599,7 @@ function ContactTile({ node, small, labelsAtBottom, suppressTileLabels, headerIn
   const body = (
     <div>
       <div className="tile-kicker">Contact</div>
-      <h3 className="tile-title">{node.name}</h3>
+      <h2 className="tile-title">{node.name}</h2>
       <p className="tile-desc">
         {node.description || "Need AI knowledge tools now? Reach out."}
       </p>

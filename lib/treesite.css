@@ -1535,11 +1535,11 @@ body {
   border: 0;
 }
 
-.tree-node:focus {
+.tree-node-target:focus {
   outline: none;
 }
 
-.tree-node:focus-visible rect {
+.tree-node-target:focus-visible {
   stroke: var(--ts-nav-ring);
   stroke-width: 4px;
   opacity: 0.95;

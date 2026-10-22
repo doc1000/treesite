@@ -63,6 +63,12 @@ function prefersReducedMotion() {
   }
 }
 
+/** Ends `text` with a full stop unless it already ends a sentence. */
+function sentence(text) {
+  const t = String(text ?? "").trim();
+  return /[.!?…]$/.test(t) ? t : `${t}.`;
+}
+
 /** True when a key event comes from a control that uses the key itself. */
 function isEditableTarget(target) {
   if (!target || typeof target.closest !== "function") return false;
@@ -924,7 +930,7 @@ export default function TreeSite({
       if (!wrap) return;
       const target =
         wrap.querySelector(".tileViewer [tabindex='0']") ||
-        wrap.querySelector(".tree-node[tabindex='0']");
+        wrap.querySelector(".tree-node-target[tabindex='0']");
       target?.focus();
     });
     return () => window.cancelAnimationFrame(id);
@@ -945,8 +951,8 @@ export default function TreeSite({
     const count = focus.children?.length || 0;
     const where = focus.depth === 0 ? rootDisplayTitle(focus.data) : nodePathLabel(focus);
     return count
-      ? `${where}. ${count} item${count === 1 ? "" : "s"}.`
-      : `${where}.`;
+      ? `${sentence(where)} ${count} item${count === 1 ? "" : "s"}.`
+      : sentence(where);
   }, [focus]);
 
   return (
@@ -957,9 +963,6 @@ export default function TreeSite({
       data-theme={theme}
       ref={treesiteRef}
     >
-      <p className="treesite-visually-hidden" role="status" aria-live="polite" aria-atomic="true">
-        {liveAnnouncement}
-      </p>
       <main
         className={`treesite-stage${stackPageChrome ? " treesite-stage--page-stack" : ""}${
           isMobile ? " treesite-stage--mobile-deck" : ""
@@ -972,6 +975,10 @@ export default function TreeSite({
           })
         }}
       >
+        <h1 className="treesite-visually-hidden">{rootDisplayTitle(root.data)}</h1>
+        <p className="treesite-visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+          {liveAnnouncement}
+        </p>
         {stackPageChrome ? (
           <header className="treesite-mobile-header">
             <nav className="treesite-focus-back" aria-label="Go back">
@@ -1075,16 +1082,6 @@ export default function TreeSite({
               <g
                 key={d.fullName}
                 transform={`translate(${b.x},${b.y})`}
-                {...(!useFocusedViewer && !isChildPreview
-                  ? {
-                      role: "button",
-                      tabIndex: 0,
-                      "aria-label": `${d.data.name}${
-                        d.children?.length ? `, ${d.children.length} items` : ""
-                      }. Open.`,
-                      onKeyDown: e => onTileKeyDown(e, d)
-                    }
-                  : {})}
                 onClick={
                   useFocusedViewer
                     ? undefined
@@ -1101,6 +1098,19 @@ export default function TreeSite({
                 aria-hidden={isChildPreview ? "true" : undefined}
               >
                 <rect
+                  // The tile background is the keyboard target: a sibling of the tile's
+                  // content, so links inside the tile are not nested in a button.
+                  {...(!useFocusedViewer && !isChildPreview
+                    ? {
+                        className: "tree-node-target",
+                        role: "button",
+                        tabIndex: 0,
+                        "aria-label": `${sentence(
+                          `${d.data.name}${d.children?.length ? `, ${d.children.length} items` : ""}`
+                        )} Open.`,
+                        onKeyDown: e => onTileKeyDown(e, d)
+                      }
+                    : {})}
                   width={Math.max(0, b.w)}
                   height={Math.max(0, b.h)}
                   rx={isMobile ? 12 : 16}
@@ -1308,8 +1318,9 @@ export default function TreeSite({
                       ref={searchInputRef}
                       className="treesite-search"
                       placeholder="Search the website"
+                      aria-label="Search the website"
                       aria-autocomplete="list"
-                      aria-controls="treesite-search-results"
+                      aria-controls={searchMatches.length > 0 ? "treesite-search-results" : undefined}
                       value={query}
                       onChange={e => setQuery(e.target.value)}
                     />
@@ -1689,7 +1700,7 @@ function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
       <foreignObject width={Math.max(0, b.w)} height={overlayH}>
         <div className="tile-parent-map-overlay" xmlns="http://www.w3.org/1999/xhtml">
           {kicker && <div className="tile-kicker">{kicker}</div>}
-          <h3 className="tile-title">{title}</h3>
+          <h2 className="tile-title">{title}</h2>
           {description && (
             <p className="tile-desc">{description}</p>
           )}
