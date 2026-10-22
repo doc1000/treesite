@@ -21,6 +21,7 @@ import {
 import {
   assignFullNames,
   displayWeight,
+  MOBILE_MIN_TILE_PX,
   runTreemapLayout,
   siblingSortComparator
 } from "./layout.js";
@@ -528,9 +529,17 @@ export default function TreeSite({
   const treemapTopInset = stackPageChrome ? 0 : dims.height * FOCUS_HEADER_RATIO;
   const focusHeaderHeight = treemapTopInset;
 
+  /** Mobile deck height: grows past the viewport so every row stays readable. */
+  const deckHeight = isMobile
+    ? Math.max(
+        contentHeight,
+        (focus.children?.length || 1) * MOBILE_MIN_TILE_PX + 12
+      )
+    : contentHeight;
+
   const displayRoot = useMemo(() => {
     const r = d3.hierarchy(focus.data).sort(siblingSortComparator);
-    runTreemapLayout(r, dims.width, contentHeight, {
+    runTreemapLayout(r, dims.width, deckHeight, {
       isMobile,
       showImmediateChildren
     });
@@ -545,8 +554,7 @@ export default function TreeSite({
     focus,
     focus.fullName,
     dims.width,
-    dims.height,
-    contentHeight,
+    deckHeight,
     showImmediateChildren,
     isMobile
   ]);
@@ -1006,7 +1014,12 @@ export default function TreeSite({
             className={`treesite-chart${chartNavigating ? " treesite-chart-navigating" : ""}${
               isMobile ? " treesite-chart--deck" : ""
             }`}
-            viewBox={`0 0 ${dims.width} ${dims.height}`}
+            viewBox={`0 0 ${dims.width} ${deckHeight + treemapTopInset}`}
+            style={
+              deckHeight > contentHeight
+                ? { height: `${deckHeight + treemapTopInset}px` }
+                : undefined
+            }
           >
           {visibleNodes.map(d => {
             const bRaw = {
@@ -1656,7 +1669,9 @@ function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
   const node = d.data;
   const kicker = node.kicker || node.source || node.publication;
   const title = node.title || node.name;
-  const description = node.abstract || node.description;
+  // The overlay has room for the full description; `abstract` is the short form
+  // used where only one line fits (the focus label).
+  const description = node.description || node.abstract;
   const hasDesc = Boolean(description);
   const overlayH = Math.round(
     Math.min(

@@ -838,6 +838,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* Keep the kicker visible when a row is shorter than its text. */
+  justify-content: safe center;
   gap: 6px;
   padding: 12px 14px;
   pointer-events: none;
@@ -896,6 +898,7 @@ body {
 
 .treesite-stage--mobile-deck .treesite-chart-wrap {
   min-height: min(62vh, 560px);
+  overflow-y: auto;
 }
 
 .tile-minimal {
@@ -1798,4 +1801,77 @@ body {
   .treesite[data-theme="light"] .treesite-mobile-focus-strip-desc {
     color: #5d6c66;
   }
+}
+
+/* Light theme tiles: tile rects are translucent, so on the light stage the fills read
+ * as pale tints. Text switches to dark ink; image tiles keep their dark overlays. */
+
+.treesite[data-theme="light"] .tile-html,
+.treesite[data-theme="light"] .tile-title,
+.treesite[data-theme="light"] .tile-mobile__title,
+.treesite[data-theme="light"] .tile-parent-map-overlay {
+  color: #13251f;
+}
+
+.treesite[data-theme="light"] .tile-title,
+.treesite[data-theme="light"] .tile-mobile__title {
+  text-shadow: none;
+}
+
+.treesite[data-theme="light"] .tile-desc,
+.treesite[data-theme="light"] .tile-minimal .tile-desc,
+.treesite[data-theme="light"] .tile-mobile__desc,
+.treesite[data-theme="light"] .tile-links {
+  color: #33433d;
+}
+
+.treesite[data-theme="light"] .tile-kicker,
+.treesite[data-theme="light"] .tile-mobile__kicker {
+  color: #245c46;
+}
+
+.treesite[data-theme="light"] .tile-parent-map-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.62) 45%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+}
+
+.treesite[data-theme="light"] .tile-link {
+  border-color: rgba(36, 92, 70, 0.28);
+  background: rgba(255, 255, 255, 0.72);
+  color: #245c46;
+}
+
+.treesite[data-theme="light"] .tile-link:hover {
+  border-color: #245c46;
+  background: #ffffff;
+}
+
+.treesite[data-theme="light"] .tile-html-content {
+  border-color: rgba(19, 37, 31, 0.1);
+  background: rgba(255, 255, 255, 0.55);
+  color: #33433d;
+}
+
+.treesite[data-theme="light"] .focus-label text {
+  paint-order: stroke;
+}
+
+/* Image tiles keep a dark caption band, so their text stays light. */
+.treesite[data-theme="light"] .pdf-overlay .tile-title,
+.treesite[data-theme="light"] .preview-overlay .tile-title {
+  color: #ffffff;
+}
+
+.treesite[data-theme="light"] .pdf-overlay .tile-desc,
+.treesite[data-theme="light"] .preview-overlay .tile-desc {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.treesite[data-theme="light"] .pdf-overlay .tile-kicker,
+.treesite[data-theme="light"] .preview-overlay .tile-kicker {
+  color: rgba(255, 255, 255, 0.7);
 }
