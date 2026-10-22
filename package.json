@@ -1,0 +1,35 @@
+{
+  "name": "@doc1000/treesite",
+  "version": "0.1.0",
+  "description": "TreeSite engine: a website as a navigable treemap, with mini map, breadcrumbs, visited trail and outline navigation.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doc1000/treesite.git"
+  },
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./styles.css": "./lib/styles.css",
+    "./navigation.css": "./lib/navigation.css",
+    "./navMemory": "./lib/navMemory.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "docs/PACKAGE.md"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "dependencies": {
+    "d3": "^7.9.0",
+    "pdfjs-dist": "^5.7.284"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  }
+}

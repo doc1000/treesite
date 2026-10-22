@@ -1,0 +1,318 @@
+/*
+ * TreeSite navigation: mini map, breadcrumbs, visited trail and outline.
+ *
+ * Usable on its own (import "@doc1000/treesite/navigation.css") for pages that are
+ * not the map itself. Colors come from the --ts-nav-* tokens below; set
+ * data-theme="light" on any ancestor (for example <html>) for the light palette.
+ */
+
+:root {
+  --ts-nav-bg: rgba(7, 9, 15, 0.88);
+  --ts-nav-bg-hover: rgba(7, 9, 15, 0.96);
+  --ts-nav-border: rgba(255, 255, 255, 0.04);
+  --ts-nav-border-hover: rgba(255, 255, 255, 0.12);
+  --ts-nav-text: #f3f6ff;
+  --ts-nav-muted: #9aa8c7;
+  --ts-nav-faint: rgba(243, 246, 255, 0.48);
+  --ts-nav-btn-bg: rgba(255, 255, 255, 0.045);
+  --ts-nav-btn-bg-hover: rgba(255, 255, 255, 0.13);
+  --ts-nav-btn-border: rgba(255, 255, 255, 0.1);
+  --ts-nav-current-bg: rgba(157, 220, 255, 0.16);
+  --ts-nav-current-border: rgba(157, 220, 255, 0.5);
+  --ts-nav-ring: rgba(157, 220, 255, 0.92);
+  --ts-nav-trail: rgba(255, 209, 102, 0.95);
+  --ts-nav-trail-glow: rgba(255, 209, 102, 0.75);
+  --ts-nav-trail-dot: #ffd166;
+  --ts-nav-trail-dot-edge: #0b0f19;
+  --ts-nav-home: #fff1a8;
+  --ts-nav-focus: #fff;
+  --ts-nav-hover-stroke: rgba(255, 255, 255, 0.72);
+}
+
+[data-theme="light"] {
+  --ts-nav-bg: #ffffff;
+  --ts-nav-bg-hover: #ffffff;
+  --ts-nav-border: #d8ddd8;
+  --ts-nav-border-hover: #b9c3bd;
+  --ts-nav-text: #13251f;
+  --ts-nav-muted: #5d6c66;
+  --ts-nav-faint: #6f7d77;
+  --ts-nav-btn-bg: #f7f6f0;
+  --ts-nav-btn-bg-hover: #e7eee8;
+  --ts-nav-btn-border: #d8ddd8;
+  --ts-nav-current-bg: #e7eee8;
+  --ts-nav-current-border: #245c46;
+  --ts-nav-ring: #245c46;
+  --ts-nav-trail: #bd7d2d;
+  --ts-nav-trail-glow: rgba(189, 125, 45, 0.35);
+  --ts-nav-trail-dot: #bd7d2d;
+  --ts-nav-trail-dot-edge: #ffffff;
+  --ts-nav-home: #bd7d2d;
+  --ts-nav-focus: #13251f;
+  --ts-nav-hover-stroke: #13251f;
+}
+
+.mini-wrap {
+  width: 100%;
+  margin-top: 0;
+  flex-shrink: 0;
+  padding: 12px;
+  border: 1px solid var(--ts-nav-border);
+  border-radius: 18px;
+  background: var(--ts-nav-bg);
+  color: var(--ts-nav-text);
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.mini-wrap:hover {
+  border-color: var(--ts-nav-border-hover);
+  background: var(--ts-nav-bg-hover);
+}
+
+.mini-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--ts-nav-muted);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mini-label span:last-child {
+  color: var(--ts-nav-faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mini-map {
+  width: 100%;
+  height: 130px;
+  display: block;
+  overflow: visible;
+  cursor: crosshair;
+}
+
+.mini-map--large {
+  height: 260px;
+}
+
+.mini-map rect,
+.mini-map .mini-map-home {
+  cursor: pointer;
+  transition: opacity 0.18s ease, stroke 0.18s ease;
+  vector-effect: non-scaling-stroke;
+}
+
+.mini-map rect:hover {
+  opacity: 0.95;
+  stroke: var(--ts-nav-hover-stroke);
+}
+
+.mini-map rect:focus,
+.mini-map .mini-map-home:focus {
+  outline: none;
+}
+
+.mini-map rect:focus-visible,
+.mini-map .mini-map-home:focus-visible {
+  stroke: var(--ts-nav-ring);
+  stroke-width: 3px;
+  opacity: 1;
+}
+
+.mini-map .mini-map-parent:focus-visible {
+  fill: var(--ts-nav-current-bg);
+}
+
+.mini-map-trail {
+  stroke: var(--ts-nav-trail);
+  filter: drop-shadow(0 0 6px var(--ts-nav-trail-glow));
+  pointer-events: none;
+}
+
+.mini-map-trail-dot {
+  fill: var(--ts-nav-trail-dot);
+  stroke: var(--ts-nav-trail-dot-edge);
+  filter: drop-shadow(0 0 5px var(--ts-nav-trail-glow));
+  pointer-events: none;
+}
+
+.mini-map .mini-map-home {
+  fill: var(--ts-nav-home);
+  stroke: var(--ts-nav-trail-dot-edge);
+  filter: drop-shadow(0 0 6px var(--ts-nav-trail-glow));
+}
+
+.mini-map-focus {
+  stroke: var(--ts-nav-focus);
+  pointer-events: none;
+}
+
+.mini-here {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ts-nav-text);
+}
+
+.mini-here-label {
+  color: var(--ts-nav-muted);
+}
+
+/* Buttons shared by crumbs, trail and outline */
+
+.treesite-trail-btn,
+.treesite-outline-btn,
+.treesite-trail-clear,
+.treesite-navigator .treesite-crumb-btn {
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid var(--ts-nav-btn-border);
+  border-radius: 999px;
+  background: var(--ts-nav-btn-bg);
+  color: var(--ts-nav-text);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.treesite-trail-btn:hover,
+.treesite-outline-btn:hover,
+.treesite-trail-clear:hover,
+.treesite-navigator .treesite-crumb-btn:hover {
+  background: var(--ts-nav-btn-bg-hover);
+}
+
+.treesite-trail-btn:focus-visible,
+.treesite-outline-btn:focus-visible,
+.treesite-trail-clear:focus-visible,
+.treesite-crumb-btn:focus-visible,
+.treesite-minimap-size:focus-visible {
+  outline: 3px solid var(--ts-nav-ring);
+  outline-offset: 2px;
+}
+
+.treesite-trail-btn[aria-current],
+.treesite-outline-btn.is-current,
+.treesite-navigator .treesite-crumb-btn[aria-current] {
+  border-color: var(--ts-nav-current-border);
+  background: var(--ts-nav-current-bg);
+  font-weight: 650;
+}
+
+/* Visited trail */
+
+.treesite-trail {
+  margin-top: 12px;
+  color: var(--ts-nav-text);
+}
+
+.treesite-trail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--ts-nav-muted);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.treesite-trail-clear {
+  min-height: 26px;
+  padding: 2px 9px;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.treesite-trail-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.treesite-trail-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.treesite-trail-list li + li::before {
+  content: "→";
+  color: var(--ts-nav-muted);
+  font-size: 12px;
+}
+
+/* Outline */
+
+.treesite-outline {
+  color: var(--ts-nav-text);
+  font-size: 13px;
+}
+
+.treesite-outline ul {
+  margin: 4px 0 4px 10px;
+  padding: 0 0 0 10px;
+  border-left: 1px solid var(--ts-nav-btn-border);
+  list-style: none;
+}
+
+.treesite-outline li {
+  margin: 4px 0;
+}
+
+.treesite-outline-btn {
+  width: 100%;
+  border-radius: 10px;
+}
+
+/* Mini map size switch */
+
+.treesite-minimap-size {
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid var(--ts-nav-btn-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ts-nav-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.treesite-minimap-size:hover {
+  color: var(--ts-nav-text);
+}
+
+/* Standalone navigator (mini map + crumbs + trail outside the map view) */
+
+.treesite-navigator {
+  color: var(--ts-nav-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.treesite-crumbs--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-wrap,
+  .mini-map rect,
+  .mini-map .mini-map-home {
+    transition: none;
+  }
+}

@@ -115,6 +115,10 @@ The project is moving toward a clean separation between:
 
 Engine
 
+The engine is packaged as `@doc1000/treesite` (source in `lib/`, manifest in the root
+`package.json`). Other sites install it from GitHub; see [docs/PACKAGE.md](docs/PACKAGE.md)
+for install, props, the content format and the shared navigation standards.
+
 Handles:
 
 D3 treemap layout

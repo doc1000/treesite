@@ -412,7 +412,11 @@ function WebsiteTile({
   const links =
     node.links ||
     (openHref ? [{ label: defaultLinkLabel, href: openHref }] : []);
-  const hasLocalPreview = node.previewImage?.startsWith("/");
+  /** Preview images are bundled with the site (absolute or relative path), never fetched remotely. */
+  const hasLocalPreview =
+    typeof node.previewImage === "string" &&
+    node.previewImage.trim() !== "" &&
+    !/^[a-z][a-z0-9+.-]*:/i.test(node.previewImage.trim());
   const visualOnly = Boolean(suppressTileLabels);
   const hideTextChrome = visualOnly || headerInMapOverlay;
   const fallbackKicker =

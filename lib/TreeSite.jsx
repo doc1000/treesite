@@ -1,41 +1,73 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { TileTemplate } from "./tileTemplates";
-import { buildCardIndex } from "./cardIndex";
+import { TileTemplate } from "./tileTemplates.jsx";
+import { buildCardIndex } from "./cardIndex.js";
 import {
   applyCardSlugToFragment,
   parseCardHash,
   planNavigateSteps,
   runPlannedNavigateSteps,
   stripCardHashFromHistory
-} from "./cardNavigation";
+} from "./cardNavigation.js";
 import {
   buildSectionFillMap,
   createSectionColorFn,
   loadSchemeManifest,
   loadTreemapSchemeFile,
-  sectionColorFromContent
-} from "./treemapColorScheme";
+  sectionColorFromContent,
+  parseSchemeManifest,
+  parseTreemapScheme
+} from "./treemapColorScheme.js";
+import {
+  assignFullNames,
+  displayWeight,
+  runTreemapLayout,
+  siblingSortComparator
+} from "./layout.js";
+import {
+  Breadcrumbs,
+  CrumbBackButton,
+  MiniMap,
+  OutlineNav,
+  VisitedTrail
+} from "./Navigation.jsx";
+import { nodePathLabel } from "./navLabels.js";
 
-const COLOR_SCHEMES_BASE = "/color-schemes";
-const COLOR_SCHEME_STORAGE_ID = "treesite.colorSchemeId";
-const COLOR_SCHEME_STORAGE_MINIMAP = "treesite.applySchemeToMinimap";
+const DEFAULT_COLOR_SCHEMES_BASE = "/color-schemes";
 
-function readStoredSchemeId() {
+function readStored(key) {
   try {
-    const v = localStorage.getItem(COLOR_SCHEME_STORAGE_ID);
+    const v = localStorage.getItem(key);
     return v && v.trim() ? v.trim() : null;
   } catch {
     return null;
   }
 }
 
-function readStoredApplySchemeToMinimap() {
+function writeStored(key, value) {
   try {
-    return localStorage.getItem(COLOR_SCHEME_STORAGE_MINIMAP) === "1";
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
+
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia(REDUCED_MOTION_MEDIA).matches;
   } catch {
     return false;
   }
+}
+
+/** True when a key event comes from a control that uses the key itself. */
+function isEditableTarget(target) {
+  if (!target || typeof target.closest !== "function") return false;
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable=''], [contenteditable='true']")
+  );
 }
 
 /** Top fraction of the main map reserved for the current focus title (not treemap area). Desktop only. */
@@ -120,58 +152,6 @@ function rootDisplayTitle(data) {
   return pick(data.displayName) || pick(data.title) || pick(data.name) || "Home";
 }
 
-function displayWeight(d) {
-  const raw = Math.max(1, d.value || 1);
-  return d.children ? 0 : 1 + Math.log1p(raw) * 0.65;
-}
-
-function siblingSortComparator(a, b) {
-  const vb = Number(b.data.value) || 1;
-  const va = Number(a.data.value) || 1;
-  if (vb !== va) return vb - va;
-  return String(a.data.name || "").localeCompare(String(b.data.name || ""));
-}
-
-function leafSumWeight(isMobile, d) {
-  if (d.children) return 0;
-  return isMobile ? 1 : displayWeight(d);
-}
-
-function desktopTreemapPaddingTop(d, showImmediateChildren) {
-  if (d.depth === 0) return 0;
-  if (
-    showImmediateChildren &&
-    d.depth === 1 &&
-    d.children &&
-    d.children.length > 0
-  ) {
-    return 62;
-  }
-  return 18;
-}
-
-/**
- * Mutates hierarchy: sets `.sum` and runs treemap partition.
- */
-function runTreemapLayout(hierarchy, sizeW, sizeH, { isMobile, showImmediateChildren }) {
-  hierarchy.sum(d => leafSumWeight(isMobile, d));
-  const tm = d3.treemap().size([sizeW, sizeH]).round(true);
-
-  if (isMobile) {
-    tm.tile(d3.treemapSlice)
-      .paddingInner(6)
-      .paddingOuter(6)
-      .paddingTop(d => (d.children ? 32 : 0));
-  } else {
-    tm.tile(d3.treemapSquarify.ratio(1.2))
-      .paddingInner(2)
-      .paddingOuter(2)
-      .paddingTop(d => desktopTreemapPaddingTop(d, showImmediateChildren));
-  }
-
-  tm(hierarchy);
-}
-
 function isTreemapTileBoxInvalid(box) {
   const { x, y, w, h } = box;
   return (
@@ -184,7 +164,7 @@ function isTreemapTileBoxInvalid(box) {
   );
 }
 
-const INTERNAL_VIEWER_TYPES = new Set(["pdf", "htmlCard", "text", "section", "note", "markdown"]);
+const INTERNAL_VIEWER_TYPES = new Set(["pdf", "htmlCard", "text", "section", "note", "markdown", "article"]);
 
 /** Logical viewer URL / resource selector (iframe may omit `html` — see {@link getIframeSrc}). */
 function getViewerUrl(item) {
@@ -263,7 +243,7 @@ function isEmbeddableInternalItem(item) {
 
   if (item.type && INTERNAL_VIEWER_TYPES.has(item.type)) return true;
 
-  return ["html", "text", "content", "description", "summary"].some(
+  return ["body", "html", "text", "content", "description", "summary"].some(
     field => typeof item[field] === "string" && item[field].trim() !== ""
   );
 }
@@ -276,7 +256,48 @@ function shouldUseFocusedViewer(item, iframeSrc, plainTextBody) {
   return plainTextBody.trim().length > 0;
 }
 
-export default function TreeSite({ siteData }) {
+/** Long-form HTML shown as a readable article when the card is opened (`body` field). */
+function getArticleHtml(item) {
+  if (!item || typeof item !== "object") return null;
+  return typeof item.body === "string" && item.body.trim() ? item.body : null;
+}
+
+/**
+ * Living sitemap: the whole site as a navigable treemap.
+ *
+ * @param {object} props
+ * @param {object} props.siteData  Tree root (`{ name, children: [...] }`), e.g. from `applyContentItems`.
+ * @param {string} [props.colorSchemesBase]  URL folder holding `index.json` + scheme files.
+ * @param {{ manifest: object, docs: Record<string, object> }} [props.colorSchemes]
+ *   Inline schemes (skips fetching `colorSchemesBase`). `docs` maps scheme id to scheme document.
+ * @param {string} [props.colorSchemeId]  Controlled scheme id; pair with `onColorSchemeIdChange`.
+ * @param {(id: string) => void} [props.onColorSchemeIdChange]
+ * @param {"dark"|"light"} [props.theme]  Chrome theme (`data-theme` on the root element).
+ * @param {(theme: "dark"|"light") => void} [props.onThemeChange]  Shows a theme switch in Settings.
+ * @param {object} [props.navMemory]  From `createNavMemory`; shares the visited trail and
+ *   navigation preferences with other views of the same content.
+ * @param {import("react").ReactNode} [props.sidebarHeader]  Extra controls at the top of the side panel.
+ * @param {import("react").ReactNode} [props.spatialHelp]  Body of the "Spatial Navigation" help panel.
+ * @param {(node: object) => void} [props.onFocusChange]  Called with the focused hierarchy node.
+ * @param {string} [props.storageNamespace]  Prefix for this component's own localStorage keys.
+ */
+export default function TreeSite({
+  siteData,
+  colorSchemesBase = DEFAULT_COLOR_SCHEMES_BASE,
+  colorSchemes = null,
+  colorSchemeId: controlledSchemeId,
+  onColorSchemeIdChange,
+  theme = "dark",
+  onThemeChange,
+  navMemory = null,
+  sidebarHeader = null,
+  spatialHelp = null,
+  onFocusChange,
+  storageNamespace = "treesite"
+}) {
+  const schemeStorageKey = `${storageNamespace}.colorSchemeId`;
+  const schemeMinimapStorageKey = `${storageNamespace}.applySchemeToMinimap`;
+  const minimapSizeKey = "minimapSize";
   const treesiteRef = useRef(null);
   const chartWrapRef = useRef(null);
   const highlightClearTimerRef = useRef(null);
@@ -285,11 +306,14 @@ export default function TreeSite({ siteData }) {
   const navigateCardRef = useRef(null);
   const searchInputRef = useRef(null);
   const pendingSearchFocusRef = useRef(false);
+  const keyboardNavRef = useRef(false);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
 
   const [dims, setDims] = useState({ width: 1200, height: 800 });
   const [focusName, setFocusName] = useState(null);
   const [query, setQuery] = useState("");
-  const [recentTrail, setRecentTrail] = useState([]);
+  const [localTrail, setLocalTrail] = useState([]);
+  const [memoryTrail, setMemoryTrail] = useState(() => navMemory?.getTrail() ?? []);
   const [tileMapLevel, setTileMapLevel] = useState(TILE_MAP_LEVEL_DEFAULT);
   const showImmediateChildren = tileMapLevel > 0;
   const tileMapPreset = TILE_MAP_PRESETS[tileMapLevel];
@@ -300,14 +324,60 @@ export default function TreeSite({ siteData }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [minimapOpen, setMinimapOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(true);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const [schemeManifest, setSchemeManifest] = useState(null);
   const [schemeManifestError, setSchemeManifestError] = useState(null);
-  const [activeSchemeId, setActiveSchemeId] = useState(readStoredSchemeId);
+  const [internalSchemeId, setInternalSchemeId] = useState(() => readStored(schemeStorageKey));
+  const isSchemeControlled = controlledSchemeId !== undefined && controlledSchemeId !== null;
+  const activeSchemeId = isSchemeControlled ? controlledSchemeId : internalSchemeId;
+  const setActiveSchemeId = useCallback(
+    id => {
+      if (onColorSchemeIdChange) onColorSchemeIdChange(id);
+      if (!isSchemeControlled) setInternalSchemeId(id);
+    },
+    [onColorSchemeIdChange, isSchemeControlled]
+  );
   const [resolvedSchemeDoc, setResolvedSchemeDoc] = useState(null);
   const [schemeLoadError, setSchemeLoadError] = useState(null);
   const [applySchemeToMinimap, setApplySchemeToMinimap] = useState(
-    readStoredApplySchemeToMinimap
+    () => readStored(schemeMinimapStorageKey) === "1"
   );
+  const [minimapSize, setMinimapSizeState] = useState(() => {
+    const v = navMemory
+      ? navMemory.getPref(minimapSizeKey)
+      : readStored(`${storageNamespace}.${minimapSizeKey}`);
+    return v === "large" ? "large" : "standard";
+  });
+  const setMinimapSize = useCallback(
+    size => {
+      setMinimapSizeState(size);
+      if (navMemory) navMemory.setPref(minimapSizeKey, size);
+      else writeStored(`${storageNamespace}.${minimapSizeKey}`, size);
+    },
+    [navMemory, storageNamespace]
+  );
+
+  useEffect(() => {
+    let mq;
+    try {
+      mq = window.matchMedia(REDUCED_MOTION_MEDIA);
+    } catch {
+      return undefined;
+    }
+    const sync = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!navMemory) return undefined;
+    return navMemory.subscribe(change => {
+      if (change.type === "trail") setMemoryTrail(change.trail);
+      if (change.type === "pref" && change.key === minimapSizeKey) {
+        setMinimapSizeState(change.value === "large" ? "large" : "standard");
+      }
+    });
+  }, [navMemory]);
 
   const [stackPageChrome, setStackPageChrome] = useState(false);
 
@@ -345,15 +415,18 @@ export default function TreeSite({ siteData }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadSchemeManifest(COLOR_SCHEMES_BASE)
+    const manifestPromise = colorSchemes?.manifest
+      ? Promise.resolve().then(() => parseSchemeManifest(colorSchemes.manifest))
+      : loadSchemeManifest(colorSchemesBase);
+    manifestPromise
       .then(manifest => {
         if (cancelled) return;
         setSchemeManifest(manifest);
         setSchemeManifestError(null);
         const ids = new Set(manifest.schemes.map(s => s.id));
-        setActiveSchemeId(prev => {
+        setInternalSchemeId(prev => {
           if (prev && ids.has(prev)) return prev;
-          const stored = readStoredSchemeId();
+          const stored = readStored(schemeStorageKey);
           if (stored && ids.has(stored)) return stored;
           return manifest.defaultSchemeId;
         });
@@ -367,27 +440,16 @@ export default function TreeSite({ siteData }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [colorSchemes, colorSchemesBase, schemeStorageKey]);
 
   useEffect(() => {
-    if (!activeSchemeId) return;
-    try {
-      localStorage.setItem(COLOR_SCHEME_STORAGE_ID, activeSchemeId);
-    } catch {
-      /* ignore */
-    }
-  }, [activeSchemeId]);
+    if (!internalSchemeId || isSchemeControlled) return;
+    writeStored(schemeStorageKey, internalSchemeId);
+  }, [internalSchemeId, isSchemeControlled, schemeStorageKey]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        COLOR_SCHEME_STORAGE_MINIMAP,
-        applySchemeToMinimap ? "1" : "0"
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [applySchemeToMinimap]);
+    writeStored(schemeMinimapStorageKey, applySchemeToMinimap ? "1" : "0");
+  }, [applySchemeToMinimap, schemeMinimapStorageKey]);
 
   useEffect(() => {
     if (!schemeManifest || !activeSchemeId) return;
@@ -399,7 +461,11 @@ export default function TreeSite({ siteData }) {
     }
     let cancelled = false;
     setSchemeLoadError(null);
-    loadTreemapSchemeFile(COLOR_SCHEMES_BASE, entry.file)
+    const inlineDoc = colorSchemes?.docs?.[entry.id];
+    const docPromise = inlineDoc
+      ? Promise.resolve().then(() => parseTreemapScheme(inlineDoc))
+      : loadTreemapSchemeFile(colorSchemesBase, entry.file);
+    docPromise
       .then(scheme => {
         if (!cancelled) {
           setResolvedSchemeDoc(scheme);
@@ -415,7 +481,7 @@ export default function TreeSite({ siteData }) {
     return () => {
       cancelled = true;
     };
-  }, [schemeManifest, activeSchemeId]);
+  }, [schemeManifest, activeSchemeId, colorSchemes, colorSchemesBase]);
 
   const isMobile =
     dims.width > 0 && dims.width < MOBILE_LAYOUT_MAX_WIDTH;
@@ -430,11 +496,7 @@ export default function TreeSite({ siteData }) {
       .sum(displayWeight)
       .sort(siblingSortComparator);
 
-    r.each(d => {
-      d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
-    });
-
-    return r;
+    return assignFullNames(r);
   }, [siteData]);
 
   const cardIndex = useMemo(() => buildCardIndex(indexHierarchy), [indexHierarchy]);
@@ -446,12 +508,8 @@ export default function TreeSite({ siteData }) {
       showImmediateChildren
     });
 
-    r.each(d => {
-      d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
-    });
-
-    return r;
-  }, [siteData, dims.width, dims.height, contentHeight, showImmediateChildren, isMobile]);
+    return assignFullNames(r);
+  }, [siteData, dims.width, contentHeight, showImmediateChildren, isMobile]);
 
   /** Sidebar minimap always uses squarified layout so it stays usable when the main map is slice/stack. */
   const minimapRoot = useMemo(() => {
@@ -461,12 +519,8 @@ export default function TreeSite({ siteData }) {
       showImmediateChildren
     });
 
-    r.each(d => {
-      d.fullName = d.ancestors().reverse().map(x => x.data.name).join(" / ");
-    });
-
-    return r;
-  }, [siteData, dims.width, dims.height, contentHeight, showImmediateChildren]);
+    return assignFullNames(r);
+  }, [siteData, dims.width, contentHeight, showImmediateChildren]);
 
   const focus =
     root.descendants().find(d => d.fullName === focusName) || root;
@@ -553,13 +607,20 @@ export default function TreeSite({ siteData }) {
     [soleFocusCard, focus.data]
   );
 
+  const focusArticleHtml = useMemo(
+    () => (soleFocusCard ? getArticleHtml(focus.data) : null),
+    [soleFocusCard, focus.data]
+  );
+
   const useFocusedViewer = useMemo(
     () =>
       soleFocusCard &&
-      shouldUseFocusedViewer(focus.data, focusIframeSrc, focusPlainText),
+      (Boolean(focusArticleHtml) ||
+        shouldUseFocusedViewer(focus.data, focusIframeSrc, focusPlainText)),
     [
       soleFocusCard,
       focus.data,
+      focusArticleHtml,
       focusIframeSrc,
       focusPlainText
     ]
@@ -622,8 +683,10 @@ export default function TreeSite({ siteData }) {
       const { syncSlug = true, recordTrail = true } = options;
       if (!d) return;
       setFocusName(d.fullName);
-      if (recordTrail)
-        setRecentTrail(prev => [...prev, d.fullName].slice(-10));
+      if (recordTrail) {
+        setLocalTrail(prev => [...prev, d.fullName].slice(-10));
+        if (navMemory && d.data?.slug) navMemory.visit(String(d.data.slug));
+      }
 
       if (syncSlug && typeof window !== "undefined") {
         const slug = d.data?.slug;
@@ -631,7 +694,7 @@ export default function TreeSite({ siteData }) {
         else stripCardHashFromHistory();
       }
     },
-    []
+    [navMemory]
   );
 
   const navigateToCard = useCallback(
@@ -644,6 +707,7 @@ export default function TreeSite({ siteData }) {
         suppressHighlight = false
       } = {}
     ) => {
+      if (reducedMotion) animate = false;
       const entry = cardIndex.bySlug.get(slug);
       if (!entry) {
         console.warn(`treesite: unknown card slug "${slug}"`);
@@ -698,7 +762,7 @@ export default function TreeSite({ siteData }) {
 
       if (!suppressHighlight && typeof window !== "undefined") flashHighlightSlug(slug);
     },
-    [cardIndex, root, goTo, flashHighlightSlug]
+    [cardIndex, root, goTo, flashHighlightSlug, reducedMotion]
   );
 
   useEffect(() => {
@@ -808,11 +872,86 @@ export default function TreeSite({ siteData }) {
     [goTo]
   );
 
+  /** Mini map trail: the shared memory when present, otherwise this session's path. */
+  const recentTrail = useMemo(() => {
+    if (!navMemory) return localTrail;
+    return memoryTrail
+      .map(slug => cardIndex.bySlug.get(slug)?.fullName)
+      .filter(Boolean);
+  }, [navMemory, memoryTrail, localTrail, cardIndex]);
+
+  const trailNodesForList = useMemo(
+    () =>
+      recentTrail
+        .map(name => minimapRoot.descendants().find(d => d.fullName === name))
+        .filter(Boolean),
+    [recentTrail, minimapRoot]
+  );
+
+  useEffect(() => {
+    if (onFocusChange) onFocusChange(focus);
+  }, [focus, onFocusChange]);
+
+  /** Escape steps out to the parent region (unless a form control or embed has focus). */
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (isEditableTarget(e.target)) return;
+      const current = root.descendants().find(n => n.fullName === focusNameRef.current);
+      if (!current?.parent) return;
+      e.preventDefault();
+      keyboardNavRef.current = true;
+      goToInteractive(current.parent);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [root, goToInteractive]);
+
+  /** After keyboard navigation, move focus into the new view so the reader is not dropped. */
+  useEffect(() => {
+    if (!keyboardNavRef.current) return undefined;
+    keyboardNavRef.current = false;
+    const id = window.requestAnimationFrame(() => {
+      const wrap = chartWrapRef.current;
+      if (!wrap) return;
+      const target =
+        wrap.querySelector(".tileViewer [tabindex='0']") ||
+        wrap.querySelector(".tree-node[tabindex='0']");
+      target?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [focus.fullName]);
+
+  const onTileKeyDown = useCallback(
+    (e, d) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      keyboardNavRef.current = true;
+      goToInteractive(d);
+    },
+    [goToInteractive]
+  );
+
+  const liveAnnouncement = useMemo(() => {
+    const count = focus.children?.length || 0;
+    const where = focus.depth === 0 ? rootDisplayTitle(focus.data) : nodePathLabel(focus);
+    return count
+      ? `${where}. ${count} item${count === 1 ? "" : "s"}.`
+      : `${where}.`;
+  }, [focus]);
+
   return (
     <div
-      className={`treesite${sidebarExpanded ? "" : " treesite--sidebar-collapsed"}`}
+      className={`treesite${sidebarExpanded ? "" : " treesite--sidebar-collapsed"}${
+        minimapSize === "large" ? " treesite--minimap-large" : ""
+      }${reducedMotion ? " treesite--reduced-motion" : ""}`}
+      data-theme={theme}
       ref={treesiteRef}
     >
+      <p className="treesite-visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {liveAnnouncement}
+      </p>
       <main
         className={`treesite-stage${stackPageChrome ? " treesite-stage--page-stack" : ""}${
           isMobile ? " treesite-stage--mobile-deck" : ""
@@ -877,7 +1016,7 @@ export default function TreeSite({ siteData }) {
               h: d.y1 - d.y0
             };
             if (isTreemapTileBoxInvalid(bRaw)) {
-              if (import.meta.env.DEV) {
+              if (import.meta.env?.DEV) {
                 console.warn("[TreeSite] skip invalid tile box", {
                   fullName: d.fullName,
                   ...bRaw
@@ -923,6 +1062,16 @@ export default function TreeSite({ siteData }) {
               <g
                 key={d.fullName}
                 transform={`translate(${b.x},${b.y})`}
+                {...(!useFocusedViewer && !isChildPreview
+                  ? {
+                      role: "button",
+                      tabIndex: 0,
+                      "aria-label": `${d.data.name}${
+                        d.children?.length ? `, ${d.children.length} items` : ""
+                      }. Open.`,
+                      onKeyDown: e => onTileKeyDown(e, d)
+                    }
+                  : {})}
                 onClick={
                   useFocusedViewer
                     ? undefined
@@ -936,7 +1085,7 @@ export default function TreeSite({ siteData }) {
                 className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}${
                   isNavSlugHighlight ? " tree-node-nav-target" : ""
                 }`}
-                aria-label={isChildPreview ? d.data.name : undefined}
+                aria-hidden={isChildPreview ? "true" : undefined}
               >
                 <rect
                   width={Math.max(0, b.w)}
@@ -959,6 +1108,7 @@ export default function TreeSite({ siteData }) {
                       <FocusedCardViewer
                         item={d.data}
                         iframeSrc={focusIframeSrc}
+                        articleHtml={focusArticleHtml}
                         plainText={focusPlainText}
                         isNavHighlight={
                           !!(
@@ -990,6 +1140,7 @@ export default function TreeSite({ siteData }) {
                 <rect
                   key={`parent-hit-${d.fullName}`}
                   className="tree-node-parent-hit"
+                  aria-hidden="true"
                   x={d.x0}
                   y={d.y0 + focusHeaderHeight}
                   width={Math.max(0, d.x1 - d.x0)}
@@ -1031,6 +1182,9 @@ export default function TreeSite({ siteData }) {
 
         {sidebarExpanded ? (
           <div className="treesite-sidebar-scroll">
+            {sidebarHeader ? (
+              <div className="treesite-sidebar-header">{sidebarHeader}</div>
+            ) : null}
             <div className="treesite-sidebar-icon-bar" role="toolbar" aria-label="Side panel sections">
               <button
                 type="button"
@@ -1051,6 +1205,16 @@ export default function TreeSite({ siteData }) {
                 onClick={() => setSearchOpen(v => !v)}
               >
                 <QuestionMarkIcon />
+              </button>
+              <button
+                type="button"
+                className="treesite-sidebar-icon-trigger treesite-sidebar-icon-trigger--bar"
+                aria-expanded={outlineOpen}
+                aria-controls="treesite-outline-panel"
+                aria-label="Outline"
+                onClick={() => setOutlineOpen(v => !v)}
+              >
+                <OutlineIcon />
               </button>
               <button
                 type="button"
@@ -1088,7 +1252,34 @@ export default function TreeSite({ siteData }) {
                     recentTrail={recentTrail}
                     onSelect={goToInteractive}
                     sectionColor={sectionColorMini}
+                    size={minimapSize}
                   />
+                  <button
+                    type="button"
+                    className="treesite-minimap-size"
+                    aria-pressed={minimapSize === "large"}
+                    onClick={() =>
+                      setMinimapSize(minimapSize === "large" ? "standard" : "large")
+                    }
+                  >
+                    {minimapSize === "large" ? "Smaller mini map" : "Larger mini map"}
+                  </button>
+                  <VisitedTrail
+                    trailNodes={trailNodesForList}
+                    onSelect={goToInteractive}
+                    onClear={navMemory ? () => navMemory.clearTrail() : () => setLocalTrail([])}
+                  />
+                </div>
+              ) : null}
+
+              {outlineOpen ? (
+                <div
+                  id="treesite-outline-panel"
+                  className="treesite-sidebar-footer-panel"
+                  role="region"
+                  aria-label="Outline"
+                >
+                  <OutlineNav root={minimapRoot} focus={minimapFocus} onSelect={goToInteractive} />
                 </div>
               ) : null}
 
@@ -1149,9 +1340,14 @@ export default function TreeSite({ siteData }) {
                     role="region"
                   >
                     <h2 className="treesite-footer-panel-title">Spatial Navigation</h2>
-                    <p className="treesite-sidebar-intro">
-                      Click any tile to enter it. Use the minimap or breadcrumbs to move
-                      around. Never Lost.&nbsp;&nbsp;Contact me to make your own.
+                    {spatialHelp || (
+                      <p className="treesite-sidebar-intro">
+                        Click any tile to enter it. Use the minimap or breadcrumbs to move
+                        around. Never Lost.&nbsp;&nbsp;Contact me to make your own.
+                      </p>
+                    )}
+                    <p className="treesite-sidebar-intro treesite-sidebar-keys">
+                      Keyboard: Tab to a tile, Enter to open it, Escape to step back out.
                     </p>
                   </div>
                 ) : null}
@@ -1169,6 +1365,8 @@ export default function TreeSite({ siteData }) {
                       resolvedSchemeDoc={resolvedSchemeDoc}
                       applySchemeToMinimap={applySchemeToMinimap}
                       onApplySchemeToMinimapChange={setApplySchemeToMinimap}
+                      theme={theme}
+                      onThemeChange={onThemeChange}
                     />
                   </div>
                 ) : null}
@@ -1199,6 +1397,17 @@ export default function TreeSite({ siteData }) {
               }}
             >
               <QuestionMarkIcon />
+            </button>
+            <button
+              type="button"
+              className="treesite-sidebar-icon-trigger"
+              aria-label="Expand sidebar and show outline"
+              onClick={() => {
+                setSidebarExpanded(true);
+                setOutlineOpen(true);
+              }}
+            >
+              <OutlineIcon />
             </button>
             <button
               type="button"
@@ -1248,6 +1457,29 @@ function ChevronSideIcon({ direction }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function OutlineIcon() {
+  return (
+    <svg
+      className="treesite-icon-outline"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 6h14M8 12h11M11 18h8"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+      <circle cx="4.5" cy="12" r="0.9" fill="currentColor" />
+      <circle cx="7.5" cy="18" r="0.9" fill="currentColor" />
     </svg>
   );
 }
@@ -1380,10 +1612,10 @@ function GearIcon() {
   );
 }
 
-function FocusedCardViewer({ item, iframeSrc, plainText, isNavHighlight }) {
+function FocusedCardViewer({ item, iframeSrc, articleHtml, plainText, isNavHighlight }) {
   const title = item.title || item.name || "Embedded viewer";
   const subtitle = item.section || item.kicker || item.source;
-  const showIframe = Boolean(iframeSrc);
+  const showIframe = Boolean(iframeSrc) && !articleHtml;
 
   return (
     <div
@@ -1391,7 +1623,14 @@ function FocusedCardViewer({ item, iframeSrc, plainText, isNavHighlight }) {
       xmlns="http://www.w3.org/1999/xhtml"
       onClick={e => e.stopPropagation()}
     >
-      {showIframe ? (
+      {articleHtml ? (
+        <article
+          className="tileViewerArticle"
+          tabIndex={0}
+          aria-label={title}
+          dangerouslySetInnerHTML={{ __html: articleHtml }}
+        />
+      ) : showIframe ? (
         <iframe
           className="tileViewerFrame"
           src={iframeSrc}
@@ -1477,7 +1716,9 @@ function SettingsPanel({
   onActiveSchemeIdChange,
   resolvedSchemeDoc,
   applySchemeToMinimap,
-  onApplySchemeToMinimapChange
+  onApplySchemeToMinimapChange,
+  theme,
+  onThemeChange
 }) {
   const preset = TILE_MAP_PRESETS[tileMapLevel];
   const datalistId = "treesite-tile-map-level-marks";
@@ -1492,6 +1733,30 @@ function SettingsPanel({
   return (
     <section className="treesite-settings" aria-label="Display settings">
       <div className="settings-heading">Settings</div>
+
+      {onThemeChange ? (
+        <div className="settings-scheme-block">
+          <div className="settings-slider-row">
+            <strong className="settings-slider-title">Theme</strong>
+          </div>
+          <div className="settings-theme-row" role="group" aria-label="Theme">
+            {[
+              ["light", "Light"],
+              ["dark", "Dark"]
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="settings-theme-btn"
+                aria-pressed={theme === value}
+                onClick={() => onThemeChange(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="settings-scheme-block">
         <div className="settings-slider-row">
@@ -1595,170 +1860,5 @@ function SettingsPanel({
         </div>
       </div>
     </section>
-  );
-}
-
-function CrumbBackButton({ parent, onSelect }) {
-  if (!parent) return null;
-  return (
-    <button
-      type="button"
-      className="treesite-crumb-btn"
-      aria-label="Go back"
-      onClick={() => onSelect(parent)}
-    >
-      ←
-    </button>
-  );
-}
-
-function Breadcrumbs({ focus, onSelect, includeBack = true }) {
-  const trail = focus.ancestors().reverse();
-
-  return (
-    <nav className="treesite-crumbs">
-      {includeBack ? (
-        <CrumbBackButton parent={focus.parent} onSelect={onSelect} />
-      ) : null}
-      {trail.map(d => (
-        <button
-          key={d.fullName}
-          type="button"
-          className="treesite-crumb-btn"
-          onClick={() => onSelect(d)}
-        >
-          {d.depth === 0 ? "Home" : d.data.name}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function MiniMap({ root, focus, recentTrail, onSelect, sectionColor }) {
-  const width = 240;
-  const height = 130;
-  const inset = 16;
-  const sx = (width - inset * 2) / Math.max(1, root.x1 - root.x0);
-  const sy = (height - inset * 2) / Math.max(1, root.y1 - root.y0);
-
-  const nodes = root.descendants().filter(d => d.depth > 0);
-  const topLevelPad = 10;
-  const nodeByName = new Map(root.descendants().map(d => [d.fullName, d]));
-  const center = d => ({
-    x: inset + ((d.x0 + d.x1) / 2) * sx,
-    y: inset + ((d.y0 + d.y1) / 2) * sy
-  });
-  const trailNodes = recentTrail
-    .map(name => nodeByName.get(name))
-    .filter(Boolean);
-  const linePath =
-    trailNodes.length > 1
-      ? d3
-          .line()
-          .x(d => center(d).x)
-          .y(d => center(d).y)
-          .curve(d3.curveCatmullRom.alpha(0.65))(trailNodes)
-      : null;
-
-  return (
-    <div className="mini-wrap">
-      <div className="mini-label">
-        <span>Mini Map</span>
-        <span>click to jump</span>
-      </div>
-
-      <svg
-        className="mini-map"
-        viewBox={`0 0 ${width} ${height}`}
-        onClick={() => onSelect(root)}
-      >
-        {nodes.map(d => {
-          const isTop = d.depth === 1;
-          const isTransparentParent = isTop && d.children;
-          const parentPad = isTransparentParent ? topLevelPad : 0;
-
-          return (
-            <rect
-              key={d.fullName}
-              x={inset + d.x0 * sx - parentPad}
-              y={inset + d.y0 * sy - parentPad}
-              width={(d.x1 - d.x0) * sx + parentPad * 2}
-              height={(d.y1 - d.y0) * sy + parentPad * 2}
-              rx="4"
-              ry="4"
-              fill={isTransparentParent ? "transparent" : sectionColor(d)}
-              opacity={isTransparentParent ? 1 : 0.58}
-              onClick={e => {
-                e.stopPropagation();
-                onSelect(d);
-              }}
-            />
-          );
-        })}
-
-        {linePath && (
-          <path
-            d={linePath}
-            fill="none"
-            stroke="rgba(255, 209, 102, .95)"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              filter: "drop-shadow(0 0 6px rgba(255, 209, 102, .75))",
-              pointerEvents: "none"
-            }}
-          />
-        )}
-
-        {trailNodes.map((d, i) => {
-          const c = center(d);
-          const alpha = 0.35 + ((i + 1) / trailNodes.length) * 0.65;
-
-          return (
-            <circle
-              key={`${d.fullName}-${i}`}
-              cx={c.x}
-              cy={c.y}
-              r={i === trailNodes.length - 1 ? 4.2 : 2.8}
-              fill="#ffd166"
-              stroke="#0b0f19"
-              strokeWidth="1.4"
-              opacity={alpha}
-              style={{
-                filter: "drop-shadow(0 0 5px rgba(255, 209, 102, .8))",
-                pointerEvents: "none"
-              }}
-            />
-          );
-        })}
-
-        <path
-          d={d3.symbol(d3.symbolStar, 92)()}
-          transform={`translate(${inset - 2}, ${inset - 2})`}
-          fill="#fff1a8"
-          stroke="#0b0f19"
-          strokeWidth="1.5"
-          style={{
-            cursor: "pointer",
-            filter: "drop-shadow(0 0 6px rgba(255, 209, 102, .9))"
-          }}
-          onClick={e => {
-            e.stopPropagation();
-            onSelect(root);
-          }}
-        />
-
-        <rect
-          x={inset + focus.x0 * sx}
-          y={inset + focus.y0 * sy}
-          width={(focus.x1 - focus.x0) * sx}
-          height={(focus.y1 - focus.y0) * sy}
-          fill="none"
-          stroke="#fff"
-          strokeWidth="2"
-        />
-      </svg>
-    </div>
   );
 }

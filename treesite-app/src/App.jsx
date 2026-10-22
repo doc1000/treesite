@@ -1,7 +1,6 @@
-import TreeSite from "./TreeSite";
+import { TreeSite } from "@doc1000/treesite";
+import "@doc1000/treesite/styles.css";
 import { siteData } from "./siteData";
-import "./treesite.css";
-import "./contactTiles.css";
 
 export default function App() {
   return <TreeSite siteData={siteData} />;

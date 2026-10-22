@@ -1,3 +1,5 @@
+@import "./navigation.css";
+
 :root {
   --treesite-bg: #07090f;
   --treesite-panel: rgba(18, 24, 39, 0.9);
@@ -370,59 +372,6 @@ body {
   font-size: 10px;
   color: var(--treesite-muted);
   opacity: 0.85;
-}
-
-.mini-wrap {
-  width: 100%;
-  margin-top: 0;
-  flex-shrink: 0;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 18px;
-  background: rgba(7, 9, 15, 0.88);
-  transition: border-color 0.18s ease, background 0.18s ease;
-}
-
-.mini-wrap:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(7, 9, 15, 0.96);
-}
-
-.mini-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  color: var(--treesite-muted);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.mini-label span:last-child {
-  color: rgba(243, 246, 255, 0.48);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.mini-map {
-  width: 100%;
-  height: 130px;
-  display: block;
-  overflow: visible;
-  cursor: crosshair;
-}
-
-.mini-map rect {
-  cursor: pointer;
-  transition: opacity 0.18s ease, stroke 0.18s ease;
-  vector-effect: non-scaling-stroke;
-}
-
-.mini-map rect:hover {
-  opacity: 0.95;
-  stroke: rgba(255, 255, 255, 0.72);
 }
 
 .treesite-settings {
@@ -1565,4 +1514,288 @@ body {
   white-space: pre-wrap;
   line-height: 1.55;
   color: rgba(238, 244, 251, 0.86);
+}
+
+/* ---------------------------------------------------------------------------
+ * Accessibility
+ * ------------------------------------------------------------------------- */
+
+.treesite-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tree-node:focus {
+  outline: none;
+}
+
+.tree-node:focus-visible rect {
+  stroke: var(--ts-nav-ring);
+  stroke-width: 4px;
+  opacity: 0.95;
+}
+
+.treesite-sidebar-keys {
+  margin-top: 8px;
+}
+
+/* Large mini map: wider side panel so every region is a bigger target. */
+.treesite.treesite--minimap-large:not(.treesite--sidebar-collapsed) {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+}
+
+@media (max-width: 880px) {
+  .mini-map.mini-map--large {
+    height: 240px;
+  }
+}
+
+.treesite-sidebar-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-theme-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settings-theme-btn {
+  flex: 1 1 0;
+  min-height: 34px;
+  border: 1px solid var(--treesite-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--treesite-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-theme-btn[aria-pressed="true"] {
+  border-color: var(--ts-nav-current-border);
+  background: var(--ts-nav-current-bg);
+  color: var(--treesite-text);
+  font-weight: 650;
+}
+
+.settings-theme-btn:focus-visible {
+  outline: 3px solid var(--ts-nav-ring);
+  outline-offset: 2px;
+}
+
+/* Long-form card body opened from a tile (`body` field). */
+.tileViewerArticle {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: clamp(18px, 3vw, 36px);
+  color: rgba(238, 244, 251, 0.88);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.tileViewerArticle:focus-visible {
+  outline: 3px solid var(--ts-nav-ring);
+  outline-offset: -3px;
+}
+
+.tileViewerArticle > * {
+  max-width: 760px;
+}
+
+.tileViewerArticle h1,
+.tileViewerArticle h2,
+.tileViewerArticle h3 {
+  color: #fff;
+  line-height: 1.15;
+  margin: 1.4em 0 0.5em;
+}
+
+.tileViewerArticle h1 { font-size: clamp(1.8rem, 3.2vw, 2.6rem); margin-top: 0; }
+.tileViewerArticle h2 { font-size: clamp(1.3rem, 2.4vw, 1.8rem); }
+.tileViewerArticle h3 { font-size: 1.15rem; }
+.tileViewerArticle p { margin: 0 0 1em; }
+.tileViewerArticle a { color: rgba(157, 220, 255, 0.95); }
+.tileViewerArticle img { max-width: 100%; height: auto; border-radius: 12px; display: block; }
+.tileViewerArticle figure { margin: 1.2em 0; }
+.tileViewerArticle ul { padding-left: 1.2em; }
+.tileViewerArticle li { margin: 0.45em 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .treesite,
+  .treesite *,
+  .treesite *::before,
+  .treesite *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Light theme (data-theme="light" on .treesite). Tile fills come from the active
+ * color scheme; this block re-skins the chrome around them.
+ * ------------------------------------------------------------------------- */
+
+.treesite[data-theme="light"] {
+  --treesite-bg: #f7f6f0;
+  --treesite-panel: rgba(255, 255, 255, 0.92);
+  --treesite-panel-deep: rgba(250, 249, 244, 0.96);
+  --treesite-text: #13251f;
+  --treesite-muted: #5d6c66;
+  --treesite-line: #d8ddd8;
+  --treesite-line-strong: #b9c3bd;
+  --treesite-shadow: 0 18px 45px rgba(19, 37, 31, 0.08);
+  background: var(--treesite-bg);
+  color-scheme: light;
+}
+
+.treesite[data-theme="light"] .treesite-stage::before {
+  background:
+    linear-gradient(rgba(19, 37, 31, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 37, 31, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.treesite[data-theme="light"] .treesite-sidebar-icon-bar {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.94) 52%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.treesite[data-theme="light"] .treesite-sidebar-rail,
+.treesite[data-theme="light"] .treesite-sidebar-icon-trigger {
+  border-color: var(--treesite-line);
+  background: #ffffff;
+  color: var(--treesite-muted);
+}
+
+.treesite[data-theme="light"] .treesite-sidebar-rail:hover,
+.treesite[data-theme="light"] .treesite-sidebar-icon-trigger:hover {
+  background: #e7eee8;
+  border-color: #b9c3bd;
+  color: var(--treesite-text);
+}
+
+.treesite[data-theme="light"] .treesite-sidebar-icon-trigger[aria-expanded="true"] {
+  border-color: #245c46;
+  color: #245c46;
+}
+
+.treesite[data-theme="light"] .treesite-search,
+.treesite[data-theme="light"] .treesite-search-results,
+.treesite[data-theme="light"] .treesite-settings,
+.treesite[data-theme="light"] .settings-scheme-select {
+  border-color: var(--treesite-line);
+  background: #ffffff;
+  color: var(--treesite-text);
+}
+
+.treesite[data-theme="light"] .treesite-search::placeholder {
+  color: #6f7d77;
+}
+
+.treesite[data-theme="light"] .treesite-search:focus {
+  border-color: #245c46;
+  background: #ffffff;
+}
+
+.treesite[data-theme="light"] .treesite-search-result:hover {
+  background: #e7eee8;
+}
+
+.treesite[data-theme="light"] .settings-scheme-block {
+  border-bottom-color: var(--treesite-line);
+}
+
+.treesite[data-theme="light"] .settings-inline-code {
+  background: #f2e8d8;
+  color: #5d4930;
+}
+
+.treesite[data-theme="light"] .settings-scheme-checkbox-row,
+.treesite[data-theme="light"] .settings-slider-current {
+  color: var(--treesite-text);
+}
+
+.treesite[data-theme="light"] .focus-label text {
+  fill: #13251f;
+  stroke: rgba(247, 246, 240, 0.85);
+}
+
+.treesite[data-theme="light"] .focus-label .focus-label-desc {
+  fill: #5d6c66;
+}
+
+.treesite[data-theme="light"] .treesite-crumbs {
+  border-color: var(--treesite-line);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.treesite[data-theme="light"] .treesite-crumbs:hover {
+  background: #ffffff;
+}
+
+.treesite[data-theme="light"] .treesite-crumb-btn {
+  border-color: var(--treesite-line);
+  background: #f7f6f0;
+  color: var(--treesite-text);
+}
+
+.treesite[data-theme="light"] .treesite-crumb-btn:hover {
+  border-color: #b9c3bd;
+  background: #e7eee8;
+}
+
+.treesite[data-theme="light"] .tileViewer {
+  background: #ffffff;
+}
+
+.treesite[data-theme="light"] .tileViewerSubtitle {
+  color: #5d6c66;
+}
+
+.treesite[data-theme="light"] .tileViewerBody,
+.treesite[data-theme="light"] .tileViewerText,
+.treesite[data-theme="light"] .tileViewerArticle {
+  color: #33433d;
+}
+
+.treesite[data-theme="light"] .tileViewerArticle h1,
+.treesite[data-theme="light"] .tileViewerArticle h2,
+.treesite[data-theme="light"] .tileViewerArticle h3 {
+  color: #13251f;
+}
+
+.treesite[data-theme="light"] .tileViewerArticle a {
+  color: #245c46;
+}
+
+@media (max-width: 880px) {
+  .treesite[data-theme="light"] .treesite-mobile-header {
+    border-bottom-color: var(--treesite-line);
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .treesite[data-theme="light"] .treesite-mobile-focus-strip-title {
+    color: #13251f;
+  }
+
+  .treesite[data-theme="light"] .treesite-mobile-focus-strip-desc {
+    color: #5d6c66;
+  }
 }
