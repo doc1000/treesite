@@ -1125,7 +1125,7 @@ body {
   padding: 13px 14px 44px;
   border-radius: 16px 16px 0 0;
   background:
-    linear-gradient(180deg, rgba(5, 7, 12, 0.98), rgba(5, 7, 12, 0.92) 42%, transparent);
+    linear-gradient(180deg, rgba(5, 7, 12, 0.98), rgba(5, 7, 12, 0.92) 68%, transparent);
 }
 
 .pdf-tile--labels-bottom .pdf-overlay,
@@ -1875,3 +1875,167 @@ body {
 .treesite[data-theme="light"] .preview-overlay .tile-kicker {
   color: rgba(255, 255, 255, 0.7);
 }
+
+/* ---------------------------------------------------------------------------
+ * Readable focus header (HTML, wraps, clear of the breadcrumbs)
+ * ------------------------------------------------------------------------- */
+
+.focus-label-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.focus-label-title {
+  color: #fff;
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-weight: 750;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focus-label .focus-label-desc {
+  display: -webkit-box;
+  margin-top: 4px;
+  overflow: hidden;
+  color: rgba(238, 244, 251, 0.82);
+  font-size: clamp(13px, 1.15vw, 16px);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.treesite[data-theme="light"] .focus-label-title { color: #13251f; }
+.treesite[data-theme="light"] .focus-label .focus-label-desc { color: #33433d; }
+
+/* ---------------------------------------------------------------------------
+ * Blurb tiles: read in place, not clickable
+ * ------------------------------------------------------------------------- */
+
+.tree-node.tree-node--static {
+  cursor: default;
+}
+
+.tree-node.tree-node--static:hover rect {
+  opacity: inherit;
+  stroke: inherit;
+}
+
+.tile-html.tile-static {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.tile-static .tile-title {
+  line-height: 1.15;
+}
+
+.tile-static-desc {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: clamp(13px, 1.05vw, 16px);
+  line-height: 1.45;
+}
+
+.treesite[data-theme="light"] .tile-static-desc { color: #33433d; }
+
+/* ---------------------------------------------------------------------------
+ * Opened cards: everything on the tile, at reading size
+ * ------------------------------------------------------------------------- */
+
+.cardDetail {
+  max-width: 760px;
+  margin-bottom: 18px;
+}
+
+.cardDetail-kicker {
+  color: rgba(157, 220, 255, 0.92);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tileViewerArticle .cardDetail-title {
+  margin: 8px 0 0;
+}
+
+.cardDetail-desc {
+  margin: 10px 0 0;
+  font-size: 1.05rem;
+}
+
+.cardDetail-html ul {
+  margin: 12px 0 0;
+  padding-left: 1.2em;
+}
+
+.cardDetail-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.cardDetail-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--ts-nav-current-border);
+  border-radius: 999px;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cardDetail-link:hover {
+  background: var(--ts-nav-current-bg);
+}
+
+.cardDetail-link:focus-visible {
+  outline: 3px solid var(--ts-nav-ring);
+  outline-offset: 2px;
+}
+
+.tileViewerFramed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.cardDetail--compact {
+  flex: none;
+  max-width: none;
+  margin: 0;
+  padding: 14px 18px;
+  color: rgba(238, 244, 251, 0.88);
+  border-bottom: 1px solid var(--treesite-line);
+}
+
+.cardDetail--compact .cardDetail-desc {
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.cardDetail--compact .cardDetail-links {
+  margin-top: 10px;
+}
+
+.tileViewerFramed .tileViewerFrame {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.treesite[data-theme="light"] .cardDetail-kicker { color: #245c46; }
+.treesite[data-theme="light"] .cardDetail--compact { color: #33433d; }

@@ -106,9 +106,19 @@
   vector-effect: non-scaling-stroke;
 }
 
-.mini-map rect:hover {
+.mini-map rect.mini-map-target:hover {
   opacity: 0.95;
   stroke: var(--ts-nav-hover-stroke);
+  stroke-width: 2px;
+}
+
+.mini-map .mini-map-parent.mini-map-target:hover {
+  fill: var(--ts-nav-current-bg);
+}
+
+/* Cards are context only; their section is the target. */
+.mini-map .mini-map-leaf:not(.mini-map-target) {
+  cursor: inherit;
 }
 
 .mini-map rect:focus,

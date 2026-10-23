@@ -52,8 +52,12 @@ export function TileTemplate({
   labelPlacement = "top",
   suppressTileLabels = false,
   headerInMapOverlay = false,
-  isMobile = false
+  isMobile = false,
+  isStatic = false
 }) {
+  if (isStatic && !suppressTileLabels) {
+    return <StaticTile node={node} isMobile={isMobile} />;
+  }
   if (isMobile) {
     return <MobileTileContent node={node} box={box} />;
   }
@@ -239,6 +243,19 @@ export function TileTemplate({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A blurb: everything is on the tile, at reading size, nothing to open. */
+function StaticTile({ node, isMobile }) {
+  const kicker = node.kicker;
+  const title = node.title || node.name;
+  return (
+    <div className={`tile-html tile-static${isMobile ? " tile-static--mobile" : ""}`}>
+      {kicker ? <div className="tile-kicker">{kicker}</div> : null}
+      <h2 className="tile-title">{title}</h2>
+      {node.description ? <p className="tile-static-desc">{node.description}</p> : null}
     </div>
   );
 }

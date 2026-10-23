@@ -33,6 +33,7 @@ import {
   VisitedTrail
 } from "./Navigation.jsx";
 import { nodePathLabel } from "./navLabels.js";
+import { isStaticCard } from "./cardKinds.js";
 
 const DEFAULT_COLOR_SCHEMES_BASE = "/color-schemes";
 
@@ -300,7 +301,8 @@ export default function TreeSite({
   sidebarHeader = null,
   spatialHelp = null,
   onFocusChange,
-  storageNamespace = "treesite"
+  storageNamespace = "treesite",
+  defaultTileMapLevel = TILE_MAP_LEVEL_DEFAULT
 }) {
   const schemeStorageKey = `${storageNamespace}.colorSchemeId`;
   const schemeMinimapStorageKey = `${storageNamespace}.applySchemeToMinimap`;
@@ -321,7 +323,20 @@ export default function TreeSite({
   const [query, setQuery] = useState("");
   const [localTrail, setLocalTrail] = useState([]);
   const [memoryTrail, setMemoryTrail] = useState(() => navMemory?.getTrail() ?? []);
-  const [tileMapLevel, setTileMapLevel] = useState(TILE_MAP_LEVEL_DEFAULT);
+  const tileMapLevelKey = `${storageNamespace}.tileMapLevel`;
+  const [tileMapLevel, setTileMapLevelState] = useState(() => {
+    const stored = Number(readStored(tileMapLevelKey));
+    return Number.isInteger(stored) && stored >= 0 && stored <= TILE_MAP_LEVEL_MAX
+      ? stored
+      : defaultTileMapLevel;
+  });
+  const setTileMapLevel = useCallback(
+    level => {
+      setTileMapLevelState(level);
+      writeStored(tileMapLevelKey, String(level));
+    },
+    [tileMapLevelKey]
+  );
   const showImmediateChildren = tileMapLevel > 0;
   const tileMapPreset = TILE_MAP_PRESETS[tileMapLevel];
   const [highlightSlug, setHighlightSlug] = useState(null);
@@ -728,8 +743,9 @@ export default function TreeSite({
         return;
       }
 
-      const targetNode =
+      const found =
         root.descendants().find(n => n.fullName === entry.fullName) || null;
+      const targetNode = found && found.parent && isStaticCard(found.data) ? found.parent : found;
       if (!targetNode) {
         console.warn(`treesite: card "${slug}" not found on current layout root`);
         return;
@@ -881,9 +897,15 @@ export default function TreeSite({
   const goToInteractive = useCallback(
     d => {
       navigateGeneration.current += 1;
+      // A blurb has nothing more to open: show the region it sits in, with it highlighted.
+      if (d && d.parent && isStaticCard(d.data)) {
+        goTo(d.parent);
+        if (d.data.slug) flashHighlightSlug(String(d.data.slug));
+        return;
+      }
       goTo(d);
     },
-    [goTo]
+    [goTo, flashHighlightSlug]
   );
 
   /** Mini map trail: the shared memory when present, otherwise this session's path. */
@@ -1054,6 +1076,7 @@ export default function TreeSite({
 
             const isChildPreview =
               !isMobile && showImmediateChildren && d.depth > 1;
+            const isStatic = !isChildPreview && isStaticCard(d.data);
             const headerInMapOverlay =
               !isMobile &&
               showImmediateChildren &&
@@ -1083,7 +1106,7 @@ export default function TreeSite({
                 key={d.fullName}
                 transform={`translate(${b.x},${b.y})`}
                 onClick={
-                  useFocusedViewer
+                  useFocusedViewer || isStatic
                     ? undefined
                     : isChildPreview
                       ? undefined
@@ -1093,6 +1116,8 @@ export default function TreeSite({
                         }
                 }
                 className={`tree-node ${isChildPreview ? "tree-node-child-preview" : ""}${
+                  isStatic ? " tree-node--static" : ""
+                }${
                   isNavSlugHighlight ? " tree-node-nav-target" : ""
                 }`}
                 aria-hidden={isChildPreview ? "true" : undefined}
@@ -1100,7 +1125,7 @@ export default function TreeSite({
                 <rect
                   // The tile background is the keyboard target: a sibling of the tile's
                   // content, so links inside the tile are not nested in a button.
-                  {...(!useFocusedViewer && !isChildPreview
+                  {...(!useFocusedViewer && !isChildPreview && !isStatic
                     ? {
                         className: "tree-node-target",
                         role: "button",
@@ -1149,6 +1174,7 @@ export default function TreeSite({
                       isMobile={isMobile}
                       suppressTileLabels={isChildPreview}
                       headerInMapOverlay={headerInMapOverlay}
+                      isStatic={isStatic}
                     />
                   )}
                 </foreignObject>
@@ -1184,6 +1210,7 @@ export default function TreeSite({
               focus={focus}
               headerHeight={focusHeaderHeight}
               hasParent={Boolean(focus.parent)}
+              width={dims.width}
             />
           ) : null}
           </svg>
@@ -1636,10 +1663,65 @@ function GearIcon() {
   );
 }
 
+/** Links of a card, as on its tile (`links`, else `url`). */
+function cardLinks(item) {
+  if (Array.isArray(item.links) && item.links.length) return item.links;
+  if (typeof item.url === "string" && item.url.trim()) return [{ label: "Open", href: item.url }];
+  return [];
+}
+
+function hasDetail(item) {
+  return Boolean(
+    item &&
+      (item.kicker || item.title || item.description || item.html || cardLinks(item).length)
+  );
+}
+
+/**
+ * Everything the card's tile shows (kicker, title, description, list/html, every link),
+ * at reading size. The opened card always carries at least what its tile does.
+ */
+function CardDetail({ item, compact = false, bodyFollows = false }) {
+  const links = cardLinks(item);
+  // A long-form body carries its own heading and opening text.
+  const heading = !bodyFollows && item.title && item.title !== item.name ? item.title : null;
+  const description = bodyFollows ? null : item.description;
+  if (!item.kicker && !heading && !description && !item.html && !links.length) return null;
+  return (
+    <header className={`cardDetail${compact ? " cardDetail--compact" : ""}`}>
+      {item.kicker ? <div className="cardDetail-kicker">{item.kicker}</div> : null}
+      {heading ? <h2 className="cardDetail-title">{heading}</h2> : null}
+      {description ? <p className="cardDetail-desc">{description}</p> : null}
+      {item.html ? (
+        <div className="cardDetail-html" dangerouslySetInnerHTML={{ __html: item.html }} />
+      ) : null}
+      {links.length ? (
+        <div className="cardDetail-links">
+          {links.map(link => {
+            const isMailto = link.href?.startsWith("mailto:");
+            const inMap = link.href?.startsWith("#/card/");
+            return (
+              <a
+                key={`${link.href}-${link.label}`}
+                className="cardDetail-link"
+                href={link.href}
+                target={isMailto || inMap ? undefined : "_blank"}
+                rel={isMailto || inMap ? undefined : "noreferrer"}
+              >
+                {link.label}
+              </a>
+            );
+          })}
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
 function FocusedCardViewer({ item, iframeSrc, articleHtml, plainText, isNavHighlight }) {
   const title = item.title || item.name || "Embedded viewer";
   const subtitle = item.section || item.kicker || item.source;
-  const showIframe = Boolean(iframeSrc) && !articleHtml;
+  const showIframe = Boolean(iframeSrc);
 
   return (
     <div
@@ -1647,19 +1729,18 @@ function FocusedCardViewer({ item, iframeSrc, articleHtml, plainText, isNavHighl
       xmlns="http://www.w3.org/1999/xhtml"
       onClick={e => e.stopPropagation()}
     >
-      {articleHtml ? (
-        <article
-          className="tileViewerArticle"
-          tabIndex={0}
-          aria-label={title}
-          dangerouslySetInnerHTML={{ __html: articleHtml }}
-        />
-      ) : showIframe ? (
-        <iframe
-          className="tileViewerFrame"
-          src={iframeSrc}
-          title={title}
-        />
+      {showIframe ? (
+        <div className="tileViewerFramed">
+          <CardDetail item={item} compact />
+          <iframe className="tileViewerFrame" src={iframeSrc} title={title} />
+        </div>
+      ) : articleHtml || hasDetail(item) ? (
+        <article className="tileViewerArticle" tabIndex={0} aria-label={title}>
+          <CardDetail item={item} bodyFollows={Boolean(articleHtml)} />
+          {articleHtml ? (
+            <div className="tileViewerArticleBody" dangerouslySetInnerHTML={{ __html: articleHtml }} />
+          ) : null}
+        </article>
       ) : (
         <div className="tileViewerBody">
           {subtitle && <div className="tileViewerSubtitle">{subtitle}</div>}
@@ -1710,24 +1791,25 @@ function ParentMapHeaderOverlay({ d, focusHeaderHeight }) {
   );
 }
 
-function FocusLabel({ focus, headerHeight, hasParent }) {
+function FocusLabel({ focus, headerHeight, hasParent, width }) {
   const title =
     focus.depth === 0 ? rootDisplayTitle(focus.data) : focus.data.name;
   const description = focus.data.abstract || focus.data.description;
-  const titleX = hasParent ? 44 : 16;
-  const titleY = Math.max(20, headerHeight * 0.52);
-  const descY = Math.max(32, headerHeight * 0.82);
+  const left = hasParent ? 48 : 16;
+  // The breadcrumbs sit in the top-right corner (max min(52%, 28rem)).
+  const crumbs = Math.min(width * 0.52, 448);
+  const labelWidth = Math.max(200, width - crumbs - left - 16);
 
   return (
     <g className="focus-label" pointerEvents="none">
-      <text x={titleX} y={titleY}>
-        {title}
-      </text>
-      {description && headerHeight > 40 && (
-        <text className="focus-label-desc" x={titleX} y={descY}>
-          {description}
-        </text>
-      )}
+      <foreignObject x={left} y={0} width={labelWidth} height={Math.max(40, headerHeight)}>
+        <div className="focus-label-box" xmlns="http://www.w3.org/1999/xhtml">
+          <div className="focus-label-title">{title}</div>
+          {description && headerHeight > 48 ? (
+            <div className="focus-label-desc">{description}</div>
+          ) : null}
+        </div>
+      </foreignObject>
     </g>
   );
 }

@@ -88,7 +88,11 @@ export function VisitedTrail({ trailNodes, onSelect, onClear, limit = 6, title =
 /**
  * Abstract territory map of the whole tree.
  *
- * Keyboard: one Tab stop; arrow keys move between regions in reading order,
+ * Only Home and regions down to `targetDepth` (default: top-level sections) are
+ * targets; cards inside them are drawn but hovering or clicking one acts on its
+ * section, which keeps the targets large.
+ *
+ * Keyboard: one Tab stop; arrow keys move between targets in reading order,
  * Home/End jump to the ends, Enter or Space opens the region.
  */
 export function MiniMap({
@@ -100,7 +104,8 @@ export function MiniMap({
   sectionColor,
   size = "standard",
   label = "Mini Map",
-  hint = "click or use arrow keys"
+  hint = "click or use arrow keys",
+  targetDepth = 1
 }) {
   const width = 240;
   const height = size === "large" ? 180 : 130;
@@ -109,13 +114,15 @@ export function MiniMap({
   const sy = (height - inset * 2) / Math.max(1, root.y1 - root.y0);
 
   const nodes = useMemo(() => root.descendants().filter(d => d.depth > 0), [root]);
-  /** Keyboard order: Home, then depth-first so each section is followed by its own cards. */
+  /** Keyboard order: Home, then the targets depth first, in reading order. */
   const order = useMemo(() => {
     const list = [];
-    root.eachBefore(d => list.push(d));
+    root.eachBefore(d => {
+      if (d.depth <= targetDepth) list.push(d);
+    });
     return list;
-  }, [root]);
-  const topLevelPad = 10;
+  }, [root, targetDepth]);
+  const topLevelPad = 1;
   const nodeByName = useMemo(
     () => new Map(root.descendants().map(d => [d.fullName, d])),
     [root]
@@ -135,9 +142,13 @@ export function MiniMap({
           .curve(d3.curveCatmullRom.alpha(0.65))(trailNodes)
       : null;
 
+  const focusTarget =
+    focus && focus.depth > targetDepth
+      ? focus.ancestors().find(a => a.depth === targetDepth)
+      : focus;
   const focusIndex = Math.max(
     0,
-    order.findIndex(d => d.fullName === focus?.fullName)
+    order.findIndex(d => d.fullName === focusTarget?.fullName)
   );
   const [activeIndex, setActiveIndex] = useState(focusIndex);
   const [syncedFocusIndex, setSyncedFocusIndex] = useState(focusIndex);
@@ -178,7 +189,7 @@ export function MiniMap({
     role: "button",
     tabIndex: i === activeIndex ? 0 : -1,
     "aria-label": nodePathLabel(d),
-    "aria-current": d.fullName === focus?.fullName ? "location" : undefined,
+    "aria-current": d.fullName === focusTarget?.fullName ? "location" : undefined,
     onFocus: () => setActiveIndex(i),
     onClick: e => {
       e.stopPropagation();
@@ -206,12 +217,15 @@ export function MiniMap({
           const isTop = d.depth === 1;
           const isTransparentParent = isTop && d.children;
           const parentPad = isTransparentParent ? topLevelPad : 0;
+          const isTarget = d.depth <= targetDepth;
           const i = order.indexOf(d);
 
           return (
             <rect
               key={d.fullName}
-              className={isTransparentParent ? "mini-map-parent" : "mini-map-leaf"}
+              className={`${isTransparentParent ? "mini-map-parent" : "mini-map-leaf"}${
+                isTarget ? " mini-map-target" : ""
+              }`}
               x={inset + d.x0 * sx - parentPad}
               y={inset + d.y0 * sy - parentPad}
               width={(d.x1 - d.x0) * sx + parentPad * 2}
@@ -220,9 +234,9 @@ export function MiniMap({
               ry="4"
               fill={isTransparentParent ? "transparent" : sectionColor(d)}
               opacity={isTransparentParent ? 1 : 0.58}
-              {...itemProps(d, i)}
+              {...(isTarget ? itemProps(d, i) : { "aria-hidden": "true", pointerEvents: "none" })}
             >
-              <title>{nodePathLabel(d)}</title>
+              {isTarget ? <title>{nodePathLabel(d)}</title> : null}
             </rect>
           );
         })}

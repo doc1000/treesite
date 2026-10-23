@@ -52,6 +52,7 @@ only need the navigation widgets import `@doc1000/treesite/navigation.css` inste
 | `description` | Short text on the tile. |
 | `body` | Optional long-form HTML shown in a readable article view when the card is opened. |
 | `order` | Optional. Siblings with `order` sort ascending, before siblings without it. |
+| `static` | Optional. `true`/`false` overrides blurb detection (see below). |
 | `value` | Weight for tile size and, without `order`, sort order (larger first). |
 | `links`, `url`, `previewImage`, `image`, `html`, `kicker`, `color`, `hidden` | As in the intake scripts (see the root README). |
 
@@ -76,6 +77,7 @@ subfolder (for example `/map/`) can point at `../assets/...`.
 | `spatialHelp` | built-in text | Body of the "Spatial Navigation" help panel. |
 | `onFocusChange` | none | Called with the focused hierarchy node after each move. |
 | `storageNamespace` | `"treesite"` | Prefix for the component's own localStorage keys. |
+| `defaultTileMapLevel` | `2` | Nested previews inside parent tiles, 0 (none, cleanest) to 4 (full). The reader's own choice in Settings is remembered. |
 
 ## Navigation standards
 
@@ -84,10 +86,18 @@ way:
 
 - **Tiles** are buttons: Tab moves between them, Enter or Space opens one, and focus
   moves into the opened region. Escape steps back out to the parent.
+- **Blurbs** (a leaf card with no body, list, links, page or image) are read in place:
+  the whole description shows on the tile, and the tile is not a button. Deep links,
+  search results and the outline open the blurb's region instead, with the card
+  highlighted.
+- **Opened cards** show everything their tile shows (kicker, title, description, list
+  and every link) plus any long-form `body`; HTML cards show that header above the page.
 - **Breadcrumbs** show the path from Home to the current region; each crumb is a button.
 - **Mini map**: an abstract map of the whole site with the current region outlined.
-  It is one Tab stop; arrow keys move between regions depth first, Home/End jump to the
-  ends, Enter opens. "Larger mini map" doubles its height and widens the side panel for
+  Its targets are Home and the top-level sections (`targetDepth`, default 1): hovering
+  or clicking a card inside a section acts on the section, so every target is large.
+  It is one Tab stop; arrow keys move between targets, Home/End jump to the ends,
+  Enter opens. "Larger mini map" doubles its height and widens the side panel for
   bigger targets. The choice is remembered.
 - **Your path**: the last visited cards, drawn on the mini map as a gold trail and listed
   as buttons below it.
